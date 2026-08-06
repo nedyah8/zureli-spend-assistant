@@ -19,6 +19,10 @@ def test_number_answer_unchanged_for_known_question():
     app = _reload_app()
     result = app.answer("What was our IT and telecom spend for Alpine Operations in 2024?")
     assert "192,988.04" in result
+    # Final whole-branch review Fix 1: every displayed total must carry a €
+    # (the standing caption already claims EUR and the chart axis already
+    # reads "(€)" — the plain-text totals were the one place still bare).
+    assert "€192,988.04" in result
     # Filter order in the "Matched on ..." string follows nl_parser's
     # extraction order (year, entity, country, cluster, l2, l1, supplier),
     # unchanged since before Task 2 — verified against the pre-Task-2 commit
@@ -39,6 +43,11 @@ def test_chart_question_returns_chart_payload():
     assert payload["kind"] == "chart"
     assert payload["figure"] is not None
     assert "2024" in payload["caption"]
+    # Final whole-branch review Fix 1: the chart's "Total: ..." text and its
+    # caption total must both carry a € — previously only the chart's own
+    # axis title said "(€)", contradicting the still-bare totals elsewhere.
+    assert "€" in payload["text"]
+    assert "€" in payload["caption"]
 
 
 def test_number_question_returns_text_payload():
@@ -101,6 +110,9 @@ def test_nonsense_question_still_gets_honest_caveat():
     payload = app.answer_payload("asdkjfh qwoeiruqwoe")
     assert payload["kind"] == "text"
     assert "I didn't recognise" in payload["text"]
+    # Final whole-branch review Fix 1: the no-filters number-answer branch's
+    # total must also carry a € — it previously showed a bare number.
+    assert "€" in payload["text"]
 
 
 def test_chart_breakdown_by_cluster():
@@ -115,6 +127,36 @@ def test_chart_level_2_categories():
     payload = app.answer_payload("show me a chart of level 2 category spend for 2024")
     assert payload["kind"] == "chart"
     assert "Level 2" in payload["caption"]
+
+
+def test_unfiltered_chart_defaults_to_latest_year_as_real_filter():
+    # Final whole-branch review Fix 2: an unfiltered chart question must now
+    # apply the latest year as a REAL filter into category_spend(), not just
+    # a display label — restoring _CHART-CHAT-DESIGN.md's spec default
+    # (matching the InSight demo's own default focus year) after an earlier
+    # fix round (Task 6) left the query aggregating across all years while
+    # only fixing the axis label to read "all years". The chart's total must
+    # match query_spend(df, year=2025)'s total exactly, not the combined
+    # all-years total.
+    from spend_query import query_spend
+
+    app = _reload_app()
+    latest_year = max(app.kv["year"])
+    assert latest_year == 2025
+
+    payload = app.answer_payload("show me a bar chart of category spend")
+    assert payload["kind"] == "chart"
+
+    expected_total_text = f"{query_spend(app.df, year=latest_year)['total_net_spend']:,.2f}"
+    assert f"€{expected_total_text}" in payload["text"]
+    assert "2025" in payload["caption"]
+    assert "2025" in payload["figure"].layout.xaxis.title.text
+
+    # Must NOT be the old combined-all-years total — guards against
+    # silently regressing back to the pre-fix behaviour.
+    all_years_total_text = f"{query_spend(app.df)['total_net_spend']:,.2f}"
+    assert all_years_total_text != expected_total_text
+    assert all_years_total_text not in payload["text"]
 
 
 def test_west_cluster_number_question_unchanged():

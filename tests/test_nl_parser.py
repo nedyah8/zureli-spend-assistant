@@ -83,6 +83,44 @@ def test_cluster_breakdown_phrasing_detected():
     assert result["breakdown"] == "cluster"
 
 
+def test_bare_bar_keyword_triggers_chart_intent():
+    # Final whole-branch review Fix 3: _CHART-CHAT-DESIGN.md lists bare
+    # "bar" as a chart trigger; it was missing from CHART_KEYWORDS (only
+    # "bar chart"/"bar graph" matched), so this got misrouted to the
+    # number-intent path's "I didn't recognise..." caveat.
+    result = parse_question("bar of category spend", KV)
+    assert result["intent"] == "chart"
+
+
+def test_split_keyword_triggers_chart_intent():
+    # Same gap, "split" — also missing from the approved spec's keyword list.
+    result = parse_question("split spend by entity", KV)
+    assert result["intent"] == "chart"
+
+
+def test_show_me_by_country_triggers_chart_intent():
+    # "show me ... by" pattern from _CHART-CHAT-DESIGN.md — contains none of
+    # the existing substring keywords (chart/graph/plot/bar/split/breakdown/
+    # visualise), so needed a dedicated check.
+    result = parse_question("show me spend by country", KV)
+    assert result["intent"] == "chart"
+
+
+def test_show_me_category_spend_by_entity_triggers_chart_intent():
+    result = parse_question("show me category spend by entity", KV)
+    assert result["intent"] == "chart"
+
+
+def test_by_alone_does_not_make_number_question_a_chart():
+    # Regression guard for Fix 3: the word "by" is far too generic to be a
+    # blanket chart trigger (it would misfire on almost any question) — the
+    # fix specifically targets the "show me X by Y" shape, not any sentence
+    # containing "by". This question contains "by" but no "show me" and no
+    # other chart keyword, so it must still get intent == "number".
+    result = parse_question("What is the total spend by Alpine Operations in 2024?", KV)
+    assert result["intent"] == "number"
+
+
 def test_compare_alone_does_not_trigger_chart_intent():
     # Task 9 fix 5 (Codex finding): "compare" used to be a CHART_KEYWORD,
     # correctly triggering chart intent for "compare X and Y" — but

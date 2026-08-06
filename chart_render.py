@@ -23,31 +23,88 @@ PALETTE = [
 ]
 
 
-def _millions_ticks(
-    min_value: float, max_value: float, step: float = 500_000
-) -> tuple[list[float], list[str]]:
-    """Build 0/0.5M/1M-style tick positions and labels spanning the actual
+# Ladder of tick step sizes _pick_tick_step() chooses from, smallest first.
+# Final whole-branch review, Fix 4: the previous fixed 500,000 step made any
+# chart whose bars sit well below that scale (a single-entity or
+# single-category filtered question — e.g. "chart of Office spend in 2024",
+# largest bar €26,188) collapse onto a single "0M" tick with the entire
+# chart's data invisibly close to it, with no intermediate reference points.
+# The step now scales to the data actually being charted instead of always
+# assuming a 500k/1M-scale chart, while still landing on the same
+# millions-scale steps (250k/500k/1M/...) for the large multi-category
+# charts that really do span millions.
+TICK_STEP_LADDER = (
+    10_000,
+    25_000,
+    50_000,
+    100_000,
+    250_000,
+    500_000,
+    1_000_000,
+    2_500_000,
+    5_000_000,
+    10_000_000,
+    25_000_000,
+    50_000_000,
+    100_000_000,
+)
+
+# Ticks are labelled "k" (thousands) below this step size, "M" (millions) at
+# or above it — matching the InSight demo's fixed-scale-per-chart style
+# rather than switching suffix per individual tick value (see the
+# tickvals/ticktext rationale below).
+TICK_STEP_M_THRESHOLD = 100_000
+
+
+def _tick_bounds(min_value: float, max_value: float, step: float) -> tuple[float, float, int]:
+    """hi/lo padded to the next multiple of `step` beyond the data's actual
+    max/min on whichever side(s) are in play, plus the resulting tick count
+    — the same padding rule for any candidate step, shared by
+    _pick_tick_step()'s search and the final tick build."""
+    hi = (int(max_value // step) + 1) * step if max_value > 0 else 0
+    lo = -((int(-min_value // step) + 1) * step) if min_value < 0 else 0
+    n_ticks = round((hi - lo) / step) + 1
+    return lo, hi, n_ticks
+
+
+def _pick_tick_step(min_value: float, max_value: float) -> float:
+    """Smallest ladder step that keeps the tick count within a readable
+    range (roughly 4-8 ticks) across the data's actual min_value..max_value
+    span. Falls back to the largest ladder step for a span too big for even
+    that to keep to 8 ticks, rather than erroring."""
+    for step in TICK_STEP_LADDER:
+        _, _, n_ticks = _tick_bounds(min_value, max_value, step)
+        if n_ticks <= 8:
+            return step
+    return TICK_STEP_LADDER[-1]
+
+
+def _millions_ticks(min_value: float, max_value: float) -> tuple[list[float], list[str]]:
+    """Build tick positions and k/M-suffixed labels spanning the actual
     min_value..max_value range of the data being charted — which may dip
     negative (e.g. a category dominated by credits/refunds) — rather than
     assuming 0 is always the floor. 0 is always included as an anchor tick.
+    The step size adapts to the data's own magnitude (see TICK_STEP_LADDER)
+    instead of assuming every chart spans millions.
 
     Matches the InSight demo's axis style per _CHART-CHAT-DESIGN.md: "€ axis
     formatting in the demo's style (0M / 0.5M / 1M ticks; € in the axis
     title)". Uses explicit tickvals/ticktext rather than a d3 SI-prefix
     tickformat (e.g. ".2s") because SI-prefix formatting switches between
     "k" and "M" per value's own magnitude (500000 -> "500k"), which does not
-    match the demo's fixed M-only style (500000 -> "0.5M", -1000000 -> "-1M")
-    for values below one million.
+    match the demo's fixed-scale-per-chart style (500000 -> "0.5M",
+    -1000000 -> "-1M") for values below one million.
     """
     if min_value >= 0 and max_value <= 0:
         return [0], ["0M"]
-    # Extend one step beyond the data's actual max/min on whichever side(s)
-    # are in play, so the ticks never look clipped tight to the bars.
-    hi = (int(max_value // step) + 1) * step if max_value > 0 else 0
-    lo = -((int(-min_value // step) + 1) * step) if min_value < 0 else 0
-    n_ticks = round((hi - lo) / step) + 1
+
+    step = _pick_tick_step(min_value, max_value)
+    lo, hi, n_ticks = _tick_bounds(min_value, max_value, step)
     tickvals = [lo + i * step for i in range(n_ticks)]
-    ticktext = [f"{v / 1_000_000:g}M" for v in tickvals]
+    if step >= TICK_STEP_M_THRESHOLD:
+        ticktext = [f"{v / 1_000_000:g}M" for v in tickvals]
+    else:
+        ticktext = [f"{v / 1_000:g}k" for v in tickvals]
     return tickvals, ticktext
 
 
@@ -102,6 +159,14 @@ def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
     """
     categories = list(chart_df["category"].cat.categories)
     breakdown_values = sorted(chart_df["breakdown"].unique())
+    # Known latent limitation (final whole-branch review, not fixed here —
+    # flagged for whoever builds Phase 2, which touches this same code):
+    # stack_totals below is each category's NET total, so _millions_ticks()
+    # computes the tick range from that net figure rather than the bar's
+    # actual drawn (stacked, absolute) width — a category with both large
+    # positive and large negative segments in the same bar could in theory
+    # have ticks that don't fully cover the bar. Confirmed not reachable
+    # with the current real dataset (swept every filter combination).
     stack_totals = chart_df.groupby("category", observed=True)["net_spend"].sum()
     # Sum of |net_spend| per category — the bar's total absolute width, used
     # as the label-suppression denominator so mixed positive/negative bars

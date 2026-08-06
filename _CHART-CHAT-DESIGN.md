@@ -229,6 +229,47 @@ repros, a full sweep of every level/breakdown/year combination on the real
 813-row dataset for divergence, additional edge cases beyond the
 implementer's own tests) before being accepted — 41/41 tests passing.
 
+## Final whole-branch review triage log (6 Aug 2026)
+
+A final review of the whole branch together (not file-by-file) found 4
+further Important findings that only became visible at that scope — each
+individually built, tested, and Codex-reviewed piece was locally correct,
+but the combination surfaced these. All 4 fixed; see
+`final-review-fix-report.md` in this folder for full detail and test
+evidence.
+
+- **Fixed (Important):** the standing caption said the sample data "doesn't
+  specify a currency" and every total was shown as a bare number, while the
+  chart axis already read "(€)" and `_HANDOFF.md` had already recorded EUR
+  as confirmed — a direct, on-screen self-contradiction. Fixed by updating
+  the caption to state the confirmed currency and adding € to every
+  displayed total (the chart's "Total: ..." line and both number-answer
+  branches).
+- **Fixed (Important):** an unfiltered chart request was combining all
+  years (€14.15m) instead of defaulting to the latest year present in the
+  data, as this spec's own behaviour rule requires. An earlier fix round
+  (Task 6) had only made the axis label honest about this ("all years")
+  rather than restoring the actual filter. Fixed by defaulting the query
+  itself to `max(kv["year"])` as a real filter when no year is named, so the
+  label is true by construction — chart path only, `query_spend()`'s
+  unfiltered number-answer behaviour is unchanged.
+- **Fixed (Important):** `CHART_KEYWORDS` was missing three triggers this
+  spec's own intent-detection section lists — bare `"bar"`, `"split"`, and
+  the "show me ... by" phrase shape — so questions like "show me spend by
+  country" and "bar of category spend" were misrouted to the number-intent
+  path's caveat. Fixed by adding "bar"/"split" as keywords and a narrow
+  "show me" + "by" pattern check (deliberately not a blanket "by" keyword,
+  which would misfire on ordinary number questions).
+- **Fixed (Important):** `_millions_ticks()`'s fixed 500,000 tick step made
+  any narrowly-filtered chart (single entity/category, well under 500k)
+  render with only a "0M" tick and one huge step, hiding the whole bar right
+  next to the axis origin. Fixed with an adaptive step ladder (10k up to
+  100M) that picks the smallest step keeping the tick count to roughly 4-8
+  across the chart's actual data range, with a k/M suffix chosen by the
+  step size. A one-line comment was also added flagging a known, not-yet-
+  reachable latent limitation for Phase 2: tick range is computed from each
+  category's net total, not its actual stacked visual extent.
+
 ## Explicitly unresolved (unchanged)
 
 - No ANTHROPIC_API_KEY on this machine — parsing stays rule-based; the

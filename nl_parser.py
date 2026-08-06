@@ -17,6 +17,12 @@ import re
 CHART_KEYWORDS = (
     "chart", "graph", "plot", "bar chart", "bar graph", "breakdown",
     "break down", "broken down", "visualise", "visualize",
+    # "bar" and "split" added (final whole-branch review, Fix 3): the
+    # approved _CHART-CHAT-DESIGN.md spec lists both as chart triggers, but
+    # they were missing from the original build — "bar of category spend"
+    # and "split spend by entity" were both misrouted to the number-intent
+    # path's "I didn't recognise..." caveat instead of a chart.
+    "bar", "split",
     # "compare" is deliberately NOT a chart keyword. _extract_filters()
     # below only ever captures the first matching value per dimension (the
     # whole filter model here is single-value-per-dimension), so a "compare
@@ -26,6 +32,14 @@ CHART_KEYWORDS = (
     # capability — better to fall through to the existing number-intent path
     # than to falsely promise a comparison this parser can't deliver.
 )
+# "show me spend by country" / "show me category spend by entity" (spec's
+# "show me ... by" chart-trigger pattern) contain none of the substring
+# keywords above. Deliberately requires BOTH "show me" and "by" — "by" alone
+# is far too generic a word to add as a blanket keyword (it would misfire on
+# almost any question, e.g. plain number questions like "spend by Alpine
+# Operations in 2024"), so this narrowly targets the "show me X by Y" shape
+# rather than any sentence containing "by" (final whole-branch review, Fix 3).
+SHOW_ME_BY_PATTERN = re.compile(r"\bshow me\b.*\bby\b")
 COUNTRY_BREAKDOWN_KEYWORDS = ("by country", "per country", "country breakdown", "each country")
 CLUSTER_BREAKDOWN_KEYWORDS = ("by cluster", "per cluster", "cluster breakdown", "each cluster")
 LEVEL_2_KEYWORDS = ("level 2", "sub-category", "subcategory", "sub category")
@@ -80,7 +94,9 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
     q = question.lower()
     filters = _extract_filters(q, known)
 
-    is_chart = any(keyword in q for keyword in CHART_KEYWORDS)
+    is_chart = any(keyword in q for keyword in CHART_KEYWORDS) or bool(
+        SHOW_ME_BY_PATTERN.search(q)
+    )
 
     if not is_chart:
         return {

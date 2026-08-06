@@ -69,6 +69,34 @@ def test_xaxis_ticks_use_millions_suffix():
     assert all(t.endswith("M") for t in ticktext)
 
 
+def test_small_magnitude_chart_gets_adaptive_ticks():
+    # Final whole-branch review Fix 4: _millions_ticks() used to hard-code a
+    # fixed 500,000 step, so any chart whose largest bar sat well below that
+    # (e.g. the review's own repro, "chart of Office spend in 2024", largest
+    # bar €26,188) produced only ["0M", "500000"] — the entire chart's data
+    # invisibly close to the "0M" tick with no intermediate reference
+    # points. The step must now scale to the actual data range and use a
+    # "k" suffix at this magnitude, with several evenly-spaced ticks that
+    # genuinely cover the bar.
+    categories = ["Cat A"]
+    chart_df = pd.DataFrame(
+        {
+            "category": pd.Categorical(["Cat A", "Cat A"], categories=categories, ordered=True),
+            "breakdown": ["Demo X", "Demo Y"],
+            "net_spend": [20000.0, 6188.0],  # totals 26,188 — the review's own figure
+        }
+    )
+    fig = build_category_spend_figure(chart_df, year_label=2024)
+    tickvals = list(fig.layout.xaxis.tickvals)
+    ticktext = list(fig.layout.xaxis.ticktext)
+
+    assert len(tickvals) >= 3, "a single 0/max tick pair is exactly the bug being fixed"
+    assert max(tickvals) < 500_000, "must not fall back to the old fixed 500k-scale step"
+    assert max(tickvals) >= 26_000, "ticks must actually cover the bar's real range"
+    assert ticktext[0] == "0k"
+    assert all(t.endswith("k") for t in ticktext)
+
+
 def test_bars_have_value_labels():
     df = load_data()
     chart_df = category_spend(df, level="l1", breakdown="entity", year=2024)

@@ -25,8 +25,8 @@ st.markdown(
 
 st.caption(
     "Prototype running on a synthetic demo dataset (sample_spend_data.csv), not real "
-    "client data — see _HANDOFF.md. The sample file doesn't specify a currency, so "
-    "figures below are shown as plain numbers."
+    "client data — see _HANDOFF.md. Currency is confirmed as euros (€), per the "
+    "InSight demo this prototype mirrors — figures below are shown in €."
 )
 
 
@@ -65,26 +65,38 @@ def answer_payload(question: str) -> dict:
     filters = parsed["filters"]
 
     if parsed["intent"] == "chart":
+        # Default an unfiltered chart question to the latest year present in
+        # the data, applied as a REAL filter passed into category_spend() —
+        # not just a display label. This restores _CHART-CHAT-DESIGN.md's
+        # spec ("unfiltered chart → the latest year present in the data",
+        # matching the InSight demo's own default focus year), which an
+        # earlier fix round (Task 6) had only half-fixed: it made the axis
+        # label honest ("all years") instead of restoring this filter, so an
+        # unfiltered chart still silently combined every year's data (final
+        # whole-branch review, Fix 2). Chart-path only — query_spend()'s own
+        # unfiltered behaviour (sum across all rows/years) is unchanged.
+        if "year" in filters:
+            chart_filters = dict(filters)
+        else:
+            chart_filters = {"year": max(kv["year"]), **filters}
         chart_df = category_spend(
-            df, level=parsed["category_level"], breakdown=parsed["breakdown"], **filters
+            df, level=parsed["category_level"], breakdown=parsed["breakdown"], **chart_filters
         )
         if chart_df.empty:
             return {
                 "kind": "text",
                 "text": (
                     "I didn't find anything matching that for a chart — "
-                    f"{format_filters(filters) if filters else 'no filters recognised'} "
-                    "returned no rows."
+                    f"{format_filters(chart_filters)} returned no rows."
                 ),
                 "figure": None,
                 "caption": None,
             }
-        # Only claim a specific year in the chart/caption when the query was
-        # actually restricted to one — category_spend() aggregates across
-        # ALL years in the data when no year filter is present, so defaulting
-        # this to the latest year for display would show a real total under
-        # a false year label (reviewer-found bug, Task 6 fix round 1).
-        year_label = filters["year"] if "year" in filters else "all years"
+        # chart_filters always carries a year now (either the one the user
+        # named, or the latest-year default above), so this label is true by
+        # construction — the query itself was restricted to it, not just the
+        # display text.
+        year_label = chart_filters["year"]
         fig = build_category_spend_figure(chart_df, year_label=year_label)
         # Sum the raw per-segment values first, then round once — matching
         # query_spend()'s sum-then-round pattern exactly, so the chart's
@@ -93,13 +105,13 @@ def answer_payload(question: str) -> dict:
         total_value = round(chart_df["net_spend"].sum(), 2)
         total = f"{total_value:,.2f}"
         level_label = "Level 1" if parsed["category_level"] == "l1" else "Level 2"
-        filter_text = format_filters(filters) if filters else "all years (no filters recognised)"
+        filter_text = format_filters(chart_filters)
         caption = (
             f"Matched on {filter_text}, broken down by {parsed['breakdown']} "
             f"({level_label} categories) — {chart_df['category'].nunique()} categories, "
-            f"total {total}."
+            f"total €{total}."
         )
-        return {"kind": "chart", "text": f"Total: {total}", "figure": fig, "caption": caption}
+        return {"kind": "chart", "text": f"Total: €{total}", "figure": fig, "caption": caption}
 
     result = query_spend(df, **filters)
     total = f"{result['total_net_spend']:,.2f}"
@@ -110,14 +122,14 @@ def answer_payload(question: str) -> dict:
         text = (
             f"I didn't recognise a specific entity, country, category, or year in that "
             f"question, so I can't narrow it down — the total across all "
-            f"{result['row_count']} rows is **{total}**.\n\n"
+            f"{result['row_count']} rows is **€{total}**.\n\n"
             f"Try mentioning something like an entity ({sample_entities}, ...), "
             f"a category ({sample_categories}, ...), or a year (2024 or 2025)."
         )
     else:
         row_word = "row" if result["row_count"] == 1 else "rows"
         text = (
-            f"Matched on {format_filters(filters)} — **{total}** "
+            f"Matched on {format_filters(filters)} — **€{total}** "
             f"across {result['row_count']} spend {row_word}."
         )
     return {"kind": "text", "text": text, "figure": None, "caption": None}
