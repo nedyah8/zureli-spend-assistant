@@ -186,6 +186,52 @@ def test_tick_range_extends_negative_for_negative_dominated_category():
     assert "0M" in ticktext
 
 
+def test_tick_range_covers_stacked_extent_not_net_total():
+    # Codex follow-up review, Fix C: the tick range used to be computed from
+    # each category's NET total, not the bar's actual stacked visual
+    # extent. Plotly stacks positive segments one direction and negative
+    # segments the other, so a bar with both can be drawn far wider than its
+    # net total. Here "Cat A" nets to only 50,000 (200,000 positive minus
+    # 150,000 negative) but is actually drawn out to a real positive extent
+    # of 200,000 and a real negative extent of -150,000 — the tick range
+    # must cover both, not just the much smaller net figure.
+    categories = ["Cat A"]
+    chart_df = pd.DataFrame(
+        {
+            "category": pd.Categorical(["Cat A", "Cat A"], categories=categories, ordered=True),
+            "breakdown": ["Demo Big Positive", "Demo Big Negative"],
+            # Net total = 200,000 + (-150,000) = 50,000 — much smaller than
+            # either individual segment's own extent.
+            "net_spend": [200000.0, -150000.0],
+        }
+    )
+    fig = build_category_spend_figure(chart_df, year_label=2024)
+    tickvals = list(fig.layout.xaxis.tickvals)
+
+    assert max(tickvals) >= 200_000, "ticks must cover the true positive extent, not just the net total"
+    assert min(tickvals) <= -150_000, "ticks must cover the true negative extent, not just the net total"
+
+
+def test_tick_range_covers_real_mixed_sign_bar_for_supplier_052_2024():
+    # Real-data regression for Fix C: filtering to supplier="Demo Supplier
+    # 052" in 2024, broken down by entity, the "Utilities" category has a
+    # real ~165,965.09 positive segment (Demo Group Headquarters/UK
+    # Operations/etc.) and a real ~-7,637.65 negative segment (Demo Iberia
+    # Distribution) in the same bar, netting to ~158,327.44. The old
+    # net-based tick range (0 to ~158k) gave no negative reference point
+    # even though a real negative segment is drawn on the chart. A prior
+    # sweep had called this "not reachable with the current real dataset"
+    # because it only checked breakdown-by-entity for unfiltered/other
+    # filter combinations, not this supplier filter.
+    df = load_data()
+    chart_df = category_spend(df, level="l1", breakdown="entity", supplier="Demo Supplier 052", year=2024)
+    fig = build_category_spend_figure(chart_df, year_label=2024)
+    tickvals = list(fig.layout.xaxis.tickvals)
+
+    assert min(tickvals) < 0, "ticks must extend negative to cover the real -7,637.65 segment"
+    assert max(tickvals) >= 165_000, "ticks must extend to cover the real ~165,965.09 positive extent"
+
+
 def test_negative_segment_label_shown_when_material_suppressed_when_narrow():
     # Task 9 fix 3b (Codex finding): label suppression used to unconditionally
     # hide any segment with value <= 0, so a real, sizeable negative segment

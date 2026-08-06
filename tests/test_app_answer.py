@@ -164,3 +164,25 @@ def test_west_cluster_number_question_unchanged():
     app = _reload_app()
     payload = app.answer_payload("What did the West cluster spend in 2025?")
     assert "1,267,819.75" in payload["text"]
+
+
+def test_negative_total_shows_minus_sign_before_euro_symbol():
+    # Codex follow-up review, Fix D: the previous f"€{total}" style produced
+    # "€-7,637.65" for a negative total instead of the more natural
+    # "-€7,637.65". This filter combination (real sample data) has a
+    # genuinely negative total.
+    app = _reload_app()
+    payload = app.answer_payload(
+        "What did supplier Demo Supplier 052 spend on Utilities for Demo Iberia "
+        "Distribution?"
+    )
+    assert payload["kind"] == "text"
+    assert "-€7,637.65" in payload["text"]
+    assert "€-7,637.65" not in payload["text"]
+
+
+def test_format_currency_helper_puts_minus_before_euro():
+    app = _reload_app()
+    assert app.format_currency(-7637.65) == "-€7,637.65"
+    assert app.format_currency(7637.65) == "€7,637.65"
+    assert app.format_currency(0) == "€0.00"

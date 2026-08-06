@@ -159,15 +159,37 @@ def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
     """
     categories = list(chart_df["category"].cat.categories)
     breakdown_values = sorted(chart_df["breakdown"].unique())
-    # Known latent limitation (final whole-branch review, not fixed here —
-    # flagged for whoever builds Phase 2, which touches this same code):
-    # stack_totals below is each category's NET total, so _millions_ticks()
-    # computes the tick range from that net figure rather than the bar's
-    # actual drawn (stacked, absolute) width — a category with both large
-    # positive and large negative segments in the same bar could in theory
-    # have ticks that don't fully cover the bar. Confirmed not reachable
-    # with the current real dataset (swept every filter combination).
-    stack_totals = chart_df.groupby("category", observed=True)["net_spend"].sum()
+    # Tick range fix (Codex follow-up review, Fix C): use the bar's actual
+    # drawn (stacked) extent, not each category's net total. Plotly draws a
+    # stacked bar by piling its positive segments on the positive side and
+    # its negative segments on the negative side independently, so a
+    # category with both a large positive and a large negative segment can
+    # be drawn far wider than its net total suggests. positive_extents and
+    # negative_extents below are, per category, the sum of only its positive
+    # segments and the sum of only its negative segments — the true max
+    # extent the bar is drawn to on the positive side and the true min
+    # extent on the negative side — and _millions_ticks() below is fed the
+    # true min/max across all categories being charted, not the (possibly
+    # much smaller) net-total range.
+    #
+    # The earlier sweep that called this "not reachable with the current
+    # real dataset" only checked breakdown-by-entity: filtering to
+    # supplier="Demo Supplier 052" in 2024 and breaking down by
+    # entity/category, that supplier's category has a real ~-7,637.65
+    # negative segment and a real ~165,965.09 positive segment in the same
+    # bar, netting to ~158,327.44 — the old net-based range only spanned
+    # 0-to-~158k, giving no negative reference point even though a real
+    # negative-valued segment is drawn on the chart.
+    positive_extents = (
+        chart_df[chart_df["net_spend"] > 0]
+        .groupby("category", observed=True)["net_spend"]
+        .sum()
+    )
+    negative_extents = (
+        chart_df[chart_df["net_spend"] < 0]
+        .groupby("category", observed=True)["net_spend"]
+        .sum()
+    )
     # Sum of |net_spend| per category — the bar's total absolute width, used
     # as the label-suppression denominator so mixed positive/negative bars
     # are judged against their real visual size, not their (possibly small
@@ -207,8 +229,8 @@ def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
         )
 
     tickvals, ticktext = _millions_ticks(
-        stack_totals.min() if not stack_totals.empty else 0,
-        stack_totals.max() if not stack_totals.empty else 0,
+        negative_extents.min() if not negative_extents.empty else 0,
+        positive_extents.max() if not positive_extents.empty else 0,
     )
 
     fig.update_layout(

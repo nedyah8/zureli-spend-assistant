@@ -270,6 +270,52 @@ evidence.
   reachable latent limitation for Phase 2: tick range is computed from each
   category's net total, not its actual stacked visual extent.
 
+## Codex follow-up review triage log (6 Aug 2026)
+
+A second Codex cross-family review, run specifically against the final
+whole-branch review's own fix wave above, found 3 further Important findings
+and 1 Minor. Two of the Important findings are real regressions caused by
+that fix wave's new keyword/pattern additions being too loose; the third is
+the tick-range limitation flagged as "known, not-yet-reachable" in that same
+fix wave — now confirmed reachable with real data via a filter combination
+the earlier sweep hadn't checked. All 4 fixed; see
+`codex-fixwave-fix-report.md` in this folder for full detail and test
+evidence.
+
+- **Fixed (Important):** the "show me ... by" chart-trigger pattern added
+  above matched ANY "show me ... by ..." sentence, not just ones where "by"
+  introduces a real breakdown dimension — so "show me total spend by Alpine
+  Operations" (an entity name) was wrongly promoted to chart intent and then
+  silently picked up the chart path's default-year filter, changing its
+  answer from the established all-years total. Fixed by requiring the
+  word(s) after "by" to be one of the supported breakdown dimension words
+  (entity/country/cluster/category/level, singular or plural), not an
+  arbitrary entity/supplier name.
+- **Fixed (Important):** the bare `"bar"` and `"split"` keywords added above
+  were plain substrings, so they matched inside unrelated words/names —
+  "minibar", "Barrow Operations" — misrouting plain number questions to
+  chart intent. Fixed `"bar"` with a whole-word match. `"split"` needed more
+  than a word-boundary fix, since "split payment spend" is a genuine
+  standalone use of the word, not a substring embed — every documented
+  genuine "split" trigger is the "split spend by <dimension>" shape, so
+  `"split"` is now only a chart signal when followed later in the question
+  by "by".
+- **Fixed (Important, real not hypothetical):** the tick-range "known latent
+  limitation" flagged in the final whole-branch review above (net total used
+  instead of the bar's actual stacked visual extent) was confirmed
+  reachable with real data: `supplier="Demo Supplier 052"` filtered to 2024,
+  broken down by entity, has a real ~165,965.09 positive segment and a real
+  ~-7,637.65 negative segment in the same "Utilities" bar, netting to
+  ~158,327.44 — the earlier sweep only checked breakdown-by-entity across
+  other filter shapes and missed this one. Fixed by computing the tick range
+  from each category's true positive extent (sum of its positive segments)
+  and true negative extent (sum of its negative segments) across all
+  categories being charted, not from each category's net total.
+- **Fixed (Minor):** negative totals displayed as "€-7,637.65" (minus sign
+  after the €) instead of the more natural "-€7,637.65". Fixed with a shared
+  `format_currency()` helper in `app.py`, applied consistently to the chart
+  total line and both number-answer branches.
+
 ## Explicitly unresolved (unchanged)
 
 - No ANTHROPIC_API_KEY on this machine — parsing stays rule-based; the

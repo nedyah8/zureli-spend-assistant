@@ -121,6 +121,58 @@ def test_by_alone_does_not_make_number_question_a_chart():
     assert result["intent"] == "number"
 
 
+def test_show_me_by_entity_name_does_not_trigger_chart_intent():
+    # Codex follow-up review, Fix A: the original SHOW_ME_BY_PATTERN matched
+    # ANY "show me ... by ..." sentence, so this entity-name question was
+    # wrongly promoted to chart intent and then silently picked up the
+    # chart path's default-year-2025 filter, changing its answer from the
+    # established all-years total. "by" here introduces an entity name, not
+    # a supported breakdown dimension, so this must stay a number question.
+    result = parse_question("show me total spend by Alpine Operations", KV)
+    assert result["intent"] == "number"
+
+
+def test_show_me_by_short_entity_name_does_not_trigger_chart_intent():
+    result = parse_question("show me spend by Demo Alpine Operations", KV)
+    assert result["intent"] == "number"
+
+
+def test_show_me_by_supplier_name_does_not_trigger_chart_intent():
+    # "supplier" is not one of the parser's supported breakdown dimensions
+    # (breakdown only ever resolves to entity/country/cluster), so "by
+    # supplier ..." must not trigger chart intent either.
+    result = parse_question("show me the total spend by supplier Demo Supplier 001", KV)
+    assert result["intent"] == "number"
+
+
+def test_minibar_does_not_trigger_chart_intent():
+    # Codex follow-up review, Fix B: "bar" was a plain substring keyword, so
+    # it matched inside unrelated words like "minibar".
+    result = parse_question("What did we spend on minibar supplies in 2024?", KV)
+    assert result["intent"] == "number"
+
+
+def test_barrow_operations_does_not_trigger_chart_intent():
+    result = parse_question("What did Barrow Operations spend in 2024?", KV)
+    assert result["intent"] == "number"
+
+
+def test_split_payment_does_not_trigger_chart_intent():
+    # "split" was a plain substring keyword; "split payment spend" is a real
+    # standalone use of the word "split" (not a substring embed like
+    # "minibar"), but it isn't a breakdown request — there's no "by" nearby
+    # — so it must still fall through to a plain number question.
+    result = parse_question("What was the split payment spend in 2024?", KV)
+    assert result["intent"] == "number"
+
+
+def test_bar_and_split_still_trigger_chart_intent_as_whole_words():
+    # Regression guard: the Fix B word-boundary/context changes must not
+    # break genuine whole-word usage of "bar" and "split by".
+    assert parse_question("bar of category spend", KV)["intent"] == "chart"
+    assert parse_question("split spend by entity", KV)["intent"] == "chart"
+
+
 def test_compare_alone_does_not_trigger_chart_intent():
     # Task 9 fix 5 (Codex finding): "compare" used to be a CHART_KEYWORD,
     # correctly triggering chart intent for "compare X and Y" — but

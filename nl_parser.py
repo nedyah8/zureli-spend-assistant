@@ -17,12 +17,6 @@ import re
 CHART_KEYWORDS = (
     "chart", "graph", "plot", "bar chart", "bar graph", "breakdown",
     "break down", "broken down", "visualise", "visualize",
-    # "bar" and "split" added (final whole-branch review, Fix 3): the
-    # approved _CHART-CHAT-DESIGN.md spec lists both as chart triggers, but
-    # they were missing from the original build — "bar of category spend"
-    # and "split spend by entity" were both misrouted to the number-intent
-    # path's "I didn't recognise..." caveat instead of a chart.
-    "bar", "split",
     # "compare" is deliberately NOT a chart keyword. _extract_filters()
     # below only ever captures the first matching value per dimension (the
     # whole filter model here is single-value-per-dimension), so a "compare
@@ -32,14 +26,47 @@ CHART_KEYWORDS = (
     # capability — better to fall through to the existing number-intent path
     # than to falsely promise a comparison this parser can't deliver.
 )
+# "bar" and "split" (final whole-branch review, Fix 3) are no longer plain
+# substring keywords (Codex follow-up review, Fix B): as bare substrings
+# they matched inside unrelated words/names — "minibar" contains "bar",
+# "Barrow Operations" contains "bar" — misrouting plain number questions to
+# chart intent. The other CHART_KEYWORDS entries above ("chart", "graph",
+# "breakdown", etc.) are long/distinctive enough that plain substring
+# matching doesn't collide with ordinary words, so only these two
+# collision-prone words needed changing.
+#
+# "bar" is fixed with a plain whole-word match (same technique
+# CLUSTER_BREAKDOWN_KEYWORDS' cluster-name matching in _extract_filters uses
+# below) — its one genuine trigger example ("bar of category spend") is a
+# bare standalone word with no further context, and both its false-positive
+# examples are pure substring embeds that word-boundary alone eliminates.
+BAR_PATTERN = re.compile(r"\bbar\b")
+# "split" needs more than a word-boundary fix: "What was the split payment
+# spend in 2024?" contains "split" as a genuine standalone WORD, not a
+# substring embed like "minibar" — a plain \bsplit\b would still match it.
+# Every genuine "split" chart-trigger example this file has ever documented
+# is the "split spend by <dimension>" shape (a breakdown request), so
+# "split" is only treated as a chart signal when it is followed somewhere
+# later in the question by "by" — "split payment spend" has no "by" and
+# correctly falls through to a plain number question.
+SPLIT_PATTERN = re.compile(r"\bsplit\b.*\bby\b")
 # "show me spend by country" / "show me category spend by entity" (spec's
 # "show me ... by" chart-trigger pattern) contain none of the substring
-# keywords above. Deliberately requires BOTH "show me" and "by" — "by" alone
-# is far too generic a word to add as a blanket keyword (it would misfire on
-# almost any question, e.g. plain number questions like "spend by Alpine
-# Operations in 2024"), so this narrowly targets the "show me X by Y" shape
-# rather than any sentence containing "by" (final whole-branch review, Fix 3).
-SHOW_ME_BY_PATTERN = re.compile(r"\bshow me\b.*\bby\b")
+# keywords above. Requires "show me" AND "by" followed directly by one of
+# the supported breakdown dimension words — not just any word after "by"
+# (Codex follow-up review, Fix A): the original pattern matched ANY "show me
+# ... by ..." sentence, so "show me total spend by Alpine Operations" (an
+# entity name, not a breakdown dimension) was incorrectly promoted to chart
+# intent and picked up the chart path's default-year filter, silently
+# changing the answer from the established all-years total. "by" alone
+# remains far too generic a word to add as a blanket keyword (it would
+# misfire on almost any question, e.g. plain number questions like "spend by
+# Alpine Operations in 2024") — this narrowly targets "show me X by <real
+# breakdown dimension>", matching the same dimension words
+# COUNTRY_BREAKDOWN_KEYWORDS/CLUSTER_BREAKDOWN_KEYWORDS/LEVEL_2_KEYWORDS
+# below already look for, not an arbitrary entity/supplier name.
+BREAKDOWN_DIMENSION_WORDS = r"(?:entit(?:y|ies)|countr(?:y|ies)|cluster[s]?|categor(?:y|ies)|level)"
+SHOW_ME_BY_PATTERN = re.compile(rf"\bshow me\b.*\bby\s+{BREAKDOWN_DIMENSION_WORDS}\b")
 COUNTRY_BREAKDOWN_KEYWORDS = ("by country", "per country", "country breakdown", "each country")
 CLUSTER_BREAKDOWN_KEYWORDS = ("by cluster", "per cluster", "cluster breakdown", "each cluster")
 LEVEL_2_KEYWORDS = ("level 2", "sub-category", "subcategory", "sub category")
@@ -94,8 +121,11 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
     q = question.lower()
     filters = _extract_filters(q, known)
 
-    is_chart = any(keyword in q for keyword in CHART_KEYWORDS) or bool(
-        SHOW_ME_BY_PATTERN.search(q)
+    is_chart = (
+        any(keyword in q for keyword in CHART_KEYWORDS)
+        or bool(BAR_PATTERN.search(q))
+        or bool(SPLIT_PATTERN.search(q))
+        or bool(SHOW_ME_BY_PATTERN.search(q))
     )
 
     if not is_chart:

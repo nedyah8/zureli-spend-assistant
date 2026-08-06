@@ -60,6 +60,18 @@ def format_filters(filters: dict) -> str:
     return ", ".join(parts)
 
 
+def format_currency(value: float) -> str:
+    """Format a spend total as euros, with a leading minus sign before the €
+    for negative values (e.g. -7637.65 -> "-€7,637.65") rather than after it
+    (Codex follow-up review, Fix D). The previous f"€{total}" style produced
+    "€-7,637.65" for negative totals — technically readable but not how
+    currency-negative amounts are normally written. Real negative filtered
+    totals exist in the sample data (e.g. supplier="Demo Supplier 052",
+    entity="Demo Iberia Distribution", l1="Utilities" nets to -7,637.65)."""
+    magnitude = f"{abs(value):,.2f}"
+    return f"-€{magnitude}" if value < 0 else f"€{magnitude}"
+
+
 def answer_payload(question: str) -> dict:
     parsed = parse_question(question, kv)
     filters = parsed["filters"]
@@ -103,18 +115,18 @@ def answer_payload(question: str) -> dict:
         # displayed total can never diverge from the equivalent number
         # answer purely because of rounding order (Task 9 fix 1).
         total_value = round(chart_df["net_spend"].sum(), 2)
-        total = f"{total_value:,.2f}"
+        total = format_currency(total_value)
         level_label = "Level 1" if parsed["category_level"] == "l1" else "Level 2"
         filter_text = format_filters(chart_filters)
         caption = (
             f"Matched on {filter_text}, broken down by {parsed['breakdown']} "
             f"({level_label} categories) — {chart_df['category'].nunique()} categories, "
-            f"total €{total}."
+            f"total {total}."
         )
-        return {"kind": "chart", "text": f"Total: €{total}", "figure": fig, "caption": caption}
+        return {"kind": "chart", "text": f"Total: {total}", "figure": fig, "caption": caption}
 
     result = query_spend(df, **filters)
-    total = f"{result['total_net_spend']:,.2f}"
+    total = format_currency(result["total_net_spend"])
 
     if not filters:
         sample_entities = ", ".join(e.replace("Demo ", "") for e in kv["entity"][:3])
@@ -122,14 +134,14 @@ def answer_payload(question: str) -> dict:
         text = (
             f"I didn't recognise a specific entity, country, category, or year in that "
             f"question, so I can't narrow it down — the total across all "
-            f"{result['row_count']} rows is **€{total}**.\n\n"
+            f"{result['row_count']} rows is **{total}**.\n\n"
             f"Try mentioning something like an entity ({sample_entities}, ...), "
             f"a category ({sample_categories}, ...), or a year (2024 or 2025)."
         )
     else:
         row_word = "row" if result["row_count"] == 1 else "rows"
         text = (
-            f"Matched on {format_filters(filters)} — **€{total}** "
+            f"Matched on {format_filters(filters)} — **{total}** "
             f"across {result['row_count']} spend {row_word}."
         )
     return {"kind": "text", "text": text, "figure": None, "caption": None}
