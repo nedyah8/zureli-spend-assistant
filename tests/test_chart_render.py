@@ -40,6 +40,23 @@ def test_xaxis_title_shows_currency_and_year():
     assert "€" in fig.layout.xaxis.title.text
 
 
+def test_xaxis_title_accepts_string_label_for_unfiltered_years():
+    # Reviewer-found bug (Task 6 fix round 1): when a chart question doesn't
+    # mention a year, category_spend() correctly aggregates across ALL years
+    # combined, but the caller previously defaulted year_label to a specific
+    # year purely for display — showing a false "2025" axis title on a chart
+    # that was never filtered to 2025. build_category_spend_figure now
+    # accepts a string label (e.g. "all years") so callers can be honest
+    # about an unfiltered chart instead of being forced to fabricate a year.
+    df = load_data()
+    chart_df = category_spend(df, level="l1", breakdown="entity")  # no year filter
+    fig = build_category_spend_figure(chart_df, year_label="all years")
+    assert "all years" in fig.layout.xaxis.title.text
+    assert "2024" not in fig.layout.xaxis.title.text
+    assert "2025" not in fig.layout.xaxis.title.text
+    assert "€" in fig.layout.xaxis.title.text
+
+
 def test_xaxis_ticks_use_millions_suffix():
     df = load_data()
     chart_df = category_spend(df, level="l1", breakdown="entity", year=2024)

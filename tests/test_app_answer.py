@@ -5,6 +5,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import importlib
 
+from streamlit.testing.v1 import AppTest
+
+APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
+
 
 def _reload_app():
     import app  # noqa: F401 — Streamlit script; import executes top-level code once
@@ -43,6 +47,35 @@ def test_number_question_returns_text_payload():
     assert payload["kind"] == "text"
     assert payload["figure"] is None
     assert "192,988.04" in payload["text"]
+
+
+def test_multi_turn_chat_does_not_crash_on_rerun():
+    # Reviewer-found bug (Task 6 fix round 1): app.py's history-replay loop
+    # calls render_payload() for any past message with a payload, and both
+    # append sites always set a real payload — but render_payload used to be
+    # defined *below* that loop in the file. Streamlit reruns the whole
+    # script top-to-bottom on every interaction, so the first exchange
+    # worked (the loop body never runs — history is still empty) but the
+    # very next rerun hit render_payload() before its def had executed,
+    # raising NameError. A plain module import/reload (like _reload_app()
+    # above) can never catch this class of bug: session_state.messages is
+    # always empty right after import, so the replay loop's body never
+    # actually runs during a bare reload. Only a real simulated rerun with
+    # non-empty history — via Streamlit's own AppTest harness — exercises
+    # the code path that broke. This scripts a text-answer turn followed by
+    # a chart-answer turn (the second run replays the first turn's payload
+    # through the history loop) and asserts no exception either time.
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    assert not at.exception
+
+    at.chat_input[0].set_value(
+        "What was our IT and telecom spend for Alpine Operations in 2024?"
+    ).run()
+    assert not at.exception
+
+    at.chat_input[0].set_value("show me a bar chart of category spend for 2024").run()
+    assert not at.exception
 
 
 def test_chart_question_with_zero_matches_falls_back_to_text():

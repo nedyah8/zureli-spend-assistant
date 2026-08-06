@@ -74,7 +74,12 @@ def _segment_labels(values, totals) -> list[str]:
     return labels
 
 
-def build_category_spend_figure(chart_df, year_label: int) -> go.Figure:
+def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
+    """Build the chart. `year_label` is shown verbatim in the x-axis title —
+    pass an int (e.g. 2024) when chart_df was actually filtered to a single
+    year, or a descriptive string (e.g. "all years") when it wasn't, so the
+    axis title never claims a year the data wasn't actually restricted to.
+    """
     categories = list(chart_df["category"].cat.categories)
     breakdown_values = sorted(chart_df["breakdown"].unique())
     stack_totals = chart_df.groupby("category", observed=True)["net_spend"].sum()

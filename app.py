@@ -41,23 +41,6 @@ df, kv = get_data()
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if not st.session_state.messages:
-    st.markdown(
-        f"<div style='text-align:center;padding:40px 0 32px;'>"
-        f"<p style='font-size:32px;font-weight:700;color:{BRAND};margin:0 0 8px;"
-        f"letter-spacing:-0.01em;'>Ask about your spend</p>"
-        f"<p style='font-size:15px;color:{MUTED};margin:0;'>"
-        f"Type a question the way you'd ask a colleague.</p></div>",
-        unsafe_allow_html=True,
-    )
-
-for message in st.session_state.messages:
-    with st.chat_message(message["role"], avatar=AVATARS[message["role"]]):
-        if message.get("payload"):
-            render_payload(st, message["payload"])
-        else:
-            st.markdown(message["content"])
-
 LABELS = {
     "entity": "entity",
     "country": "country",
@@ -96,11 +79,16 @@ def answer_payload(question: str) -> dict:
                 "figure": None,
                 "caption": None,
             }
-        year_label = filters.get("year", max(kv["year"]))
+        # Only claim a specific year in the chart/caption when the query was
+        # actually restricted to one — category_spend() aggregates across
+        # ALL years in the data when no year filter is present, so defaulting
+        # this to the latest year for display would show a real total under
+        # a false year label (reviewer-found bug, Task 6 fix round 1).
+        year_label = filters["year"] if "year" in filters else "all years"
         fig = build_category_spend_figure(chart_df, year_label=year_label)
         total = f"{chart_df['net_spend'].sum():,.2f}"
         level_label = "Level 1" if parsed["category_level"] == "l1" else "Level 2"
-        filter_text = format_filters(filters) if filters else f"year = {year_label}"
+        filter_text = format_filters(filters) if filters else "all years (no filters recognised)"
         caption = (
             f"Matched on {filter_text}, broken down by {parsed['breakdown']} "
             f"({level_label} categories) — {chart_df['category'].nunique()} categories, "
@@ -140,6 +128,33 @@ def render_payload(container, payload: dict) -> None:
         container.plotly_chart(payload["figure"], use_container_width=True)
         container.caption(payload["caption"])
 
+
+# render_payload must be defined above this point: Streamlit re-executes the
+# whole script top-to-bottom on every rerun, and the history-replay loop
+# below calls render_payload() for any past message that has a payload —
+# which every assistant turn does, from the very first exchange onward. A
+# definition below the loop worked on the *first* run (loop body never
+# executes because history is still empty) but raised NameError on every
+# rerun after that — i.e. on the user's second message. Confirmed fixed via
+# tests/test_app_answer.py::test_multi_turn_chat_does_not_crash (AppTest,
+# scripts two chat turns and asserts no exception either time).
+
+if not st.session_state.messages:
+    st.markdown(
+        f"<div style='text-align:center;padding:40px 0 32px;'>"
+        f"<p style='font-size:32px;font-weight:700;color:{BRAND};margin:0 0 8px;"
+        f"letter-spacing:-0.01em;'>Ask about your spend</p>"
+        f"<p style='font-size:15px;color:{MUTED};margin:0;'>"
+        f"Type a question the way you'd ask a colleague.</p></div>",
+        unsafe_allow_html=True,
+    )
+
+for message in st.session_state.messages:
+    with st.chat_message(message["role"], avatar=AVATARS[message["role"]]):
+        if message.get("payload"):
+            render_payload(st, message["payload"])
+        else:
+            st.markdown(message["content"])
 
 prompt = st.chat_input("What was our IT and telecom spend for Alpine Operations in 2024?")
 if prompt:
