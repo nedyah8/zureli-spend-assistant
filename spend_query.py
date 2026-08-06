@@ -35,6 +35,19 @@ def known_values(df: pd.DataFrame) -> dict[str, list]:
     return values
 
 
+def filter_df(df: pd.DataFrame, **filters) -> pd.DataFrame:
+    """Row mask shared by query_spend and chart_query — the one place
+    filter semantics live, so number answers and charts can never disagree
+    about what a filter means."""
+    mask = pd.Series(True, index=df.index)
+    for key, value in filters.items():
+        if value is None:
+            continue
+        col = FILTER_COLUMNS[key]
+        mask &= df[col] == value
+    return df[mask]
+
+
 def query_spend(df: pd.DataFrame, **filters) -> dict:
     """filters: any of entity/country/cluster/year/l1/l2/supplier (case-sensitive,
     must match known_values exactly — the parser is responsible for resolving
@@ -43,16 +56,8 @@ def query_spend(df: pd.DataFrame, **filters) -> dict:
     Returns total net spend, matching row count, and the filters actually applied,
     so the caller can always show what the answer is grounded in.
     """
-    mask = pd.Series(True, index=df.index)
-    applied = {}
-    for key, value in filters.items():
-        if value is None:
-            continue
-        col = FILTER_COLUMNS[key]
-        mask &= df[col] == value
-        applied[key] = value
-
-    matched = df[mask]
+    applied = {k: v for k, v in filters.items() if v is not None}
+    matched = filter_df(df, **filters)
     return {
         "total_net_spend": round(float(matched["Net spend"].sum()), 2),
         "row_count": int(len(matched)),
