@@ -55,9 +55,10 @@ Built and verified working end to end, running locally.
    API would need Hayden to supply an API key and would materially improve
    how flexible the questions can be. Not done yet — flagged, not decided.
 2. ~~**Currency unit.**~~ **Resolved 6 Aug 2026.** Confirmed EUR (€) by
-   live inspection of the real InSight demo. The app now displays € on
-   every total (chart and text alike) and the standing caption states this
-   plainly instead of claiming the currency is unknown.
+   live inspection of the real InSight demo. The app displays € on every
+   total, chart and text alike. It does not *say* so anywhere on screen —
+   the € symbol on the figures is the disclosure, and a sentence explaining
+   it was build-narration, not user-facing copy (global Rule 26).
 3. **Real InSight structure.** Still unconfirmed: whether production data
    is one file per client or shared with a client column, how often it
    updates, and whether it's genuinely flat CSV/Excel or something more
@@ -238,6 +239,30 @@ while the actual rendered chart was still visually wrong.
 Full detail and reasoning for all three rounds:
 `_CHART-CHAT-DESIGN.md`'s "Codex review triage log" section and its
 follow-on entries.
+
+**Interface copy pass (6 Aug 2026).** Hayden reviewed the screen and
+objected — correctly — that it was carrying developer note-keeping where a
+product's copy should be: a "— prototype" subtitle beside the wordmark, the
+source CSV's filename, a pointer to this very file, and a sentence
+confirming the currency. All removed. The greeting's subtitle ("Type a
+question the way you'd ask a colleague") went too — it restated the heading,
+and the input's placeholder already demonstrates the interaction with a real
+example question, which teaches it better than describing it. Neither of the
+reference products (Claude, ChatGPT) carries a subtitle under its greeting
+either. What remains on screen: the wordmark, a compact "Demo data" chip,
+one heading, and the input.
+
+The chip was kept deliberately rather than removed with the rest: the
+figures shown are fabricated, this gets shown to Zureli leadership, and a
+screenshot circulating without context could be read as a real client's
+spend. The InSight demo handles the identical problem the same way (an
+"INTERACTIVE SALES DEMO · SYNTHETIC DATA" pill), so the pattern is borrowed
+from the product being mirrored rather than invented. Flagged to Hayden as
+his call — it is one line to delete if he wants it gone.
+
+This prompted global Rule 26 (Section H, "Interface copy: one clear label,
+never explanatory prose"), so the failure is corrected at the source and not
+just in this one app.
 
 **Explicitly deferred — not started.** This phase covered category spend
 only. Per the sequencing Hayden confirmed, three more InSight views remain

@@ -14,19 +14,15 @@ AVATARS = {"user": ":material/person:", "assistant": ":material/insights:"}
 
 st.markdown(
     f"""
-    <div style="display:flex;align-items:baseline;gap:12px;padding:32px 0 16px;">
+    <div style="display:flex;align-items:center;padding:32px 0 16px;">
         <span style="font-size:20px;font-weight:700;color:{BRAND};letter-spacing:-0.01em;">zureli.</span>
-        <span style="font-size:13px;color:{MUTED};">Spend assistant — prototype</span>
+        <span style="margin-left:auto;font-size:11px;font-weight:600;letter-spacing:0.04em;
+                     text-transform:uppercase;color:{MUTED};border:1px solid {BORDER};
+                     border-radius:999px;padding:4px 12px;">Demo data</span>
     </div>
     <hr style="border:none;border-top:1px solid {BORDER};margin:0 0 32px;">
     """,
     unsafe_allow_html=True,
-)
-
-st.caption(
-    "Prototype running on a synthetic demo dataset (sample_spend_data.csv), not real "
-    "client data — see _HANDOFF.md. Currency is confirmed as euros (€), per the "
-    "InSight demo this prototype mirrors — figures below are shown in €."
 )
 
 
@@ -171,10 +167,8 @@ def render_payload(container, payload: dict) -> None:
 if not st.session_state.messages:
     st.markdown(
         f"<div style='text-align:center;padding:40px 0 32px;'>"
-        f"<p style='font-size:32px;font-weight:700;color:{BRAND};margin:0 0 8px;"
-        f"letter-spacing:-0.01em;'>Ask about your spend</p>"
-        f"<p style='font-size:15px;color:{MUTED};margin:0;'>"
-        f"Type a question the way you'd ask a colleague.</p></div>",
+        f"<p style='font-size:32px;font-weight:700;color:{BRAND};margin:0;"
+        f"letter-spacing:-0.01em;'>Ask about your spend</p></div>",
         unsafe_allow_html=True,
     )
 
