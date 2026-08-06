@@ -94,3 +94,31 @@ def test_chart_question_with_zero_matches_falls_back_to_text():
     payload = app.answer_payload("chart category spend for Baltic Logistics in Germany")
     assert payload["kind"] == "text"
     assert "nothing" in payload["text"].lower() or "didn't" in payload["text"].lower()
+
+
+def test_nonsense_question_still_gets_honest_caveat():
+    app = _reload_app()
+    payload = app.answer_payload("asdkjfh qwoeiruqwoe")
+    assert payload["kind"] == "text"
+    assert "I didn't recognise" in payload["text"]
+
+
+def test_chart_breakdown_by_cluster():
+    app = _reload_app()
+    payload = app.answer_payload("chart category spend by cluster for 2024")
+    assert payload["kind"] == "chart"
+    assert "cluster" in payload["caption"]
+
+
+def test_chart_level_2_categories():
+    app = _reload_app()
+    payload = app.answer_payload("show me a chart of level 2 category spend for 2024")
+    assert payload["kind"] == "chart"
+    assert "Level 2" in payload["caption"]
+
+
+def test_west_cluster_number_question_unchanged():
+    # Cross-checked earlier in the project — must not regress (see _HANDOFF.md).
+    app = _reload_app()
+    payload = app.answer_payload("What did the West cluster spend in 2025?")
+    assert "1,267,819.75" in payload["text"]
