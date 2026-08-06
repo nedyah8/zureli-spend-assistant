@@ -1,5 +1,7 @@
 import streamlit as st
 
+from chart_query import category_spend
+from chart_render import build_category_spend_figure
 from nl_parser import parse_question
 from spend_query import known_values, load_data, query_spend
 
@@ -51,7 +53,10 @@ if not st.session_state.messages:
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=AVATARS[message["role"]]):
-        st.markdown(message["content"])
+        if message.get("payload"):
+            render_payload(st, message["payload"])
+        else:
+            st.markdown(message["content"])
 
 LABELS = {
     "entity": "entity",
@@ -72,12 +77,36 @@ def format_filters(filters: dict) -> str:
     return ", ".join(parts)
 
 
-def answer(question: str) -> str:
+def answer_payload(question: str) -> dict:
     parsed = parse_question(question, kv)
     filters = parsed["filters"]
 
     if parsed["intent"] == "chart":
-        return "[[chart]] placeholder — rendered as a real chart in Task 6"
+        chart_df = category_spend(
+            df, level=parsed["category_level"], breakdown=parsed["breakdown"], **filters
+        )
+        if chart_df.empty:
+            return {
+                "kind": "text",
+                "text": (
+                    "I didn't find anything matching that for a chart — "
+                    f"{format_filters(filters) if filters else 'no filters recognised'} "
+                    "returned no rows."
+                ),
+                "figure": None,
+                "caption": None,
+            }
+        year_label = filters.get("year", max(kv["year"]))
+        fig = build_category_spend_figure(chart_df, year_label=year_label)
+        total = f"{chart_df['net_spend'].sum():,.2f}"
+        level_label = "Level 1" if parsed["category_level"] == "l1" else "Level 2"
+        filter_text = format_filters(filters) if filters else f"year = {year_label}"
+        caption = (
+            f"Matched on {filter_text}, broken down by {parsed['breakdown']} "
+            f"({level_label} categories) — {chart_df['category'].nunique()} categories, "
+            f"total {total}."
+        )
+        return {"kind": "chart", "text": f"Total: {total}", "figure": fig, "caption": caption}
 
     result = query_spend(df, **filters)
     total = f"{result['total_net_spend']:,.2f}"
@@ -85,28 +114,42 @@ def answer(question: str) -> str:
     if not filters:
         sample_entities = ", ".join(e.replace("Demo ", "") for e in kv["entity"][:3])
         sample_categories = ", ".join(kv["l1"][:4])
-        return (
+        text = (
             f"I didn't recognise a specific entity, country, category, or year in that "
             f"question, so I can't narrow it down — the total across all "
             f"{result['row_count']} rows is **{total}**.\n\n"
             f"Try mentioning something like an entity ({sample_entities}, ...), "
             f"a category ({sample_categories}, ...), or a year (2024 or 2025)."
         )
+    else:
+        row_word = "row" if result["row_count"] == 1 else "rows"
+        text = (
+            f"Matched on {format_filters(filters)} — **{total}** "
+            f"across {result['row_count']} spend {row_word}."
+        )
+    return {"kind": "text", "text": text, "figure": None, "caption": None}
 
-    row_word = "row" if result["row_count"] == 1 else "rows"
-    return (
-        f"Matched on {format_filters(filters)} — **{total}** "
-        f"across {result['row_count']} spend {row_word}."
-    )
+
+def answer(question: str) -> str:
+    return answer_payload(question)["text"]
+
+
+def render_payload(container, payload: dict) -> None:
+    container.markdown(payload["text"])
+    if payload["kind"] == "chart":
+        container.plotly_chart(payload["figure"], use_container_width=True)
+        container.caption(payload["caption"])
 
 
 prompt = st.chat_input("What was our IT and telecom spend for Alpine Operations in 2024?")
 if prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.session_state.messages.append({"role": "user", "content": prompt, "payload": None})
     with st.chat_message("user", avatar=AVATARS["user"]):
         st.markdown(prompt)
 
-    response = answer(prompt)
-    st.session_state.messages.append({"role": "assistant", "content": response})
+    payload = answer_payload(prompt)
+    st.session_state.messages.append(
+        {"role": "assistant", "content": payload["text"], "payload": payload}
+    )
     with st.chat_message("assistant", avatar=AVATARS["assistant"]):
-        st.markdown(response)
+        render_payload(st, payload)
