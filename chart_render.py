@@ -2,6 +2,7 @@
 horizontal stacked bar chart, reproduced from chart_query's tidy dataframe.
 """
 
+import pandas as pd
 import plotly.graph_objects as go
 
 # Categorical palette — the dataviz skill's validated 8-hue reference palette
@@ -159,37 +160,51 @@ def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
     """
     categories = list(chart_df["category"].cat.categories)
     breakdown_values = sorted(chart_df["breakdown"].unique())
-    # Tick range fix (Codex follow-up review, Fix C): use the bar's actual
-    # drawn (stacked) extent, not each category's net total. Plotly draws a
-    # stacked bar by piling its positive segments on the positive side and
-    # its negative segments on the negative side independently, so a
-    # category with both a large positive and a large negative segment can
-    # be drawn far wider than its net total suggests. positive_extents and
-    # negative_extents below are, per category, the sum of only its positive
-    # segments and the sum of only its negative segments — the true max
-    # extent the bar is drawn to on the positive side and the true min
-    # extent on the negative side — and _millions_ticks() below is fed the
-    # true min/max across all categories being charted, not the (possibly
-    # much smaller) net-total range.
+
+    # Reindexed per-breakdown net_spend series, one per trace, in the exact
+    # order traces get added to the figure below (breakdown_values, sorted).
+    # Built once here so both the trace loop and the tick-range walk below
+    # use the identical zero-filled series for a given breakdown value.
+    segment_series = {
+        bval: chart_df[chart_df["breakdown"] == bval]
+        .set_index("category")["net_spend"]
+        .reindex(categories, fill_value=0)
+        for bval in breakdown_values
+    }
+
+    # Tick range fix (tick-range-fix-brief.md, superseding the Codex
+    # follow-up review's "sum of positive segments vs sum of negative
+    # segments" model): walk the ACTUAL cumulative stacking position Plotly
+    # computes when barmode="stack" adds traces in order — starting each
+    # category's bar at 0 and running a cumulative sum through its segments
+    # in trace-added order (the same breakdown_values order used to build
+    # the traces below) — and track the true min and true max that running
+    # position ever reaches, including its starting position of 0.
     #
-    # The earlier sweep that called this "not reachable with the current
-    # real dataset" only checked breakdown-by-entity: filtering to
-    # supplier="Demo Supplier 052" in 2024 and breaking down by
-    # entity/category, that supplier's category has a real ~-7,637.65
-    # negative segment and a real ~165,965.09 positive segment in the same
-    # bar, netting to ~158,327.44 — the old net-based range only spanned
-    # 0-to-~158k, giving no negative reference point even though a real
-    # negative-valued segment is drawn on the chart.
-    positive_extents = (
-        chart_df[chart_df["net_spend"] > 0]
-        .groupby("category", observed=True)["net_spend"]
-        .sum()
-    )
-    negative_extents = (
-        chart_df[chart_df["net_spend"] < 0]
-        .groupby("category", observed=True)["net_spend"]
-        .sum()
-    )
+    # The previous "sum of positives vs sum of negatives" model assumed a
+    # negative segment always renders left of zero, which is only true if
+    # the running position itself goes negative at some point in trace
+    # order — not guaranteed by segment order. Real counter-example
+    # (`supplier="Demo Supplier 052"`, `year=2024`, `breakdown="entity"`,
+    # `level="l1"`, "Utilities" category): a real ~-7,637.65 negative segment
+    # arrives (alphabetically, as "Iberia Distribution") when the running
+    # position is already at ~77,227.14, so it only pulls the stack back to
+    # ~69,589.49 — still well above zero. The bar Plotly actually draws
+    # spans 0 to ~158,327.44 (the final cumulative total), with NO point of
+    # the walk ever going negative, even though a real negative segment and
+    # a net total that isn't the walk's max are both present. The previous
+    # model's range (0 positive-side max, -7,637.65 negative-side min) gave
+    # a spurious negative tick that doesn't match anything actually drawn.
+    #
+    # The overall tick range spans the true min and true max of this walk
+    # across ALL categories being charted, not per-category maxes summed.
+    cumulative = pd.DataFrame(segment_series, index=categories).cumsum(axis=1)
+    if cumulative.empty:
+        stack_min, stack_max = 0.0, 0.0
+    else:
+        stack_min = min(0.0, cumulative.to_numpy().min())
+        stack_max = max(0.0, cumulative.to_numpy().max())
+
     # Sum of |net_spend| per category — the bar's total absolute width, used
     # as the label-suppression denominator so mixed positive/negative bars
     # are judged against their real visual size, not their (possibly small
@@ -202,12 +217,7 @@ def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
 
     fig = go.Figure()
     for i, bval in enumerate(breakdown_values):
-        # Reindex only the net_spend series (not the whole sub-frame) over
-        # the full category list, so a missing category/breakdown
-        # combination fills with a numeric 0 rather than pandas trying to
-        # fill_value=0 into the (string-typed) breakdown column too.
-        sub = chart_df[chart_df["breakdown"] == bval].set_index("category")["net_spend"]
-        sub = sub.reindex(categories, fill_value=0)
+        sub = segment_series[bval]
         display_name = str(bval).replace("Demo ", "")
         fig.add_trace(
             go.Bar(
@@ -228,10 +238,7 @@ def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
             )
         )
 
-    tickvals, ticktext = _millions_ticks(
-        negative_extents.min() if not negative_extents.empty else 0,
-        positive_extents.max() if not positive_extents.empty else 0,
-    )
+    tickvals, ticktext = _millions_ticks(stack_min, stack_max)
 
     fig.update_layout(
         barmode="stack",

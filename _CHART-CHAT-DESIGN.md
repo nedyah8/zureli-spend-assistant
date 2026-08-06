@@ -316,6 +316,46 @@ evidence.
   `format_currency()` helper in `app.py`, applied consistently to the chart
   total line and both number-answer branches.
 
+## Tick-range fix triage log (6 Aug 2026)
+
+The controller personally screenshotted the real running app for the exact
+mixed-sign repro case from the Codex follow-up review above
+(`supplier="Demo Supplier 052"`, `year=2024`) and found the rendered chart's
+x-axis showed no negative tick, even though `build_category_spend_figure()`'s
+returned figure object had `tickvals` including `-50000`. This was the last
+planned fix for this feature; see `.superpowers/sdd/_CHART-CHAT-PLAN/
+tick-range-fix-brief.md` and `tick-range-fix-report.md` for full detail.
+
+- **What was wrong:** the Codex follow-up review's fix (immediately above)
+  computed the tick range from each category's true positive extent (sum of
+  its positive segments) and true negative extent (sum of its negative
+  segments), on the assumption that a negative segment always renders left
+  of zero. That assumption is only true if the running cumulative stacking
+  position Plotly actually tracks as it draws traces in order dips below
+  zero at some point — not guaranteed by segment order. For the Utilities
+  category in the real repro case, the one negative segment ("Iberia
+  Distribution", -7,637.65) arrives when the running position is already at
+  77,227.14, pulling it back to 69,589.49 — still above zero. The bar is
+  actually drawn from 0 to 158,327.44 only; the previous fix's -7,637.65
+  minimum produced a tick that didn't match anything on the real chart.
+- **How it was caught:** a human/controller screenshot of the real running
+  app disagreed with the figure object's own claimed tick values — code
+  reading and unit tests alone had not caught it, because the earlier fix's
+  own tests asserted against its own (incorrect) model rather than against
+  what Plotly actually draws.
+- **What changed:** the tick range now walks the true cumulative stacking
+  position the same way Plotly does — a running sum per category through its
+  segments in the same trace-added order used to build the traces — and
+  tracks the true min and true max that running position ever reaches
+  (including its starting position of 0), across all categories being
+  charted. This matches what Plotly actually draws in both directions: a
+  bar whose running position genuinely dips negative gets a correctly
+  negative-extending tick range, and a bar like the real repro case that
+  never dips below zero gets no spurious negative tick. Verified against the
+  real data directly (`fig.layout.xaxis.tickvals` for the exact repro case
+  no longer includes -50000 or any value below 0) and with a new synthetic
+  test proving the negative-extending direction still works correctly.
+
 ## Explicitly unresolved (unchanged)
 
 - No ANTHROPIC_API_KEY on this machine — parsing stays rule-based; the

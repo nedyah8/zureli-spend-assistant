@@ -187,49 +187,95 @@ def test_tick_range_extends_negative_for_negative_dominated_category():
 
 
 def test_tick_range_covers_stacked_extent_not_net_total():
-    # Codex follow-up review, Fix C: the tick range used to be computed from
-    # each category's NET total, not the bar's actual stacked visual
-    # extent. Plotly stacks positive segments one direction and negative
-    # segments the other, so a bar with both can be drawn far wider than its
-    # net total. Here "Cat A" nets to only 50,000 (200,000 positive minus
-    # 150,000 negative) but is actually drawn out to a real positive extent
-    # of 200,000 and a real negative extent of -150,000 — the tick range
-    # must cover both, not just the much smaller net figure.
+    # Updated for tick-range-fix-brief.md: the tick range is computed by
+    # walking the ACTUAL cumulative stacking position Plotly reaches as
+    # traces are added in order (breakdown_values, sorted), not by summing
+    # each category's positive segments and negative segments separately
+    # (that older model is what tick-range-fix-brief.md replaces — it wrongly
+    # assumed a negative segment always renders left of zero regardless of
+    # trace order). Breakdown values sort as "Demo A Big" then "Demo B Drop",
+    # so the walk for "Cat A" is 0 -> 200,000 (peak, after "Demo A Big") ->
+    # 150,000 (final, after "Demo B Drop" pulls it back). The true peak
+    # (200,000) is still bigger than the net total (150,000), proving the
+    # range isn't just the net total — but the walk never actually dips
+    # below zero for this trace order, so the range must NOT extend negative
+    # (that would be the bug this brief fixes, applied to this same data).
     categories = ["Cat A"]
     chart_df = pd.DataFrame(
         {
             "category": pd.Categorical(["Cat A", "Cat A"], categories=categories, ordered=True),
-            "breakdown": ["Demo Big Positive", "Demo Big Negative"],
-            # Net total = 200,000 + (-150,000) = 50,000 — much smaller than
-            # either individual segment's own extent.
-            "net_spend": [200000.0, -150000.0],
+            "breakdown": ["Demo A Big", "Demo B Drop"],
+            # Net total = 200,000 + (-50,000) = 150,000 — smaller than the
+            # true peak the walk reaches (200,000) after the first segment.
+            "net_spend": [200000.0, -50000.0],
         }
     )
     fig = build_category_spend_figure(chart_df, year_label=2024)
     tickvals = list(fig.layout.xaxis.tickvals)
 
-    assert max(tickvals) >= 200_000, "ticks must cover the true positive extent, not just the net total"
-    assert min(tickvals) <= -150_000, "ticks must cover the true negative extent, not just the net total"
+    assert max(tickvals) >= 200_000, "ticks must cover the true peak stacked position, not just the net total"
+    assert min(tickvals) >= 0, "the walk never dips below zero for this trace order, so no tick should be negative"
 
 
-def test_tick_range_covers_real_mixed_sign_bar_for_supplier_052_2024():
-    # Real-data regression for Fix C: filtering to supplier="Demo Supplier
-    # 052" in 2024, broken down by entity, the "Utilities" category has a
-    # real ~165,965.09 positive segment (Demo Group Headquarters/UK
-    # Operations/etc.) and a real ~-7,637.65 negative segment (Demo Iberia
-    # Distribution) in the same bar, netting to ~158,327.44. The old
-    # net-based tick range (0 to ~158k) gave no negative reference point
-    # even though a real negative segment is drawn on the chart. A prior
-    # sweep had called this "not reachable with the current real dataset"
-    # because it only checked breakdown-by-entity for unfiltered/other
-    # filter combinations, not this supplier filter.
+def test_tick_range_matches_true_stack_walk_for_supplier_052_2024():
+    # Real-data regression, tick-range-fix-brief.md: the controller
+    # personally screenshotted the real running app for this exact case
+    # (supplier="Demo Supplier 052", year=2024, breakdown="entity",
+    # level="l1") and found the rendered chart shows ticks 0k/50k/100k/150k
+    # ONLY — no negative tick — even though an earlier (now-superseded) fix
+    # had computed a tick range of 0 to ~165,965.09 positive / down to
+    # -7,637.65 negative, based on summing each category's positive segments
+    # and negative segments separately.
+    #
+    # That model was wrong: it assumed a negative segment always renders
+    # left of zero, but Plotly actually stacks trace-by-trace in
+    # breakdown-value (alphabetical) order, and the "Utilities" category's
+    # real ~-7,637.65 negative segment ("Iberia Distribution") arrives when
+    # the running cumulative position is already at ~77,227.14 — pulling it
+    # back to ~69,589.49, still comfortably above zero. Walking the real
+    # trace order: 0 -> 7,263.22 -> 13,621.87 -> 45,935.37 -> 77,227.14 ->
+    # 69,589.49 -> 91,015.63 -> 126,844.63 -> 158,327.44 (final total,
+    # matches the caption). The running position never goes below 0, so the
+    # bar Plotly actually draws spans 0 to ~158,327.44 only — this test
+    # directly guards against the spurious-negative-tick bug just found by
+    # asserting NO tick is negative for this exact real-data scenario.
     df = load_data()
     chart_df = category_spend(df, level="l1", breakdown="entity", supplier="Demo Supplier 052", year=2024)
     fig = build_category_spend_figure(chart_df, year_label=2024)
     tickvals = list(fig.layout.xaxis.tickvals)
 
-    assert min(tickvals) < 0, "ticks must extend negative to cover the real -7,637.65 segment"
-    assert max(tickvals) >= 165_000, "ticks must extend to cover the real ~165,965.09 positive extent"
+    assert min(tickvals) >= 0, "the true cumulative walk never dips below zero for this real data — no tick should be negative"
+    assert -50000 not in tickvals, "the exact spurious tick the controller's screenshot did NOT show must not reappear"
+    assert max(tickvals) >= 158_000, "ticks must still extend to cover the real ~158,327.44 final stacked position"
+
+
+def test_tick_range_extends_negative_when_negative_segment_leads_trace_order():
+    # tick-range-fix-brief.md, required synthetic counterpart to the
+    # real-data test above: proves the fix handles the OTHER direction too —
+    # when a large negative segment IS early enough in trace order that the
+    # running cumulative position genuinely goes negative, the tick range
+    # must correctly extend below zero (not just "never goes negative" as a
+    # blanket rule). Breakdown values sort as "Demo 1 Big Negative", "Demo 2
+    # Small Positive", "Demo 3 Small Positive" (numeric prefixes fix the
+    # trace order), so the walk for "Cat A" is 0 -> -500,000 (true minimum,
+    # right after the first, dominant segment) -> -400,000 -> -350,000
+    # (final net total). The walk never climbs back above 0, so the true
+    # maximum is 0 itself, not the sum of the positive segments (150,000) —
+    # which is exactly what the old positive-sum/negative-sum model would
+    # have wrongly returned as the max.
+    categories = ["Cat A"]
+    chart_df = pd.DataFrame(
+        {
+            "category": pd.Categorical(["Cat A", "Cat A", "Cat A"], categories=categories, ordered=True),
+            "breakdown": ["Demo 1 Big Negative", "Demo 2 Small Positive", "Demo 3 Small Positive"],
+            "net_spend": [-500000.0, 100000.0, 50000.0],
+        }
+    )
+    fig = build_category_spend_figure(chart_df, year_label=2024)
+    tickvals = list(fig.layout.xaxis.tickvals)
+
+    assert min(tickvals) <= -500_000, "ticks must extend to cover the true trough reached right after the leading negative segment"
+    assert max(tickvals) == 0, "the walk never climbs above 0 here, so the max tick must be 0, not the sum of positive segments (150,000)"
 
 
 def test_negative_segment_label_shown_when_material_suppressed_when_narrow():
