@@ -6,10 +6,10 @@ ever show numbers computed by a plain pandas groupby/sum over the real rows.
 
 import pandas as pd
 
-from spend_query import filter_df
+from spend_query import FILTER_COLUMNS, filter_df
 
-CATEGORY_COLUMNS = {"l1": "L1", "l2": "L2"}
-BREAKDOWN_COLUMNS = {"entity": "Entity", "country": "Country", "cluster": "Cluster"}
+CATEGORY_COLUMNS = {k: FILTER_COLUMNS[k] for k in ("l1", "l2")}
+BREAKDOWN_COLUMNS = {k: FILTER_COLUMNS[k] for k in ("entity", "country", "cluster")}
 
 
 def category_spend(
