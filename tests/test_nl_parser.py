@@ -52,3 +52,45 @@ def test_chart_intent_still_extracts_filters():
     assert result["intent"] == "chart"
     assert result["filters"]["country"] == "Germany"
     assert result["filters"]["year"] == 2025
+
+
+def test_country_breakdown_phrasing_detected():
+    # Task 9 fix 4 (Codex finding): this phrasing correctly triggered chart
+    # intent (via the "breakdown" keyword) but silently fell back to
+    # breakdown="entity" instead of detecting "country", since the old
+    # COUNTRY_BREAKDOWN_KEYWORDS only matched "by country"/"per country".
+    result = parse_question("country breakdown of category spend for 2024", KV)
+    assert result["intent"] == "chart"
+    assert result["breakdown"] == "country"
+
+
+def test_each_country_phrasing_detected():
+    # Task 9 fix 4 (Codex finding): same gap as above, different phrasing.
+    result = parse_question("show spend breakdown for each country in 2024", KV)
+    assert result["intent"] == "chart"
+    assert result["breakdown"] == "country"
+
+
+def test_each_cluster_phrasing_detected():
+    result = parse_question("show spend breakdown for each cluster in 2024", KV)
+    assert result["intent"] == "chart"
+    assert result["breakdown"] == "cluster"
+
+
+def test_cluster_breakdown_phrasing_detected():
+    result = parse_question("cluster breakdown of category spend for 2024", KV)
+    assert result["intent"] == "chart"
+    assert result["breakdown"] == "cluster"
+
+
+def test_compare_alone_does_not_trigger_chart_intent():
+    # Task 9 fix 5 (Codex finding): "compare" used to be a CHART_KEYWORD,
+    # correctly triggering chart intent for "compare X and Y" — but
+    # _extract_filters() only ever captures the first matching entity, so
+    # the second entity in the comparison was silently dropped, giving a
+    # chart for just one entity with nothing indicating the comparison was
+    # lost. "compare" was removed from CHART_KEYWORDS; this question
+    # contains no other chart-signalling word, so it must now fall through
+    # to the number-intent path instead of falsely promising a comparison.
+    result = parse_question("compare Alpine Operations and UK Operations in 2024", KV)
+    assert result["intent"] == "number"

@@ -86,7 +86,12 @@ def answer_payload(question: str) -> dict:
         # a false year label (reviewer-found bug, Task 6 fix round 1).
         year_label = filters["year"] if "year" in filters else "all years"
         fig = build_category_spend_figure(chart_df, year_label=year_label)
-        total = f"{chart_df['net_spend'].sum():,.2f}"
+        # Sum the raw per-segment values first, then round once — matching
+        # query_spend()'s sum-then-round pattern exactly, so the chart's
+        # displayed total can never diverge from the equivalent number
+        # answer purely because of rounding order (Task 9 fix 1).
+        total_value = round(chart_df["net_spend"].sum(), 2)
+        total = f"{total_value:,.2f}"
         level_label = "Level 1" if parsed["category_level"] == "l1" else "Level 2"
         filter_text = format_filters(filters) if filters else "all years (no filters recognised)"
         caption = (

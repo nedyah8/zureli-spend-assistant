@@ -16,10 +16,18 @@ import re
 
 CHART_KEYWORDS = (
     "chart", "graph", "plot", "bar chart", "bar graph", "breakdown",
-    "break down", "broken down", "visualise", "visualize", "compare",
+    "break down", "broken down", "visualise", "visualize",
+    # "compare" is deliberately NOT a chart keyword. _extract_filters()
+    # below only ever captures the first matching value per dimension (the
+    # whole filter model here is single-value-per-dimension), so a "compare
+    # X and Y" question would silently produce a chart for just one of the
+    # two entities, with nothing indicating the comparison was dropped.
+    # True multi-entity comparison charts are an explicitly deferred future
+    # capability — better to fall through to the existing number-intent path
+    # than to falsely promise a comparison this parser can't deliver.
 )
-COUNTRY_BREAKDOWN_KEYWORDS = ("by country", "per country")
-CLUSTER_BREAKDOWN_KEYWORDS = ("by cluster", "per cluster")
+COUNTRY_BREAKDOWN_KEYWORDS = ("by country", "per country", "country breakdown", "each country")
+CLUSTER_BREAKDOWN_KEYWORDS = ("by cluster", "per cluster", "cluster breakdown", "each cluster")
 LEVEL_2_KEYWORDS = ("level 2", "sub-category", "subcategory", "sub category")
 
 

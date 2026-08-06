@@ -128,3 +128,66 @@ def test_zero_value_segment_label_is_suppressed():
     # synthetic figure still gets a label.
     x_trace = next(t for t in fig.data if t.name == "X")
     assert x_trace.text[cat_b_idx] != ""
+
+
+def test_tick_range_extends_negative_for_negative_dominated_category():
+    # Task 9 fix 3a (Codex finding): real sample data has negative Net
+    # spend rows (credits/refunds, 12/813). A category whose net total is
+    # negative (dominated by negative spend) used to fall into
+    # _millions_ticks' "max_value <= 0" branch and render a single "0M"
+    # tick, giving no indication the real range extends into negative
+    # territory. Tick range must now span the actual min-to-max of the
+    # per-category totals being charted.
+    categories = ["Cat A", "Cat B"]
+    chart_df = pd.DataFrame(
+        {
+            "category": pd.Categorical(
+                ["Cat A", "Cat A", "Cat B", "Cat B"], categories=categories, ordered=True
+            ),
+            "breakdown": ["Demo X", "Demo Y", "Demo X", "Demo Y"],
+            # Cat A net = -800,000 + 200,000 = -600,000 (negative-dominated).
+            # Cat B net = 1,500,000 + 100,000 = 1,600,000.
+            "net_spend": [-800000.0, 200000.0, 1500000.0, 100000.0],
+        }
+    )
+    fig = build_category_spend_figure(chart_df, year_label=2024)
+    tickvals = list(fig.layout.xaxis.tickvals)
+    ticktext = list(fig.layout.xaxis.ticktext)
+    assert min(tickvals) < 0
+    assert any(t.startswith("-") for t in ticktext)
+    assert "0M" in ticktext
+
+
+def test_negative_segment_label_shown_when_material_suppressed_when_narrow():
+    # Task 9 fix 3b (Codex finding): label suppression used to unconditionally
+    # hide any segment with value <= 0, so a real, sizeable negative segment
+    # (e.g. a credit/refund that's a meaningful chunk of its bar) got no
+    # label at all. Suppression must instead be based on the segment's
+    # ABSOLUTE value's share of its bar's total absolute width — a
+    # materially-sized negative segment gets a label (with its minus sign),
+    # while a genuinely narrow negative segment is still suppressed, exactly
+    # mirroring the existing narrow-positive-segment behaviour.
+    categories = ["Cat A", "Cat B"]
+    chart_df = pd.DataFrame(
+        {
+            "category": pd.Categorical(
+                ["Cat A", "Cat A", "Cat B", "Cat B"], categories=categories, ordered=True
+            ),
+            "breakdown": ["Demo Big", "Demo Rest", "Demo Narrow", "Demo Rest"],
+            # Cat A: Big = -300,000 is 30% of the bar's absolute width
+            # (300,000 + 700,000) — materially sized, must get a label.
+            # Cat B: Narrow = -1,000 is 0.5% of the bar's absolute width
+            # (1,000 + 199,000) — genuinely narrow, must stay suppressed.
+            "net_spend": [-300000.0, 700000.0, -1000.0, 199000.0],
+        }
+    )
+    fig = build_category_spend_figure(chart_df, year_label=2024)
+
+    cat_a_idx = categories.index("Cat A")
+    cat_b_idx = categories.index("Cat B")
+
+    big_trace = next(t for t in fig.data if t.name == "Big")
+    narrow_trace = next(t for t in fig.data if t.name == "Narrow")
+
+    assert big_trace.text[cat_a_idx] == "-300,000"
+    assert narrow_trace.text[cat_b_idx] == ""

@@ -26,9 +26,17 @@ def category_spend(
     if breakdown not in BREAKDOWN_COLUMNS:
         raise ValueError(f"breakdown must be one of {list(BREAKDOWN_COLUMNS)}, got {breakdown!r}")
 
-    matched = filter_df(df, **filters)
+    matched = filter_df(df, **filters).copy()
     category_col = CATEGORY_COLUMNS[level]
     breakdown_col = BREAKDOWN_COLUMNS[breakdown]
+
+    # A null category/breakdown value would otherwise be silently dropped by
+    # groupby's default dropna=True, while query_spend() counts every
+    # matched row regardless — group nulls into a visible sentinel bucket
+    # instead, so a chart can never disagree with query_spend() purely
+    # because of a missing dimension value.
+    matched[category_col] = matched[category_col].fillna("(unspecified)")
+    matched[breakdown_col] = matched[breakdown_col].fillna("(unspecified)")
 
     grouped = (
         matched.groupby([category_col, breakdown_col])["Net spend"]
@@ -41,5 +49,8 @@ def category_spend(
     category_order = totals.index.tolist()
     grouped["category"] = pd.Categorical(grouped["category"], categories=category_order, ordered=True)
     grouped = grouped.sort_values(["category", "breakdown"]).reset_index(drop=True)
-    grouped["net_spend"] = grouped["net_spend"].round(2)
+    # net_spend is returned as the raw, unrounded float sum — rounding
+    # happens only at display time (chart_render's per-segment labels and
+    # app.py's total caption), matching query_spend()'s sum-then-round-once
+    # pattern so the two can never diverge on rounding order alone.
     return grouped

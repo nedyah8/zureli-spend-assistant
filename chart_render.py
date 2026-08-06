@@ -23,51 +23,71 @@ PALETTE = [
 ]
 
 
-def _millions_ticks(max_value: float, step: float = 500_000) -> tuple[list[float], list[str]]:
-    """Build 0/0.5M/1M-style tick positions and labels covering 0..max_value.
+def _millions_ticks(
+    min_value: float, max_value: float, step: float = 500_000
+) -> tuple[list[float], list[str]]:
+    """Build 0/0.5M/1M-style tick positions and labels spanning the actual
+    min_value..max_value range of the data being charted — which may dip
+    negative (e.g. a category dominated by credits/refunds) — rather than
+    assuming 0 is always the floor. 0 is always included as an anchor tick.
 
     Matches the InSight demo's axis style per _CHART-CHAT-DESIGN.md: "€ axis
     formatting in the demo's style (0M / 0.5M / 1M ticks; € in the axis
     title)". Uses explicit tickvals/ticktext rather than a d3 SI-prefix
     tickformat (e.g. ".2s") because SI-prefix formatting switches between
     "k" and "M" per value's own magnitude (500000 -> "500k"), which does not
-    match the demo's fixed M-only style (500000 -> "0.5M") for values below
-    one million.
+    match the demo's fixed M-only style (500000 -> "0.5M", -1000000 -> "-1M")
+    for values below one million.
     """
-    if max_value <= 0:
+    if min_value >= 0 and max_value <= 0:
         return [0], ["0M"]
-    n_ticks = int(max_value // step) + 2  # one tick beyond the data max
-    tickvals = [i * step for i in range(n_ticks)]
+    # Extend one step beyond the data's actual max/min on whichever side(s)
+    # are in play, so the ticks never look clipped tight to the bars.
+    hi = (int(max_value // step) + 1) * step if max_value > 0 else 0
+    lo = -((int(-min_value // step) + 1) * step) if min_value < 0 else 0
+    n_ticks = round((hi - lo) / step) + 1
+    tickvals = [lo + i * step for i in range(n_ticks)]
     ticktext = [f"{v / 1_000_000:g}M" for v in tickvals]
     return tickvals, ticktext
 
 
-# Minimum share of a stacked bar's own total a segment needs before it gets
-# a direct value label. Per the dataviz skill's marks-and-anatomy.md: "Only
-# place a label inside a bar or stacked segment when the rendered text fits
-# with comfortable padding... for an interior stacked segment (which has no
-# free end), skip the inline label and let the legend + tooltip carry it" —
-# shrinking to fit (Plotly's constraintext="both", which reduces font size
-# but does NOT hide the label) is not the same thing and was the bug in the
-# previous round: a real segment found in the sample data (Hardware / Demo
-# Iberia Distribution at level="l2") is ~0.7% of its bar's width, which would
-# shrink a "2,075" label well past legibility rather than omit it. 5% is
-# roughly the narrowest a comma-formatted euro figure (typically 5-7
-# characters, e.g. "296,910") can render inside a segment at the chart's
-# default font size with visible padding on both sides; below that the
-# label is dropped for that segment only — Plotly's default hover (which
-# always includes each point's x value) and the legend still carry it.
+# Minimum share of a stacked bar's own total ABSOLUTE width a segment needs
+# before it gets a direct value label. Per the dataviz skill's
+# marks-and-anatomy.md: "Only place a label inside a bar or stacked segment
+# when the rendered text fits with comfortable padding... for an interior
+# stacked segment (which has no free end), skip the inline label and let the
+# legend + tooltip carry it" — shrinking to fit (Plotly's
+# constraintext="both", which reduces font size but does NOT hide the
+# label) is not the same thing and was the bug in an earlier round: a real
+# segment found in the sample data (Hardware / Demo Iberia Distribution at
+# level="l2") is ~0.7% of its bar's width, which would shrink a "2,075"
+# label well past legibility rather than omit it. 5% is roughly the
+# narrowest a comma-formatted euro figure (typically 5-7 characters, e.g.
+# "296,910") can render inside a segment at the chart's default font size
+# with visible padding on both sides; below that the label is dropped for
+# that segment only — Plotly's default hover (which always includes each
+# point's x value) and the legend still carry it.
+#
+# The share is computed against the bar's total ABSOLUTE width (sum of
+# |value| across every segment in the bar), not its net total — a stacked
+# bar with mixed positive and negative segments (credits/refunds) still has
+# a real visual width per segment even where the net total is small or
+# negative. Suppression is based on a segment's own |value| share, not on
+# whether its raw value is <= 0: a materially-sized negative segment is a
+# real, meaningful part of the bar and should be labelled (with its minus
+# sign), while only genuinely narrow segments — positive, negative, or
+# exactly zero (from the reindex fill_value=0) — get suppressed.
 MIN_SEGMENT_LABEL_SHARE = 0.05
 
 
-def _segment_labels(values, totals) -> list[str]:
+def _segment_labels(values, abs_totals) -> list[str]:
     """Formatted value labels per category, "" for segments too narrow to
-    hold one (below MIN_SEGMENT_LABEL_SHARE of their bar's total, including
-    zero-value segments from the reindex fill_value=0)."""
+    hold one (below MIN_SEGMENT_LABEL_SHARE of their bar's total absolute
+    width, including zero-value segments from the reindex fill_value=0)."""
     labels = []
     for category, value in values.items():
-        total = totals.get(category, 0)
-        if total > 0 and value > 0 and (value / total) >= MIN_SEGMENT_LABEL_SHARE:
+        total = abs_totals.get(category, 0)
+        if total > 0 and value != 0 and (abs(value) / total) >= MIN_SEGMENT_LABEL_SHARE:
             labels.append(f"{value:,.0f}")
         else:
             labels.append("")
@@ -83,6 +103,15 @@ def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
     categories = list(chart_df["category"].cat.categories)
     breakdown_values = sorted(chart_df["breakdown"].unique())
     stack_totals = chart_df.groupby("category", observed=True)["net_spend"].sum()
+    # Sum of |net_spend| per category — the bar's total absolute width, used
+    # as the label-suppression denominator so mixed positive/negative bars
+    # are judged against their real visual size, not their (possibly small
+    # or negative) net total.
+    abs_stack_totals = (
+        chart_df.assign(_abs_net_spend=chart_df["net_spend"].abs())
+        .groupby("category", observed=True)["_abs_net_spend"]
+        .sum()
+    )
 
     fig = go.Figure()
     for i, bval in enumerate(breakdown_values):
@@ -106,13 +135,16 @@ def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
                 # an empty string instead of a shrunk, illegible number.
                 # "inside" (not "outside") because this is a *stacked* bar —
                 # an interior segment has no free end to place a label beyond.
-                text=_segment_labels(sub, stack_totals),
+                text=_segment_labels(sub, abs_stack_totals),
                 textposition="inside",
                 insidetextanchor="middle",
             )
         )
 
-    tickvals, ticktext = _millions_ticks(stack_totals.max() if not stack_totals.empty else 0)
+    tickvals, ticktext = _millions_ticks(
+        stack_totals.min() if not stack_totals.empty else 0,
+        stack_totals.max() if not stack_totals.empty else 0,
+    )
 
     fig.update_layout(
         barmode="stack",
