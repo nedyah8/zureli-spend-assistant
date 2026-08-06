@@ -54,9 +54,10 @@ Built and verified working end to end, running locally.
    Operations") — no synonyms or paraphrasing. Wiring in the real Anthropic
    API would need Hayden to supply an API key and would materially improve
    how flexible the questions can be. Not done yet — flagged, not decided.
-2. **Currency unit.** The sample file has no currency column; the app
-   shows plain numbers with no symbol. Worth confirming with the data
-   scientist whether the real data is GBP or something else.
+2. ~~**Currency unit.**~~ **Resolved 6 Aug 2026.** Confirmed EUR (€) by
+   live inspection of the real InSight demo. The app now displays € on
+   every total (chart and text alike) and the standing caption states this
+   plainly instead of claiming the currency is unknown.
 3. **Real InSight structure.** Still unconfirmed: whether production data
    is one file per client or shared with a client column, how often it
    updates, and whether it's genuinely flat CSV/Excel or something more
@@ -132,12 +133,11 @@ built-in interactive horizontal stacked bars with hover tooltips, matching
 the behaviour observed live in the InSight demo, with no extra system
 dependencies.
 
-**Tests.** 41 passed (verified by running `pytest -q` directly, not assumed
-from an earlier report) — 32 from the main build (Tasks 1–7: aggregation
-correctness, chart-intent parsing, render logic, regression coverage for
-the pre-existing number path, adversarial edge cases) plus 9 added during
-the Codex fix round (Task 9) to cover the fixed findings and lock in the
-rounding/null/negative-value behaviour going forward.
+**Tests.** 60 passed (verified by running `pytest -q` directly on the final
+committed state, not assumed from an earlier report) — 32 from the main
+build (Tasks 1–7), plus tests added across three further fix rounds
+described below (Codex round 1, the final whole-branch review's fix wave,
+Codex round 2, and the controller's own final tick-range fix).
 
 **Real browser verification (Task 8, high-stakes tier — this is demo
 material for Zureli higher-ups).** All 4 chart cases (default all-years
@@ -184,6 +184,60 @@ aren't recognised as category-level keywords; and chart bar labels round to
 whole numbers while text-answer totals show cents. Full detail and
 reasoning for each: `_CHART-CHAT-DESIGN.md`'s "Codex review triage log"
 section.
+
+**Final whole-branch review and three further fix rounds (6 Aug 2026).**
+After Task 9's Codex round, a full whole-branch review (dispatched on Opus,
+the most capable available model, specifically to catch cross-cutting
+issues no single task's narrow scope could see) found 4 more real,
+demo-relevant Important issues: the app's standing caption still claimed
+currency was unknown while the chart axis already showed €; an unfiltered
+chart had silently drifted from the approved spec (defaulting to
+combining both years' data instead of the latest year, per an earlier fix
+that made the *label* honest without restoring the actual *filter*); three
+chart-trigger phrasings from the approved spec ("bar", "split", "show me
+... by") were never implemented, so a demo audience typing them would hit
+a confusing "I didn't recognise..." message instead of a chart; and the
+chart's x-axis tick step was hard-coded to 500,000, making any
+narrowly-filtered chart (e.g. a single category) render with an
+unreadably sparse axis. All 4 fixed and independently re-verified via
+direct execution against the real app, not just diff-reading.
+
+That fix wave's own new keyword additions then needed a second Codex pass
+(the controller's own initiative, since substantial logic had changed and
+the last cross-family review needs to cover what's actually shipping) —
+which found the new "show me ... by" pattern and bare "bar"/"split"
+keywords were too loose, causing 2 real regressions: ordinary questions
+like "show me total spend by Alpine Operations" or "what did Barrow
+Operations spend" would have been misrouted to chart intent purely from
+substring/pattern matches. Fixed by requiring "by" to introduce an actual
+breakdown-dimension word, and requiring "bar"/"split" to match as whole
+words (with "split" additionally requiring a nearby "by", since "split
+payment spend" is already a whole-word match for "split" alone). A
+negative-currency display cosmetic issue was fixed in the same round.
+
+**Caught only by the controller's own screenshot of the real running app,
+after both rounds of automated review had signed off:** the fix for
+negative spend values in charts computed the axis tick range from "sum of
+all positive segments" vs "sum of all negative segments," assuming those
+always render in visually separate halves. They don't — Plotly stacks bar
+segments cumulatively in order, so a negative segment's visual effect
+depends on where in that order it falls, not just its sign. For the real
+repro case (a specific supplier's 2024 spend, which includes one entity
+with a genuine credit/refund), the negative segment arrives after the
+running position is already well into positive territory, so it never
+actually pushes the bar below zero — but the previous fix's tick range
+still showed a "-50k" tick that corresponded to nothing actually drawn,
+which is worse than the original bug (confidently wrong instead of just
+uninformative). Fixed by walking the true cumulative stacking position per
+bar and using its real min/max, independently re-verified by both a scoped
+reviewer and the controller directly inspecting the rendered figure's tick
+values against the hand-traced real data. This is the exact kind of gap
+Rule 24 exists to catch — the review chain's own code-level checks passed
+while the actual rendered chart was still visually wrong.
+
+Full detail and reasoning for all three rounds:
+`_CHART-CHAT-DESIGN.md`'s "Codex review triage log" section and its
+follow-on entries.
 
 **Explicitly deferred — not started.** This phase covered category spend
 only. Per the sequencing Hayden confirmed, three more InSight views remain
