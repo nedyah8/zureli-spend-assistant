@@ -14,9 +14,16 @@ what the LLM upgrade would add.
 
 import re
 
+CHART_KEYWORDS = (
+    "chart", "graph", "plot", "bar chart", "bar graph", "breakdown",
+    "break down", "broken down", "visualise", "visualize", "compare",
+)
+COUNTRY_BREAKDOWN_KEYWORDS = ("by country", "per country")
+CLUSTER_BREAKDOWN_KEYWORDS = ("by cluster", "per cluster")
+LEVEL_2_KEYWORDS = ("level 2", "sub-category", "subcategory", "sub category")
 
-def parse_question(question: str, known: dict[str, list]) -> dict:
-    q = question.lower()
+
+def _extract_filters(q: str, known: dict[str, list]) -> dict:
     filters: dict[str, object] = {}
 
     for year in known["year"]:
@@ -59,3 +66,36 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
             break
 
     return filters
+
+
+def parse_question(question: str, known: dict[str, list]) -> dict:
+    q = question.lower()
+    filters = _extract_filters(q, known)
+
+    is_chart = any(keyword in q for keyword in CHART_KEYWORDS)
+
+    if not is_chart:
+        return {
+            "intent": "number",
+            "chart_kind": None,
+            "breakdown": None,
+            "category_level": None,
+            "filters": filters,
+        }
+
+    if any(kw in q for kw in CLUSTER_BREAKDOWN_KEYWORDS):
+        breakdown = "cluster"
+    elif any(kw in q for kw in COUNTRY_BREAKDOWN_KEYWORDS):
+        breakdown = "country"
+    else:
+        breakdown = "entity"
+
+    category_level = "l2" if any(kw in q for kw in LEVEL_2_KEYWORDS) else "l1"
+
+    return {
+        "intent": "chart",
+        "chart_kind": "category_spend",
+        "breakdown": breakdown,
+        "category_level": category_level,
+        "filters": filters,
+    }
