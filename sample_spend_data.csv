@@ -1,0 +1,814 @@
+Spend line id,Source row count,Entity,Cluster,Country,Year,L1,L2,Supplier name,Net spend
+spend_8ddc5adca17ece24,7,Demo Alpine Operations,Central,Germany,2024,Facilities,Building maintenance,Demo Supplier 001,41249.65
+spend_14729e982621abc1,2,Demo Alpine Operations,Central,Germany,2024,Facilities,Building maintenance,Demo Supplier 002,11555.67
+spend_eb22a92fc273f5b5,3,Demo Alpine Operations,Central,Germany,2024,Facilities,Building maintenance,Demo Supplier 003,27109.69
+spend_9b6962e23e0a84fd,1,Demo Alpine Operations,Central,Germany,2024,Facilities,Building maintenance,Demo Supplier 004,3946.72
+spend_83488bf47975cffa,2,Demo Alpine Operations,Central,Germany,2024,Facilities,Cleaning and security,Demo Supplier 005,19297.92
+spend_9d78f58c123ecbc4,3,Demo Alpine Operations,Central,Germany,2024,Facilities,Cleaning and security,Demo Supplier 006,9092.51
+spend_0d8b4648d4968113,6,Demo Alpine Operations,Central,Germany,2024,Facilities,Cleaning and security,Demo Supplier 007,20968.5
+spend_b56a6fbe66e79642,1,Demo Alpine Operations,Central,Germany,2024,Facilities,Cleaning and security,Demo Supplier 008,2752.07
+spend_234ed2aeaa16f869,3,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Hardware,Demo Supplier 013,13294.64
+spend_9700c2df1b5298f1,1,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Hardware,Demo Supplier 014,7767.25
+spend_37a5ec7c4c3cfe59,1,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Hardware,Demo Supplier 015,4203.37
+spend_605232dc2edfa849,1,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Hardware,Demo Supplier 016,909.68
+spend_56dd3f4a14a82207,3,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Software licensing,Demo Supplier 009,13085.58
+spend_6e47247d37c0b9bf,6,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Software licensing,Demo Supplier 010,55566.05
+spend_c0bc9ad0545f3a0a,4,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Software licensing,Demo Supplier 011,23984.1
+spend_6f518b009937db62,6,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Software licensing,Demo Supplier 012,52866.31
+spend_5dc0c1323c5b492c,2,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Telecommunications,Demo Supplier 017,12844.28
+spend_f08f2e68ae3e8b90,2,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Telecommunications,Demo Supplier 018,4859.5
+spend_3cac060dcaf1660c,1,Demo Alpine Operations,Central,Germany,2024,IT and telecom,Telecommunications,Demo Supplier 019,3607.28
+spend_02c7c65a5009855c,2,Demo Alpine Operations,Central,Germany,2024,Logistics,Freight and courier,Demo Supplier 021,14771.63
+spend_d808977e5b9ff173,3,Demo Alpine Operations,Central,Germany,2024,Logistics,Freight and courier,Demo Supplier 022,39719.02
+spend_c2495f99066283e4,8,Demo Alpine Operations,Central,Germany,2024,Logistics,Freight and courier,Demo Supplier 023,60664.07
+spend_bd208fa4b5046ade,2,Demo Alpine Operations,Central,Germany,2024,Logistics,Freight and courier,Demo Supplier 024,6450.7
+spend_fec9a188044bfa37,2,Demo Alpine Operations,Central,Germany,2024,Marketing,Advertising and media,Demo Supplier 045,10284.87
+spend_04aa27df4c85861c,3,Demo Alpine Operations,Central,Germany,2024,Marketing,Advertising and media,Demo Supplier 046,21042.47
+spend_be0ca0913ecb41c0,4,Demo Alpine Operations,Central,Germany,2024,Marketing,Advertising and media,Demo Supplier 047,14523.01
+spend_58528b8cac5d9b57,1,Demo Alpine Operations,Central,Germany,2024,Marketing,Advertising and media,Demo Supplier 048,2702.7
+spend_836c72d1d8a28710,3,Demo Alpine Operations,Central,Germany,2024,Office,Office supplies,Demo Supplier 053,6493.12
+spend_bc0c97c183cbeacf,3,Demo Alpine Operations,Central,Germany,2024,Office,Office supplies,Demo Supplier 054,1130.43
+spend_cb671716175168d2,4,Demo Alpine Operations,Central,Germany,2024,Office,Office supplies,Demo Supplier 055,2210.09
+spend_2dd5fd7ea4f4003c,2,Demo Alpine Operations,Central,Germany,2024,People,Recruitment,Demo Supplier 033,18697.63
+spend_06d1bd5e68f1f117,1,Demo Alpine Operations,Central,Germany,2024,People,Recruitment,Demo Supplier 034,6702.62
+spend_0b1c6b9eb67fbfb3,2,Demo Alpine Operations,Central,Germany,2024,People,Recruitment,Demo Supplier 035,10487.78
+spend_49ce22591a4d81e2,1,Demo Alpine Operations,Central,Germany,2024,People,Recruitment,Demo Supplier 036,17333.28
+spend_c228f0edb15927cf,5,Demo Alpine Operations,Central,Germany,2024,People,Temporary labour,Demo Supplier 041,52153.63
+spend_a032cd9acbea77e9,2,Demo Alpine Operations,Central,Germany,2024,People,Temporary labour,Demo Supplier 043,11695.59
+spend_511144ed50f7dad7,1,Demo Alpine Operations,Central,Germany,2024,People,Temporary labour,Demo Supplier 044,13112.44
+spend_d1ef94ac2f976bca,2,Demo Alpine Operations,Central,Germany,2024,People,Training,Demo Supplier 038,3404.46
+spend_ba0df649c052fc4b,1,Demo Alpine Operations,Central,Germany,2024,People,Training,Demo Supplier 039,2904.5
+spend_ca0e1444562de546,2,Demo Alpine Operations,Central,Germany,2024,People,Training,Demo Supplier 040,2296.14
+spend_b2668b36b0073682,5,Demo Alpine Operations,Central,Germany,2024,Professional services,Consulting,Demo Supplier 025,49730.21
+spend_9a5b49e5511b40b7,6,Demo Alpine Operations,Central,Germany,2024,Professional services,Consulting,Demo Supplier 026,39289.6
+spend_7060c7e3f8f2d557,1,Demo Alpine Operations,Central,Germany,2024,Professional services,Consulting,Demo Supplier 027,10384.87
+spend_0432a16b44a5524a,3,Demo Alpine Operations,Central,Germany,2024,Professional services,Consulting,Demo Supplier 028,25205.46
+spend_b26dc5fcf5f2aa4b,3,Demo Alpine Operations,Central,Germany,2024,Professional services,Legal and audit,Demo Supplier 029,17971.27
+spend_492949971796e8f2,2,Demo Alpine Operations,Central,Germany,2024,Professional services,Legal and audit,Demo Supplier 030,8642.16
+spend_be30479e6d5b09f4,4,Demo Alpine Operations,Central,Germany,2024,Professional services,Legal and audit,Demo Supplier 031,23330.52
+spend_438bdf6398301f42,2,Demo Alpine Operations,Central,Germany,2024,Professional services,Legal and audit,Demo Supplier 032,15051.11
+spend_b53090c9801df5e8,1,Demo Alpine Operations,Central,Germany,2024,Utilities,Electricity and gas,Demo Supplier 049,24491.74
+spend_6c9978a4a3d69032,1,Demo Alpine Operations,Central,Germany,2024,Utilities,Electricity and gas,Demo Supplier 050,5482.92
+spend_1bdafd4ffef79784,4,Demo Alpine Operations,Central,Germany,2024,Utilities,Electricity and gas,Demo Supplier 051,11831.49
+spend_93498eb627919b58,1,Demo Alpine Operations,Central,Germany,2024,Utilities,Electricity and gas,Demo Supplier 052,7263.22
+spend_1bcca8ba95070e0f,4,Demo Alpine Operations,Central,Germany,2025,Facilities,Building maintenance,Demo Supplier 001,27505.06
+spend_1aff3f6b6d51f390,2,Demo Alpine Operations,Central,Germany,2025,Facilities,Building maintenance,Demo Supplier 002,23879.6
+spend_21fcd4147ffeca94,3,Demo Alpine Operations,Central,Germany,2025,Facilities,Building maintenance,Demo Supplier 003,28029.11
+spend_f2a025bcd8657b36,4,Demo Alpine Operations,Central,Germany,2025,Facilities,Building maintenance,Demo Supplier 004,30225.66
+spend_cafb6e465432781b,4,Demo Alpine Operations,Central,Germany,2025,Facilities,Cleaning and security,Demo Supplier 005,14251.18
+spend_01bdeb54fe0ca6dd,4,Demo Alpine Operations,Central,Germany,2025,Facilities,Cleaning and security,Demo Supplier 006,14098.15
+spend_2573a69eed456285,2,Demo Alpine Operations,Central,Germany,2025,Facilities,Cleaning and security,Demo Supplier 007,7201.49
+spend_db80036eebce9de0,3,Demo Alpine Operations,Central,Germany,2025,Facilities,Cleaning and security,Demo Supplier 008,9055.44
+spend_b95488649fd33f3e,5,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Hardware,Demo Supplier 013,19061.59
+spend_bdb9d2d0a1318750,1,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Hardware,Demo Supplier 014,12969.14
+spend_c39eeeb5ae452d6d,8,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Hardware,Demo Supplier 015,35570.25
+spend_5755e2194ca081c1,5,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Hardware,Demo Supplier 016,15603.06
+spend_6c2fc73549a3f9e7,3,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Software licensing,Demo Supplier 009,19056.87
+spend_edf6bf2b45941698,2,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Software licensing,Demo Supplier 010,14928.47
+spend_6de24d09506b7f6d,2,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Software licensing,Demo Supplier 011,5125.37
+spend_c8487faa05ad6fd3,4,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Software licensing,Demo Supplier 012,18518.24
+spend_28bf5dc41395e907,3,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Telecommunications,Demo Supplier 017,9847.5
+spend_0ac49a1c64faf22b,1,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Telecommunications,Demo Supplier 018,2197.55
+spend_61bc5e760a09e9e0,5,Demo Alpine Operations,Central,Germany,2025,IT and telecom,Telecommunications,Demo Supplier 020,12325.1
+spend_1e97ba7808519119,5,Demo Alpine Operations,Central,Germany,2025,Logistics,Freight and courier,Demo Supplier 021,29454.15
+spend_92b7229b5747f1a3,2,Demo Alpine Operations,Central,Germany,2025,Logistics,Freight and courier,Demo Supplier 022,4973.05
+spend_53f41017e3b21ff5,7,Demo Alpine Operations,Central,Germany,2025,Logistics,Freight and courier,Demo Supplier 023,43608.15
+spend_e7660aef1baf30a7,5,Demo Alpine Operations,Central,Germany,2025,Logistics,Freight and courier,Demo Supplier 024,60849.35
+spend_781e5e6b4bbdd7e4,3,Demo Alpine Operations,Central,Germany,2025,Marketing,Advertising and media,Demo Supplier 045,7971.77
+spend_a824fe07d8c03a6d,2,Demo Alpine Operations,Central,Germany,2025,Marketing,Advertising and media,Demo Supplier 046,7878.99
+spend_9e3898729ace6f4d,2,Demo Alpine Operations,Central,Germany,2025,Marketing,Advertising and media,Demo Supplier 048,5484.14
+spend_06bfa9e0a4baab58,6,Demo Alpine Operations,Central,Germany,2025,Office,Office supplies,Demo Supplier 053,4165.38
+spend_9ec7512e154a6e3f,3,Demo Alpine Operations,Central,Germany,2025,Office,Office supplies,Demo Supplier 054,4311.01
+spend_0ac3b94066f5c32a,3,Demo Alpine Operations,Central,Germany,2025,Office,Office supplies,Demo Supplier 055,3950.21
+spend_b27ccc95ec4f0848,1,Demo Alpine Operations,Central,Germany,2025,Office,Office supplies,Demo Supplier 056,661.24
+spend_642b8e2ef5154d29,4,Demo Alpine Operations,Central,Germany,2025,People,Recruitment,Demo Supplier 033,7858.36
+spend_24dd4183883a1a91,2,Demo Alpine Operations,Central,Germany,2025,People,Recruitment,Demo Supplier 034,7154.09
+spend_379e03ec648637cd,4,Demo Alpine Operations,Central,Germany,2025,People,Recruitment,Demo Supplier 035,24565.14
+spend_819b52a51c1d68fd,2,Demo Alpine Operations,Central,Germany,2025,People,Recruitment,Demo Supplier 036,8776.56
+spend_fff65ebd98303c3a,7,Demo Alpine Operations,Central,Germany,2025,People,Temporary labour,Demo Supplier 041,42709.91
+spend_d8454adc39d4e5b6,1,Demo Alpine Operations,Central,Germany,2025,People,Temporary labour,Demo Supplier 042,5726.95
+spend_4a1fc974ab50d8ed,1,Demo Alpine Operations,Central,Germany,2025,People,Temporary labour,Demo Supplier 043,6068.16
+spend_33bcd8fb499cfa85,2,Demo Alpine Operations,Central,Germany,2025,People,Training,Demo Supplier 038,10807.05
+spend_a722b1591555697b,2,Demo Alpine Operations,Central,Germany,2025,People,Training,Demo Supplier 039,2983.47
+spend_9cc4d13a97cbc9c3,2,Demo Alpine Operations,Central,Germany,2025,People,Training,Demo Supplier 040,3491.68
+spend_05b42db7d085c258,3,Demo Alpine Operations,Central,Germany,2025,Professional services,Consulting,Demo Supplier 025,24300.61
+spend_a7a1bbbeb3ebbe3d,7,Demo Alpine Operations,Central,Germany,2025,Professional services,Consulting,Demo Supplier 028,73454.61
+spend_8091a1213cdc1511,3,Demo Alpine Operations,Central,Germany,2025,Professional services,Legal and audit,Demo Supplier 030,18718.57
+spend_6c5ab9f52e86392c,3,Demo Alpine Operations,Central,Germany,2025,Professional services,Legal and audit,Demo Supplier 031,18845.82
+spend_6da9f0388188c23d,5,Demo Alpine Operations,Central,Germany,2025,Utilities,Electricity and gas,Demo Supplier 049,49749.91
+spend_03641525e1821708,3,Demo Alpine Operations,Central,Germany,2025,Utilities,Electricity and gas,Demo Supplier 050,25502.95
+spend_5a1641774dec91ba,3,Demo Alpine Operations,Central,Germany,2025,Utilities,Electricity and gas,Demo Supplier 051,53384.65
+spend_5883baff8eb32f5e,3,Demo Alpine Operations,Central,Germany,2025,Utilities,Electricity and gas,Demo Supplier 052,38118.45
+spend_338d284fe5c093a6,1,Demo Baltic Logistics,North,Poland,2024,Facilities,Building maintenance,Demo Supplier 001,4831.85
+spend_4a5e014de18912a1,2,Demo Baltic Logistics,North,Poland,2024,Facilities,Building maintenance,Demo Supplier 002,9510.83
+spend_a5f74be8eccf587b,3,Demo Baltic Logistics,North,Poland,2024,Facilities,Building maintenance,Demo Supplier 003,13656.42
+spend_dd2356d6b5dee649,4,Demo Baltic Logistics,North,Poland,2024,Facilities,Building maintenance,Demo Supplier 004,4331.43
+spend_4efcfbb2fab23ff7,3,Demo Baltic Logistics,North,Poland,2024,Facilities,Cleaning and security,Demo Supplier 005,10964.38
+spend_3f7125f14c17df84,3,Demo Baltic Logistics,North,Poland,2024,Facilities,Cleaning and security,Demo Supplier 006,10045.86
+spend_155e06891e0747d9,3,Demo Baltic Logistics,North,Poland,2024,Facilities,Cleaning and security,Demo Supplier 007,16187.63
+spend_0f8bada4a4c7f9d9,3,Demo Baltic Logistics,North,Poland,2024,Facilities,Cleaning and security,Demo Supplier 008,6839.95
+spend_454bc29a13f834d8,1,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Hardware,Demo Supplier 014,2026.27
+spend_da9646161e763f51,3,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Hardware,Demo Supplier 016,14154.15
+spend_b216037bf531b55e,3,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Software licensing,Demo Supplier 009,11638.03
+spend_9bf3f908c2b3e193,5,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Software licensing,Demo Supplier 010,35487.82
+spend_c5ce1b65b1a5bb4e,2,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Software licensing,Demo Supplier 011,10887.4
+spend_f5ffde6d359227fc,1,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Software licensing,Demo Supplier 012,21819.32
+spend_1e76aa26965b7037,2,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Telecommunications,Demo Supplier 017,8480.38
+spend_e33721f5837dcaed,2,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Telecommunications,Demo Supplier 018,4399.49
+spend_54115f42627aa9e3,2,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Telecommunications,Demo Supplier 019,3466.3
+spend_e41600f116335265,1,Demo Baltic Logistics,North,Poland,2024,IT and telecom,Telecommunications,Demo Supplier 020,1674.12
+spend_0ddc981b8dff7537,7,Demo Baltic Logistics,North,Poland,2024,Logistics,Freight and courier,Demo Supplier 021,52714.15
+spend_0f7b13cf8856b56b,2,Demo Baltic Logistics,North,Poland,2024,Logistics,Freight and courier,Demo Supplier 022,9998.73
+spend_bb1ce07bf9f826c3,3,Demo Baltic Logistics,North,Poland,2024,Logistics,Freight and courier,Demo Supplier 023,20780.06
+spend_0fd9237b76b5b2c8,4,Demo Baltic Logistics,North,Poland,2024,Logistics,Freight and courier,Demo Supplier 024,51308.72
+spend_151612f3a6058428,2,Demo Baltic Logistics,North,Poland,2024,Marketing,Advertising and media,Demo Supplier 045,9305.64
+spend_c5c3ac9f26c74267,2,Demo Baltic Logistics,North,Poland,2024,Marketing,Advertising and media,Demo Supplier 046,12703.87
+spend_13e9f70fb95a6e69,2,Demo Baltic Logistics,North,Poland,2024,Marketing,Advertising and media,Demo Supplier 047,19469.3
+spend_fc4317fcc95394fa,2,Demo Baltic Logistics,North,Poland,2024,Marketing,Advertising and media,Demo Supplier 048,4566.94
+spend_9a67b9b22a2cba31,2,Demo Baltic Logistics,North,Poland,2024,Office,Office supplies,Demo Supplier 053,3025.7
+spend_e5b76e95e7a6ba3a,2,Demo Baltic Logistics,North,Poland,2024,Office,Office supplies,Demo Supplier 054,2441.57
+spend_941882b1d976b8ba,5,Demo Baltic Logistics,North,Poland,2024,Office,Office supplies,Demo Supplier 055,8562.77
+spend_37e6d862141a1d1a,2,Demo Baltic Logistics,North,Poland,2024,Office,Office supplies,Demo Supplier 056,2288.59
+spend_133b0db47ac8e0b9,3,Demo Baltic Logistics,North,Poland,2024,People,Recruitment,Demo Supplier 033,9636.66
+spend_c53ce8a65e98fc0b,3,Demo Baltic Logistics,North,Poland,2024,People,Recruitment,Demo Supplier 034,17242.54
+spend_ea84e0fd7529bdb3,5,Demo Baltic Logistics,North,Poland,2024,People,Recruitment,Demo Supplier 035,25486.62
+spend_27729a9bacc7de9d,3,Demo Baltic Logistics,North,Poland,2024,People,Recruitment,Demo Supplier 036,20530.96
+spend_a6db1998d453b03f,1,Demo Baltic Logistics,North,Poland,2024,People,Temporary labour,Demo Supplier 041,2805.9
+spend_f7b19d547efb7590,1,Demo Baltic Logistics,North,Poland,2024,People,Temporary labour,Demo Supplier 042,1617.74
+spend_6048795ec822f540,4,Demo Baltic Logistics,North,Poland,2024,People,Temporary labour,Demo Supplier 044,23130.26
+spend_89fe2b271cfbecfa,1,Demo Baltic Logistics,North,Poland,2024,People,Training,Demo Supplier 038,7234.01
+spend_0006dbddd4aae6f7,3,Demo Baltic Logistics,North,Poland,2024,People,Training,Demo Supplier 039,4789.93
+spend_406f1832be4a04d2,1,Demo Baltic Logistics,North,Poland,2024,People,Training,Demo Supplier 040,2822.45
+spend_8256660bd9e4d3a5,3,Demo Baltic Logistics,North,Poland,2024,Professional services,Consulting,Demo Supplier 025,35060.47
+spend_497702eb024eecfa,3,Demo Baltic Logistics,North,Poland,2024,Professional services,Consulting,Demo Supplier 026,21945.6
+spend_d9acf7492a1a107b,2,Demo Baltic Logistics,North,Poland,2024,Professional services,Consulting,Demo Supplier 027,12853.92
+spend_f58c114c8372b616,3,Demo Baltic Logistics,North,Poland,2024,Professional services,Consulting,Demo Supplier 028,37914.81
+spend_6916d3616b88e8bc,1,Demo Baltic Logistics,North,Poland,2024,Professional services,Legal and audit,Demo Supplier 030,1596.83
+spend_b36f3aee9781a40f,1,Demo Baltic Logistics,North,Poland,2024,Professional services,Legal and audit,Demo Supplier 031,3718.04
+spend_71101bfbf13c1865,3,Demo Baltic Logistics,North,Poland,2024,Professional services,Legal and audit,Demo Supplier 032,11970.67
+spend_500696802747cea8,4,Demo Baltic Logistics,North,Poland,2024,Utilities,Electricity and gas,Demo Supplier 049,50071.17
+spend_d56f32809362ea39,4,Demo Baltic Logistics,North,Poland,2024,Utilities,Electricity and gas,Demo Supplier 050,35290.4
+spend_46e3d49c1a9bcdc3,3,Demo Baltic Logistics,North,Poland,2024,Utilities,Electricity and gas,Demo Supplier 051,34717.34
+spend_78bb082cf16c16ee,2,Demo Baltic Logistics,North,Poland,2024,Utilities,Electricity and gas,Demo Supplier 052,6358.65
+spend_7b1212dd6882ef9e,3,Demo Baltic Logistics,North,Poland,2025,Facilities,Building maintenance,Demo Supplier 001,18833.51
+spend_1bb40d2f14328629,4,Demo Baltic Logistics,North,Poland,2025,Facilities,Building maintenance,Demo Supplier 002,27731.23
+spend_6fcb64d20a651aa0,3,Demo Baltic Logistics,North,Poland,2025,Facilities,Building maintenance,Demo Supplier 003,3868.83
+spend_1e6d5397ed351f54,1,Demo Baltic Logistics,North,Poland,2025,Facilities,Building maintenance,Demo Supplier 004,3972.94
+spend_aa038b6a438edc1e,2,Demo Baltic Logistics,North,Poland,2025,Facilities,Cleaning and security,Demo Supplier 005,8611.1
+spend_d5b2ccfd27a2d625,5,Demo Baltic Logistics,North,Poland,2025,Facilities,Cleaning and security,Demo Supplier 006,17044.71
+spend_90331ba4aa7782f2,3,Demo Baltic Logistics,North,Poland,2025,Facilities,Cleaning and security,Demo Supplier 007,3106.4
+spend_0b5e5770cf014677,1,Demo Baltic Logistics,North,Poland,2025,Facilities,Cleaning and security,Demo Supplier 008,3447.79
+spend_f0b91661f7b10ca1,1,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Hardware,Demo Supplier 013,5471.46
+spend_8d2f153891c5bd32,4,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Hardware,Demo Supplier 014,11372.8
+spend_792b224b0c9b4795,5,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Hardware,Demo Supplier 015,33174.86
+spend_693600c623f0381e,1,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Hardware,Demo Supplier 016,9466.26
+spend_6272c253a1c9bdfa,2,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Software licensing,Demo Supplier 009,9074.86
+spend_4a9158ab2eefc8f7,3,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Software licensing,Demo Supplier 010,21817.17
+spend_f0636d86efb7ac61,6,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Software licensing,Demo Supplier 011,38553.81
+spend_5c7d9d708f25d0d1,5,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Software licensing,Demo Supplier 012,29303.68
+spend_1ed6bae13be6f04c,2,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Telecommunications,Demo Supplier 018,4489.32
+spend_3cfcf071795ae047,3,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Telecommunications,Demo Supplier 019,14621.65
+spend_36f61897a378d672,1,Demo Baltic Logistics,North,Poland,2025,IT and telecom,Telecommunications,Demo Supplier 020,1030.21
+spend_5638d4f1d161d429,6,Demo Baltic Logistics,North,Poland,2025,Logistics,Freight and courier,Demo Supplier 021,55054.96
+spend_267d4a784d3e9656,5,Demo Baltic Logistics,North,Poland,2025,Logistics,Freight and courier,Demo Supplier 022,28306.55
+spend_f957627678941e86,6,Demo Baltic Logistics,North,Poland,2025,Logistics,Freight and courier,Demo Supplier 023,30766.08
+spend_276d82584e8e1fa0,5,Demo Baltic Logistics,North,Poland,2025,Logistics,Freight and courier,Demo Supplier 024,26512.52
+spend_09c4c23fd057c15f,1,Demo Baltic Logistics,North,Poland,2025,Marketing,Advertising and media,Demo Supplier 045,8370.05
+spend_dc799eeb58bf4beb,2,Demo Baltic Logistics,North,Poland,2025,Marketing,Advertising and media,Demo Supplier 046,14387.9
+spend_d8d55d7f9d634aed,1,Demo Baltic Logistics,North,Poland,2025,Marketing,Advertising and media,Demo Supplier 047,11092.05
+spend_086074ad9a00ae23,2,Demo Baltic Logistics,North,Poland,2025,Marketing,Advertising and media,Demo Supplier 048,8432.23
+spend_692bb55f99df3d0f,1,Demo Baltic Logistics,North,Poland,2025,Office,Office supplies,Demo Supplier 054,647.68
+spend_232508e6f9ade5eb,4,Demo Baltic Logistics,North,Poland,2025,Office,Office supplies,Demo Supplier 055,3252.97
+spend_601dc1b8edd92c0e,3,Demo Baltic Logistics,North,Poland,2025,Office,Office supplies,Demo Supplier 056,7353.45
+spend_5b6fec2efbff762f,1,Demo Baltic Logistics,North,Poland,2025,People,Recruitment,Demo Supplier 033,3479.68
+spend_d3bfb804fab60658,3,Demo Baltic Logistics,North,Poland,2025,People,Recruitment,Demo Supplier 034,8476.44
+spend_90025eb8bd2160d6,1,Demo Baltic Logistics,North,Poland,2025,People,Recruitment,Demo Supplier 036,8048.88
+spend_7733752521c95e4a,2,Demo Baltic Logistics,North,Poland,2025,People,Temporary labour,Demo Supplier 041,13083.73
+spend_22bfb26ec16638e2,2,Demo Baltic Logistics,North,Poland,2025,People,Temporary labour,Demo Supplier 042,6787.28
+spend_58f6407ecfcc777c,2,Demo Baltic Logistics,North,Poland,2025,People,Temporary labour,Demo Supplier 044,12488.02
+spend_9167fa6fbf12244b,1,Demo Baltic Logistics,North,Poland,2025,People,Training,Demo Supplier 038,1993.07
+spend_75d668a0a5dbe939,1,Demo Baltic Logistics,North,Poland,2025,People,Training,Demo Supplier 040,2549.65
+spend_59f2f744023dc1c6,1,Demo Baltic Logistics,North,Poland,2025,Professional services,Consulting,Demo Supplier 025,10045.14
+spend_92452cc217c920a7,1,Demo Baltic Logistics,North,Poland,2025,Professional services,Consulting,Demo Supplier 026,5110.96
+spend_fc43bfd5b1bb2d35,4,Demo Baltic Logistics,North,Poland,2025,Professional services,Consulting,Demo Supplier 028,31451.42
+spend_de8a985b1b7bc57a,2,Demo Baltic Logistics,North,Poland,2025,Professional services,Legal and audit,Demo Supplier 029,9479.46
+spend_7a2934dff2c171a2,1,Demo Baltic Logistics,North,Poland,2025,Professional services,Legal and audit,Demo Supplier 030,4979.66
+spend_b921b940a29e64f1,2,Demo Baltic Logistics,North,Poland,2025,Professional services,Legal and audit,Demo Supplier 032,2641.09
+spend_47035c096bcba01a,1,Demo Baltic Logistics,North,Poland,2025,Utilities,Electricity and gas,Demo Supplier 049,6324.53
+spend_fa936438be30ffea,4,Demo Baltic Logistics,North,Poland,2025,Utilities,Electricity and gas,Demo Supplier 050,27534.51
+spend_8f984047660bb3df,2,Demo Baltic Logistics,North,Poland,2025,Utilities,Electricity and gas,Demo Supplier 051,24568.09
+spend_2ee266ce1ff97c10,3,Demo Baltic Logistics,North,Poland,2025,Utilities,Electricity and gas,Demo Supplier 052,17738.2
+spend_f2c4f7366706f88a,1,Demo Benelux Trading,Central,Netherlands,2024,Facilities,Building maintenance,Demo Supplier 001,10758.49
+spend_91e66d8e6433814b,2,Demo Benelux Trading,Central,Netherlands,2024,Facilities,Building maintenance,Demo Supplier 002,14082.49
+spend_3f684ae142858bc7,6,Demo Benelux Trading,Central,Netherlands,2024,Facilities,Building maintenance,Demo Supplier 003,51058.39
+spend_d150b8a7e02d2e58,3,Demo Benelux Trading,Central,Netherlands,2024,Facilities,Building maintenance,Demo Supplier 004,16711.91
+spend_3d3ca528125203c0,4,Demo Benelux Trading,Central,Netherlands,2024,Facilities,Cleaning and security,Demo Supplier 005,5197.62
+spend_afa18184546ff5a3,1,Demo Benelux Trading,Central,Netherlands,2024,Facilities,Cleaning and security,Demo Supplier 006,2072.64
+spend_ecda952b4077f3b2,3,Demo Benelux Trading,Central,Netherlands,2024,Facilities,Cleaning and security,Demo Supplier 007,12400.11
+spend_a06618987334bec8,5,Demo Benelux Trading,Central,Netherlands,2024,Facilities,Cleaning and security,Demo Supplier 008,12930.14
+spend_ec14079b156d2a58,1,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Hardware,Demo Supplier 013,-4496.07
+spend_537cfb02e2865591,1,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Hardware,Demo Supplier 014,7721.26
+spend_0ea20a15fda6b0e5,3,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Hardware,Demo Supplier 015,10431.55
+spend_75e1aef1fb673f45,4,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Hardware,Demo Supplier 016,20640.41
+spend_b1c84878b4d22e0d,2,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Software licensing,Demo Supplier 009,10863.74
+spend_d988b6cd6a34a16a,1,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Software licensing,Demo Supplier 010,7664.7
+spend_cafe63c2708a87db,7,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Software licensing,Demo Supplier 011,51523.04
+spend_3be50313b9230bbd,2,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Software licensing,Demo Supplier 012,4989.26
+spend_b23f0aaa538f72e6,3,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Telecommunications,Demo Supplier 017,13907.27
+spend_ab541bff123d3633,6,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Telecommunications,Demo Supplier 018,20354.11
+spend_6766afdee6b5a223,3,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Telecommunications,Demo Supplier 019,13804.5
+spend_cc6c9d3edd07141a,4,Demo Benelux Trading,Central,Netherlands,2024,IT and telecom,Telecommunications,Demo Supplier 020,16612.02
+spend_26da31707c016010,5,Demo Benelux Trading,Central,Netherlands,2024,Logistics,Freight and courier,Demo Supplier 021,25676.86
+spend_e63f148656e9a216,2,Demo Benelux Trading,Central,Netherlands,2024,Logistics,Freight and courier,Demo Supplier 022,38938.01
+spend_9b6cf6d37afe85d4,8,Demo Benelux Trading,Central,Netherlands,2024,Logistics,Freight and courier,Demo Supplier 023,87742.79
+spend_487927cb4a99c0f2,3,Demo Benelux Trading,Central,Netherlands,2024,Logistics,Freight and courier,Demo Supplier 024,23239.63
+spend_8d8ac5e8fd08b759,4,Demo Benelux Trading,Central,Netherlands,2024,Marketing,Advertising and media,Demo Supplier 045,24628.1
+spend_6988dc956f01d925,2,Demo Benelux Trading,Central,Netherlands,2024,Marketing,Advertising and media,Demo Supplier 046,4936.51
+spend_d8270a455a8375ec,1,Demo Benelux Trading,Central,Netherlands,2024,Marketing,Advertising and media,Demo Supplier 047,1151.55
+spend_676a7816f7eac7c1,2,Demo Benelux Trading,Central,Netherlands,2024,Marketing,Advertising and media,Demo Supplier 048,10540.51
+spend_e9308a3ac008ed76,2,Demo Benelux Trading,Central,Netherlands,2024,Office,Office supplies,Demo Supplier 053,2319.9
+spend_176d1053200ea5f7,4,Demo Benelux Trading,Central,Netherlands,2024,Office,Office supplies,Demo Supplier 054,6955.25
+spend_deb64d94a6a395f7,5,Demo Benelux Trading,Central,Netherlands,2024,Office,Office supplies,Demo Supplier 055,4720.91
+spend_300aca22dd774579,5,Demo Benelux Trading,Central,Netherlands,2024,Office,Office supplies,Demo Supplier 056,6709.67
+spend_04759e1607241984,1,Demo Benelux Trading,Central,Netherlands,2024,People,Recruitment,Demo Supplier 033,6049.51
+spend_8fbcc49147ef3d07,3,Demo Benelux Trading,Central,Netherlands,2024,People,Recruitment,Demo Supplier 034,27449.04
+spend_20f8efccb391baa1,3,Demo Benelux Trading,Central,Netherlands,2024,People,Recruitment,Demo Supplier 035,17314.26
+spend_4f0950ba1d0a1ed3,1,Demo Benelux Trading,Central,Netherlands,2024,People,Recruitment,Demo Supplier 036,4627.68
+spend_9488c12b63001d87,1,Demo Benelux Trading,Central,Netherlands,2024,People,Temporary labour,Demo Supplier 041,12621.4
+spend_db4131ff2a61906c,1,Demo Benelux Trading,Central,Netherlands,2024,People,Temporary labour,Demo Supplier 042,11774.46
+spend_ea2ecfb28d9b26fc,3,Demo Benelux Trading,Central,Netherlands,2024,People,Temporary labour,Demo Supplier 043,12415.99
+spend_2ac0620dcdfb4772,2,Demo Benelux Trading,Central,Netherlands,2024,People,Temporary labour,Demo Supplier 044,5857.88
+spend_437787c6168f5138,2,Demo Benelux Trading,Central,Netherlands,2024,People,Training,Demo Supplier 037,2175.91
+spend_0f51c051a516303b,2,Demo Benelux Trading,Central,Netherlands,2024,People,Training,Demo Supplier 038,2954.54
+spend_cb4de5f9ff2a2e7a,2,Demo Benelux Trading,Central,Netherlands,2024,People,Training,Demo Supplier 039,3744.11
+spend_8eb32d7ee9678cdf,2,Demo Benelux Trading,Central,Netherlands,2024,People,Training,Demo Supplier 040,3803
+spend_d459443557343e91,3,Demo Benelux Trading,Central,Netherlands,2024,Professional services,Consulting,Demo Supplier 025,43207.2
+spend_784633531a704335,4,Demo Benelux Trading,Central,Netherlands,2024,Professional services,Consulting,Demo Supplier 026,38999.67
+spend_8fc9d51030d15837,3,Demo Benelux Trading,Central,Netherlands,2024,Professional services,Consulting,Demo Supplier 027,67533.17
+spend_b8ea48c2517eef0f,6,Demo Benelux Trading,Central,Netherlands,2024,Professional services,Consulting,Demo Supplier 028,83367.7
+spend_29573af9ee88a99d,1,Demo Benelux Trading,Central,Netherlands,2024,Professional services,Legal and audit,Demo Supplier 029,1529.64
+spend_6352795440c466a8,2,Demo Benelux Trading,Central,Netherlands,2024,Professional services,Legal and audit,Demo Supplier 031,6472.23
+spend_dcacd6a504b36469,1,Demo Benelux Trading,Central,Netherlands,2024,Professional services,Legal and audit,Demo Supplier 032,4824.61
+spend_9614d9dbc00ec330,1,Demo Benelux Trading,Central,Netherlands,2024,Utilities,Electricity and gas,Demo Supplier 049,16137.17
+spend_869d0e13a7f091c3,3,Demo Benelux Trading,Central,Netherlands,2024,Utilities,Electricity and gas,Demo Supplier 050,16989.54
+spend_6714fc5ad311527e,3,Demo Benelux Trading,Central,Netherlands,2024,Utilities,Electricity and gas,Demo Supplier 051,24062
+spend_da20ea6410bf7ef3,3,Demo Benelux Trading,Central,Netherlands,2024,Utilities,Electricity and gas,Demo Supplier 052,32313.5
+spend_f17a41a64e60ccdd,4,Demo Benelux Trading,Central,Netherlands,2025,Facilities,Building maintenance,Demo Supplier 001,14020.24
+spend_0689b67383d1fe33,4,Demo Benelux Trading,Central,Netherlands,2025,Facilities,Building maintenance,Demo Supplier 002,16879.11
+spend_b2674e282dd1fd43,3,Demo Benelux Trading,Central,Netherlands,2025,Facilities,Building maintenance,Demo Supplier 003,19218.28
+spend_3d9276b8fb65f22c,3,Demo Benelux Trading,Central,Netherlands,2025,Facilities,Building maintenance,Demo Supplier 004,22531.14
+spend_38452c10fb3cbf8c,1,Demo Benelux Trading,Central,Netherlands,2025,Facilities,Cleaning and security,Demo Supplier 005,3734.13
+spend_3fa4a9f75ffcda09,1,Demo Benelux Trading,Central,Netherlands,2025,Facilities,Cleaning and security,Demo Supplier 006,4306.65
+spend_b38138a8d515e8ee,4,Demo Benelux Trading,Central,Netherlands,2025,Facilities,Cleaning and security,Demo Supplier 007,14983.18
+spend_5d2b4239cb6876bc,2,Demo Benelux Trading,Central,Netherlands,2025,Facilities,Cleaning and security,Demo Supplier 008,4400.06
+spend_3622aae9c7daff68,1,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Hardware,Demo Supplier 013,5304.13
+spend_24c0a13b371222ad,4,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Hardware,Demo Supplier 014,1032.49
+spend_419c4c1f2db2183a,3,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Hardware,Demo Supplier 015,24224.1
+spend_3de13ecda5c216b4,4,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Hardware,Demo Supplier 016,21790.1
+spend_ff0d829da08149c0,3,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Software licensing,Demo Supplier 009,11175.57
+spend_2edbaaabc77e1bce,5,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Software licensing,Demo Supplier 010,41825.18
+spend_2445263aff6b3f35,1,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Software licensing,Demo Supplier 011,3646.91
+spend_c3944da8ac7d569e,1,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Telecommunications,Demo Supplier 017,7302.74
+spend_a17b90185f0c2e35,2,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Telecommunications,Demo Supplier 018,4841.09
+spend_55f63a79f85f7916,4,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Telecommunications,Demo Supplier 019,25575.47
+spend_90307587538ab2c4,3,Demo Benelux Trading,Central,Netherlands,2025,IT and telecom,Telecommunications,Demo Supplier 020,11036.93
+spend_a291bc6f955ca269,5,Demo Benelux Trading,Central,Netherlands,2025,Logistics,Freight and courier,Demo Supplier 021,44539.07
+spend_e7bcffe2ae57714e,4,Demo Benelux Trading,Central,Netherlands,2025,Logistics,Freight and courier,Demo Supplier 022,25504.37
+spend_471e2162ed94bd2c,6,Demo Benelux Trading,Central,Netherlands,2025,Logistics,Freight and courier,Demo Supplier 023,65984.58
+spend_5c67868a9a7463b5,5,Demo Benelux Trading,Central,Netherlands,2025,Logistics,Freight and courier,Demo Supplier 024,244.44
+spend_98b43c8841875258,4,Demo Benelux Trading,Central,Netherlands,2025,Marketing,Advertising and media,Demo Supplier 045,19806.33
+spend_3147099256b5d580,1,Demo Benelux Trading,Central,Netherlands,2025,Marketing,Advertising and media,Demo Supplier 047,6102.65
+spend_da3dcbe8ff0b980e,7,Demo Benelux Trading,Central,Netherlands,2025,Marketing,Advertising and media,Demo Supplier 048,27130.77
+spend_1221d5a16b800f78,4,Demo Benelux Trading,Central,Netherlands,2025,Office,Office supplies,Demo Supplier 053,4493.07
+spend_7e50b69bb52b7f7f,2,Demo Benelux Trading,Central,Netherlands,2025,Office,Office supplies,Demo Supplier 054,3681.52
+spend_5f71db628ea6071c,2,Demo Benelux Trading,Central,Netherlands,2025,Office,Office supplies,Demo Supplier 055,4691.34
+spend_6f7e0f6732998e2f,3,Demo Benelux Trading,Central,Netherlands,2025,Office,Office supplies,Demo Supplier 056,3174.08
+spend_2a31f4937038bc54,3,Demo Benelux Trading,Central,Netherlands,2025,People,Recruitment,Demo Supplier 033,20343.71
+spend_360de25b686c0a2f,1,Demo Benelux Trading,Central,Netherlands,2025,People,Recruitment,Demo Supplier 034,5273.17
+spend_c78055bc0907da9e,1,Demo Benelux Trading,Central,Netherlands,2025,People,Recruitment,Demo Supplier 035,2281.53
+spend_69d2765f2e1c5ffe,3,Demo Benelux Trading,Central,Netherlands,2025,People,Temporary labour,Demo Supplier 041,22887.6
+spend_9b1fbe339f7d1b46,6,Demo Benelux Trading,Central,Netherlands,2025,People,Temporary labour,Demo Supplier 042,24260.84
+spend_bb5e65b0f4693731,5,Demo Benelux Trading,Central,Netherlands,2025,People,Temporary labour,Demo Supplier 043,26940.98
+spend_14b4a6e24439e2d1,2,Demo Benelux Trading,Central,Netherlands,2025,People,Temporary labour,Demo Supplier 044,13353.68
+spend_a937f381cd0d8ae8,4,Demo Benelux Trading,Central,Netherlands,2025,People,Training,Demo Supplier 038,8373.64
+spend_31bd8bb26ad57322,2,Demo Benelux Trading,Central,Netherlands,2025,People,Training,Demo Supplier 040,9090.82
+spend_f89e101acb5779b7,5,Demo Benelux Trading,Central,Netherlands,2025,Professional services,Consulting,Demo Supplier 025,91639.66
+spend_50b30a09f0233503,2,Demo Benelux Trading,Central,Netherlands,2025,Professional services,Consulting,Demo Supplier 026,38147.79
+spend_4b077834755303f0,4,Demo Benelux Trading,Central,Netherlands,2025,Professional services,Consulting,Demo Supplier 027,46072.47
+spend_8c3be6ddc504bb85,2,Demo Benelux Trading,Central,Netherlands,2025,Professional services,Consulting,Demo Supplier 028,14483.74
+spend_e770733fb95211d9,3,Demo Benelux Trading,Central,Netherlands,2025,Professional services,Legal and audit,Demo Supplier 029,27283.84
+spend_567066380938b79f,3,Demo Benelux Trading,Central,Netherlands,2025,Professional services,Legal and audit,Demo Supplier 030,12693.89
+spend_2970259557aca844,1,Demo Benelux Trading,Central,Netherlands,2025,Professional services,Legal and audit,Demo Supplier 031,9005.03
+spend_bb2335260a5da1e0,1,Demo Benelux Trading,Central,Netherlands,2025,Professional services,Legal and audit,Demo Supplier 032,3514.66
+spend_6f8b6f657690e5fd,2,Demo Benelux Trading,Central,Netherlands,2025,Utilities,Electricity and gas,Demo Supplier 049,12549.9
+spend_14b3591bc657b08a,2,Demo Benelux Trading,Central,Netherlands,2025,Utilities,Electricity and gas,Demo Supplier 050,10176.11
+spend_b6d483cc20d33fb2,4,Demo Benelux Trading,Central,Netherlands,2025,Utilities,Electricity and gas,Demo Supplier 052,69063.36
+spend_039f30aa03fa792a,3,Demo Group Headquarters,Corporate,United Kingdom,2024,Facilities,Building maintenance,Demo Supplier 001,14667.33
+spend_67ebb678ab40ef89,4,Demo Group Headquarters,Corporate,United Kingdom,2024,Facilities,Building maintenance,Demo Supplier 002,7430.62
+spend_09eb3dfa50090a84,3,Demo Group Headquarters,Corporate,United Kingdom,2024,Facilities,Building maintenance,Demo Supplier 003,14127.5
+spend_57a825810d44cc86,3,Demo Group Headquarters,Corporate,United Kingdom,2024,Facilities,Cleaning and security,Demo Supplier 005,6803.96
+spend_7166be4c7df24872,1,Demo Group Headquarters,Corporate,United Kingdom,2024,Facilities,Cleaning and security,Demo Supplier 006,4119.71
+spend_e93b6df20ab8e8c9,4,Demo Group Headquarters,Corporate,United Kingdom,2024,Facilities,Cleaning and security,Demo Supplier 007,12174.92
+spend_b7958146ae140f50,3,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Hardware,Demo Supplier 013,14202.8
+spend_e036448cbe5db88d,1,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Hardware,Demo Supplier 014,5347.9
+spend_cea18dd9ccd04681,4,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Hardware,Demo Supplier 015,17901.6
+spend_3d96e5bd6a6a4b37,4,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Hardware,Demo Supplier 016,21847.66
+spend_0a538f9d29c014c4,4,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Software licensing,Demo Supplier 009,15496.18
+spend_4120c1253bbb034d,1,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Software licensing,Demo Supplier 010,2237.97
+spend_8d1bf3ebab1cb05b,3,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Software licensing,Demo Supplier 012,13297.43
+spend_b393f68192f44284,3,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Telecommunications,Demo Supplier 017,13665.61
+spend_790e4be2346560f0,2,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Telecommunications,Demo Supplier 018,9892.53
+spend_53d9e3294e8682f4,1,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Telecommunications,Demo Supplier 019,1065.33
+spend_41a344d500595da9,1,Demo Group Headquarters,Corporate,United Kingdom,2024,IT and telecom,Telecommunications,Demo Supplier 020,3244.16
+spend_e9baef9efacaf3e7,6,Demo Group Headquarters,Corporate,United Kingdom,2024,Logistics,Freight and courier,Demo Supplier 021,14770.72
+spend_0f49b7e5b1c98b1e,3,Demo Group Headquarters,Corporate,United Kingdom,2024,Logistics,Freight and courier,Demo Supplier 022,22223.7
+spend_5b52f5619ac40fb7,4,Demo Group Headquarters,Corporate,United Kingdom,2024,Logistics,Freight and courier,Demo Supplier 023,36672.77
+spend_776ed169b552d39a,4,Demo Group Headquarters,Corporate,United Kingdom,2024,Logistics,Freight and courier,Demo Supplier 024,27037.73
+spend_211b4740b9437b78,2,Demo Group Headquarters,Corporate,United Kingdom,2024,Marketing,Advertising and media,Demo Supplier 046,9011.93
+spend_327fd64cca2a206e,2,Demo Group Headquarters,Corporate,United Kingdom,2024,Marketing,Advertising and media,Demo Supplier 047,29.93
+spend_0c3ccca97809e6d0,1,Demo Group Headquarters,Corporate,United Kingdom,2024,Office,Office supplies,Demo Supplier 053,-794.67
+spend_8630ab0ed2d296f3,3,Demo Group Headquarters,Corporate,United Kingdom,2024,Office,Office supplies,Demo Supplier 054,3428.29
+spend_cf0ccc7861f83cd2,2,Demo Group Headquarters,Corporate,United Kingdom,2024,Office,Office supplies,Demo Supplier 055,2751.29
+spend_ad00140bd9022394,4,Demo Group Headquarters,Corporate,United Kingdom,2024,Office,Office supplies,Demo Supplier 056,3730.04
+spend_957f04b0a69440cf,3,Demo Group Headquarters,Corporate,United Kingdom,2024,People,Recruitment,Demo Supplier 033,14617.37
+spend_3b4b3e20856752e5,2,Demo Group Headquarters,Corporate,United Kingdom,2024,People,Recruitment,Demo Supplier 036,24150.03
+spend_410af2e87dedf48b,3,Demo Group Headquarters,Corporate,United Kingdom,2024,People,Temporary labour,Demo Supplier 041,16101.18
+spend_91a8869aa71b2f61,2,Demo Group Headquarters,Corporate,United Kingdom,2024,People,Temporary labour,Demo Supplier 042,12127.66
+spend_e0a5f11be55608d6,4,Demo Group Headquarters,Corporate,United Kingdom,2024,People,Temporary labour,Demo Supplier 043,20830.97
+spend_76cf84f4ccaa193d,4,Demo Group Headquarters,Corporate,United Kingdom,2024,People,Temporary labour,Demo Supplier 044,19117.14
+spend_daee971d18a8458c,1,Demo Group Headquarters,Corporate,United Kingdom,2024,People,Training,Demo Supplier 039,2217.6
+spend_ee9e88c56f2a7a2e,3,Demo Group Headquarters,Corporate,United Kingdom,2024,People,Training,Demo Supplier 040,11772.98
+spend_ab5d0af94052adb7,4,Demo Group Headquarters,Corporate,United Kingdom,2024,Professional services,Consulting,Demo Supplier 025,38731.84
+spend_ccd2d8e476701a20,2,Demo Group Headquarters,Corporate,United Kingdom,2024,Professional services,Consulting,Demo Supplier 027,9902.24
+spend_facb6fdb607823ed,2,Demo Group Headquarters,Corporate,United Kingdom,2024,Professional services,Consulting,Demo Supplier 028,45424.1
+spend_646c3b64df705545,4,Demo Group Headquarters,Corporate,United Kingdom,2024,Professional services,Legal and audit,Demo Supplier 029,18089.69
+spend_83da1ed9296833be,3,Demo Group Headquarters,Corporate,United Kingdom,2024,Professional services,Legal and audit,Demo Supplier 030,13483.71
+spend_ddc19d15778d681b,2,Demo Group Headquarters,Corporate,United Kingdom,2024,Professional services,Legal and audit,Demo Supplier 031,5435.34
+spend_c610ac4626e2fcd1,1,Demo Group Headquarters,Corporate,United Kingdom,2024,Professional services,Legal and audit,Demo Supplier 032,1319.28
+spend_2a991b1f0be77a71,2,Demo Group Headquarters,Corporate,United Kingdom,2024,Utilities,Electricity and gas,Demo Supplier 050,16304.49
+spend_fd9086e8a749aca1,4,Demo Group Headquarters,Corporate,United Kingdom,2024,Utilities,Electricity and gas,Demo Supplier 051,32269.85
+spend_00feb3da2f36fe6c,4,Demo Group Headquarters,Corporate,United Kingdom,2024,Utilities,Electricity and gas,Demo Supplier 052,31291.77
+spend_4487f2a3ab199963,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Facilities,Building maintenance,Demo Supplier 001,18167.37
+spend_1917b30945598431,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Facilities,Building maintenance,Demo Supplier 002,22367.01
+spend_5b1c1488e16e5df8,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Facilities,Building maintenance,Demo Supplier 003,15713.73
+spend_154f8e17f8314e21,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Facilities,Building maintenance,Demo Supplier 004,6492.5
+spend_9e167b5e9fa00bd6,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Facilities,Cleaning and security,Demo Supplier 005,9987.27
+spend_2c9bbbf449d13d71,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Facilities,Cleaning and security,Demo Supplier 006,12588.21
+spend_10bfe3c5a85156ca,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Facilities,Cleaning and security,Demo Supplier 007,28462.1
+spend_2e5b6c9afa202f7a,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Facilities,Cleaning and security,Demo Supplier 008,6148.02
+spend_e24add14b29b8452,3,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Hardware,Demo Supplier 013,-1537.18
+spend_d84cf8df63aa3627,3,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Hardware,Demo Supplier 014,7244.51
+spend_b8d7de2d64a21850,2,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Hardware,Demo Supplier 015,12398.54
+spend_faca54bc518aba5e,3,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Software licensing,Demo Supplier 009,36498.93
+spend_531b159354bba358,3,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Software licensing,Demo Supplier 010,36286.98
+spend_90d3a28535601118,4,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Software licensing,Demo Supplier 011,10859.21
+spend_fdb242ea5aacd886,3,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Software licensing,Demo Supplier 012,18169.33
+spend_3c72eff73a00e29f,2,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Telecommunications,Demo Supplier 018,4075.32
+spend_b31ca9b832745c13,2,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Telecommunications,Demo Supplier 019,14225.73
+spend_a537e8b88d177465,4,Demo Group Headquarters,Corporate,United Kingdom,2025,IT and telecom,Telecommunications,Demo Supplier 020,10195.69
+spend_c00e4ffafe7e0427,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Logistics,Freight and courier,Demo Supplier 021,13934.65
+spend_49f59aace05bc2df,4,Demo Group Headquarters,Corporate,United Kingdom,2025,Logistics,Freight and courier,Demo Supplier 022,41844.27
+spend_f89592283c5343e6,1,Demo Group Headquarters,Corporate,United Kingdom,2025,Logistics,Freight and courier,Demo Supplier 023,9410.4
+spend_6032c309e317de55,1,Demo Group Headquarters,Corporate,United Kingdom,2025,Logistics,Freight and courier,Demo Supplier 024,14619.96
+spend_ee367f4f9ca80d0c,4,Demo Group Headquarters,Corporate,United Kingdom,2025,Marketing,Advertising and media,Demo Supplier 045,11549.61
+spend_7583ff0345fd44b7,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Marketing,Advertising and media,Demo Supplier 046,8268.05
+spend_6ef53554baad84b8,4,Demo Group Headquarters,Corporate,United Kingdom,2025,Marketing,Advertising and media,Demo Supplier 047,18443.59
+spend_2768f2a2057e8515,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Marketing,Advertising and media,Demo Supplier 048,7312.16
+spend_1ffe72aa3fca42b8,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Office,Office supplies,Demo Supplier 053,4960.36
+spend_e60756367a754b63,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Office,Office supplies,Demo Supplier 054,1492.63
+spend_ace090948a1c5eba,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Office,Office supplies,Demo Supplier 055,4444.59
+spend_b146a8de6e2f2136,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Office,Office supplies,Demo Supplier 056,2150.37
+spend_d918a3a4281f29f4,1,Demo Group Headquarters,Corporate,United Kingdom,2025,People,Recruitment,Demo Supplier 034,2516.52
+spend_871c9133b35f3789,1,Demo Group Headquarters,Corporate,United Kingdom,2025,People,Recruitment,Demo Supplier 035,1749.02
+spend_8adf918217135e9b,1,Demo Group Headquarters,Corporate,United Kingdom,2025,People,Recruitment,Demo Supplier 036,3931.91
+spend_c95546ce408421d4,3,Demo Group Headquarters,Corporate,United Kingdom,2025,People,Temporary labour,Demo Supplier 041,35951.1
+spend_8aa342ed7382b9c8,3,Demo Group Headquarters,Corporate,United Kingdom,2025,People,Temporary labour,Demo Supplier 043,5339.66
+spend_44bfaeb914e09aaf,2,Demo Group Headquarters,Corporate,United Kingdom,2025,People,Temporary labour,Demo Supplier 044,17844.96
+spend_ae22644991124310,4,Demo Group Headquarters,Corporate,United Kingdom,2025,People,Training,Demo Supplier 037,15652.94
+spend_dfb4763077a10692,1,Demo Group Headquarters,Corporate,United Kingdom,2025,People,Training,Demo Supplier 038,9661.47
+spend_28cbbb7590696b89,4,Demo Group Headquarters,Corporate,United Kingdom,2025,People,Training,Demo Supplier 040,10825.7
+spend_3031903b5ac0a9a7,1,Demo Group Headquarters,Corporate,United Kingdom,2025,Professional services,Consulting,Demo Supplier 025,16252.63
+spend_1c5a849cb92d6a06,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Professional services,Consulting,Demo Supplier 026,51102.87
+spend_af3088760bf53af8,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Professional services,Consulting,Demo Supplier 027,37732.02
+spend_20202e4037807e7b,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Professional services,Consulting,Demo Supplier 028,42659.76
+spend_1c81f3cf369e2435,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Professional services,Legal and audit,Demo Supplier 029,34645.95
+spend_43c419dbc9eac51a,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Professional services,Legal and audit,Demo Supplier 031,6815.5
+spend_46dc55fd8f76be1d,1,Demo Group Headquarters,Corporate,United Kingdom,2025,Professional services,Legal and audit,Demo Supplier 032,6352.68
+spend_44070334a704331c,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Utilities,Electricity and gas,Demo Supplier 049,43795.13
+spend_0b59a66c4307a41c,2,Demo Group Headquarters,Corporate,United Kingdom,2025,Utilities,Electricity and gas,Demo Supplier 050,18130.75
+spend_77a60d11227a9475,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Utilities,Electricity and gas,Demo Supplier 051,30685.52
+spend_e1e7a20c62568296,3,Demo Group Headquarters,Corporate,United Kingdom,2025,Utilities,Electricity and gas,Demo Supplier 052,51906.77
+spend_18ce8f8db3542adc,5,Demo Iberia Distribution,South,Portugal,2024,Facilities,Building maintenance,Demo Supplier 001,37784.15
+spend_815749dda5a555d9,2,Demo Iberia Distribution,South,Portugal,2024,Facilities,Building maintenance,Demo Supplier 002,17064.86
+spend_821eb0202a8ba76b,6,Demo Iberia Distribution,South,Portugal,2024,Facilities,Building maintenance,Demo Supplier 003,34972.49
+spend_08098a2184ef4710,1,Demo Iberia Distribution,South,Portugal,2024,Facilities,Cleaning and security,Demo Supplier 005,2319.9
+spend_482ea17e93362c3e,4,Demo Iberia Distribution,South,Portugal,2024,Facilities,Cleaning and security,Demo Supplier 007,16041.54
+spend_479dcc1711758a64,6,Demo Iberia Distribution,South,Portugal,2024,Facilities,Cleaning and security,Demo Supplier 008,17046.04
+spend_b284477a9b9ad461,1,Demo Iberia Distribution,South,Portugal,2024,IT and telecom,Hardware,Demo Supplier 013,2075.31
+spend_17c57316bbad8cb9,5,Demo Iberia Distribution,South,Portugal,2024,IT and telecom,Software licensing,Demo Supplier 009,25854.9
+spend_468a023d0bc2eea4,1,Demo Iberia Distribution,South,Portugal,2024,IT and telecom,Software licensing,Demo Supplier 010,13158.82
+spend_7059989eee5bb7db,2,Demo Iberia Distribution,South,Portugal,2024,IT and telecom,Software licensing,Demo Supplier 011,17612.16
+spend_055f8fd5155c9313,3,Demo Iberia Distribution,South,Portugal,2024,IT and telecom,Software licensing,Demo Supplier 012,8921.37
+spend_a6f5ccd3c0baf27d,2,Demo Iberia Distribution,South,Portugal,2024,IT and telecom,Telecommunications,Demo Supplier 017,2829.67
+spend_780cdceab1ba809f,2,Demo Iberia Distribution,South,Portugal,2024,IT and telecom,Telecommunications,Demo Supplier 018,6311.94
+spend_d0d8fa79f6e7fb13,1,Demo Iberia Distribution,South,Portugal,2024,IT and telecom,Telecommunications,Demo Supplier 019,2921.25
+spend_9f6a439f45f6dff9,5,Demo Iberia Distribution,South,Portugal,2024,IT and telecom,Telecommunications,Demo Supplier 020,21546.52
+spend_8ffb15a99c023d0c,1,Demo Iberia Distribution,South,Portugal,2024,Logistics,Freight and courier,Demo Supplier 021,4959.55
+spend_ea3c7275132be1a1,5,Demo Iberia Distribution,South,Portugal,2024,Logistics,Freight and courier,Demo Supplier 022,30228.94
+spend_6a4149bc629f751b,3,Demo Iberia Distribution,South,Portugal,2024,Logistics,Freight and courier,Demo Supplier 023,24357.22
+spend_27133c5adff4652e,4,Demo Iberia Distribution,South,Portugal,2024,Logistics,Freight and courier,Demo Supplier 024,22402.65
+spend_59cf47d6d71fbff2,2,Demo Iberia Distribution,South,Portugal,2024,Marketing,Advertising and media,Demo Supplier 045,7208.64
+spend_3e86171e801f70e9,1,Demo Iberia Distribution,South,Portugal,2024,Marketing,Advertising and media,Demo Supplier 046,3478.63
+spend_8d09d4f5e4454de1,6,Demo Iberia Distribution,South,Portugal,2024,Marketing,Advertising and media,Demo Supplier 047,22567.73
+spend_975248311912a4a6,2,Demo Iberia Distribution,South,Portugal,2024,Marketing,Advertising and media,Demo Supplier 048,5809.86
+spend_4672b8d2b17253c3,3,Demo Iberia Distribution,South,Portugal,2024,Office,Office supplies,Demo Supplier 053,2776.91
+spend_8c3a832da324cc33,5,Demo Iberia Distribution,South,Portugal,2024,Office,Office supplies,Demo Supplier 054,4999.1
+spend_376c783ad8e44f88,6,Demo Iberia Distribution,South,Portugal,2024,Office,Office supplies,Demo Supplier 055,8038.53
+spend_97f7a2fa990806f1,7,Demo Iberia Distribution,South,Portugal,2024,Office,Office supplies,Demo Supplier 056,5349.51
+spend_6790815b7b126c47,2,Demo Iberia Distribution,South,Portugal,2024,People,Recruitment,Demo Supplier 033,9428.81
+spend_134c57dd80fd8222,2,Demo Iberia Distribution,South,Portugal,2024,People,Recruitment,Demo Supplier 034,13781.43
+spend_70b1c6867cf5db00,4,Demo Iberia Distribution,South,Portugal,2024,People,Recruitment,Demo Supplier 035,39846.51
+spend_85c6bb1c7433d150,6,Demo Iberia Distribution,South,Portugal,2024,People,Temporary labour,Demo Supplier 041,29573.44
+spend_2e98795290d7a9b3,1,Demo Iberia Distribution,South,Portugal,2024,People,Temporary labour,Demo Supplier 042,4691.74
+spend_2196a33ec0dd0b4f,3,Demo Iberia Distribution,South,Portugal,2024,People,Temporary labour,Demo Supplier 043,9129.61
+spend_3fb27a3f6fcda6e5,2,Demo Iberia Distribution,South,Portugal,2024,People,Temporary labour,Demo Supplier 044,15742.4
+spend_f585dca53bb6a987,2,Demo Iberia Distribution,South,Portugal,2024,People,Training,Demo Supplier 037,4049.22
+spend_1887ba172b4c81c4,3,Demo Iberia Distribution,South,Portugal,2024,People,Training,Demo Supplier 038,4337.28
+spend_a4a08a6e39a5a861,1,Demo Iberia Distribution,South,Portugal,2024,People,Training,Demo Supplier 039,3626.31
+spend_e250f2adcc2027c6,2,Demo Iberia Distribution,South,Portugal,2024,People,Training,Demo Supplier 040,4475.41
+spend_1bd4cfe6184123ab,1,Demo Iberia Distribution,South,Portugal,2024,Professional services,Consulting,Demo Supplier 025,11797.03
+spend_309913990546eb16,1,Demo Iberia Distribution,South,Portugal,2024,Professional services,Consulting,Demo Supplier 026,2251.48
+spend_956486b72d562ccc,1,Demo Iberia Distribution,South,Portugal,2024,Professional services,Consulting,Demo Supplier 027,9117.37
+spend_2bf28fe1bc3c720b,3,Demo Iberia Distribution,South,Portugal,2024,Professional services,Consulting,Demo Supplier 028,19247.69
+spend_f843b7940eaa1b34,3,Demo Iberia Distribution,South,Portugal,2024,Professional services,Legal and audit,Demo Supplier 029,27026.22
+spend_1be0485e2e770418,2,Demo Iberia Distribution,South,Portugal,2024,Professional services,Legal and audit,Demo Supplier 030,18457.2
+spend_aa7eca891dfbf7cd,1,Demo Iberia Distribution,South,Portugal,2024,Professional services,Legal and audit,Demo Supplier 031,7023.92
+spend_3ec90342ec2f4142,1,Demo Iberia Distribution,South,Portugal,2024,Professional services,Legal and audit,Demo Supplier 032,10441.13
+spend_22db4b6eb7f2f4b3,1,Demo Iberia Distribution,South,Portugal,2024,Utilities,Electricity and gas,Demo Supplier 049,11503.88
+spend_57ee1fde2fd32480,1,Demo Iberia Distribution,South,Portugal,2024,Utilities,Electricity and gas,Demo Supplier 051,8325.74
+spend_bbf39766cff9c40e,3,Demo Iberia Distribution,South,Portugal,2024,Utilities,Electricity and gas,Demo Supplier 052,-7637.65
+spend_ec547021a1516f24,3,Demo Iberia Distribution,South,Portugal,2025,Facilities,Building maintenance,Demo Supplier 001,28089.88
+spend_26de906491d4fe47,6,Demo Iberia Distribution,South,Portugal,2025,Facilities,Building maintenance,Demo Supplier 002,46042.54
+spend_f29855a1f84019e0,4,Demo Iberia Distribution,South,Portugal,2025,Facilities,Building maintenance,Demo Supplier 003,11841.09
+spend_e791cc649866122d,3,Demo Iberia Distribution,South,Portugal,2025,Facilities,Building maintenance,Demo Supplier 004,17265.92
+spend_dbcdde4e22d8d272,7,Demo Iberia Distribution,South,Portugal,2025,Facilities,Cleaning and security,Demo Supplier 005,18282.74
+spend_b7090068d636d70a,2,Demo Iberia Distribution,South,Portugal,2025,Facilities,Cleaning and security,Demo Supplier 007,14689.96
+spend_578c901e95eb6a63,2,Demo Iberia Distribution,South,Portugal,2025,Facilities,Cleaning and security,Demo Supplier 008,9543.58
+spend_9c12de03a1a71a29,2,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Hardware,Demo Supplier 013,5023.01
+spend_c73d9e822ceb3abd,2,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Hardware,Demo Supplier 014,9173.33
+spend_0d67f59d037cf964,4,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Hardware,Demo Supplier 015,14195.93
+spend_7f0d9b34af842c97,2,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Hardware,Demo Supplier 016,10340.97
+spend_e34f68d40ae02236,3,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Software licensing,Demo Supplier 009,22924.77
+spend_266f65ef332afd16,6,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Software licensing,Demo Supplier 010,15783.92
+spend_eab4cb2da07c7cea,7,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Software licensing,Demo Supplier 011,50749.76
+spend_00105359f2389b72,3,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Software licensing,Demo Supplier 012,19752.26
+spend_d1f7c9d6356ed089,1,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Telecommunications,Demo Supplier 017,2766.45
+spend_9a30a04f31c2ae34,1,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Telecommunications,Demo Supplier 018,7225.07
+spend_62376b7b9506f906,4,Demo Iberia Distribution,South,Portugal,2025,IT and telecom,Telecommunications,Demo Supplier 019,21728.15
+spend_53356b0f7b9cd986,6,Demo Iberia Distribution,South,Portugal,2025,Logistics,Freight and courier,Demo Supplier 021,52842.97
+spend_704ca66216bb1b94,3,Demo Iberia Distribution,South,Portugal,2025,Logistics,Freight and courier,Demo Supplier 022,29008.3
+spend_a65a9172ef1012d9,2,Demo Iberia Distribution,South,Portugal,2025,Logistics,Freight and courier,Demo Supplier 023,35001.47
+spend_9c18e3f35a9a3b72,7,Demo Iberia Distribution,South,Portugal,2025,Logistics,Freight and courier,Demo Supplier 024,66058.78
+spend_65205252f3837f13,2,Demo Iberia Distribution,South,Portugal,2025,Marketing,Advertising and media,Demo Supplier 045,14979.24
+spend_12eb59d424dba624,2,Demo Iberia Distribution,South,Portugal,2025,Marketing,Advertising and media,Demo Supplier 046,12970.91
+spend_4157880380acabcb,2,Demo Iberia Distribution,South,Portugal,2025,Marketing,Advertising and media,Demo Supplier 047,5788.6
+spend_9124ea6f5998bfb2,2,Demo Iberia Distribution,South,Portugal,2025,Office,Office supplies,Demo Supplier 054,2771.8
+spend_21ba5ff3d47197ed,3,Demo Iberia Distribution,South,Portugal,2025,Office,Office supplies,Demo Supplier 055,2991.45
+spend_0f0a92687b187cca,5,Demo Iberia Distribution,South,Portugal,2025,Office,Office supplies,Demo Supplier 056,5664.98
+spend_7aa642ff6113435b,1,Demo Iberia Distribution,South,Portugal,2025,People,Recruitment,Demo Supplier 033,3541.24
+spend_46e1389b5ccce5af,1,Demo Iberia Distribution,South,Portugal,2025,People,Recruitment,Demo Supplier 034,4186.85
+spend_e57406f18df6c7a2,2,Demo Iberia Distribution,South,Portugal,2025,People,Recruitment,Demo Supplier 035,7408.38
+spend_644ad8bcf604e97a,6,Demo Iberia Distribution,South,Portugal,2025,People,Recruitment,Demo Supplier 036,20973.08
+spend_6ea8373e4a104091,3,Demo Iberia Distribution,South,Portugal,2025,People,Temporary labour,Demo Supplier 042,20649.05
+spend_8f30540a23995ea6,1,Demo Iberia Distribution,South,Portugal,2025,People,Temporary labour,Demo Supplier 044,8723.95
+spend_32582d4da3b2e0b6,1,Demo Iberia Distribution,South,Portugal,2025,People,Training,Demo Supplier 037,890.84
+spend_baf7143889ff3c4d,1,Demo Iberia Distribution,South,Portugal,2025,People,Training,Demo Supplier 038,1219.72
+spend_d65d1417f2e92e9d,2,Demo Iberia Distribution,South,Portugal,2025,People,Training,Demo Supplier 039,2382.88
+spend_23ea790a9027bff0,1,Demo Iberia Distribution,South,Portugal,2025,People,Training,Demo Supplier 040,4921.61
+spend_168710a30d358168,2,Demo Iberia Distribution,South,Portugal,2025,Professional services,Consulting,Demo Supplier 025,12601.1
+spend_30f0b601dd64cc62,3,Demo Iberia Distribution,South,Portugal,2025,Professional services,Consulting,Demo Supplier 026,44721.15
+spend_e7ce10d03a2cf731,4,Demo Iberia Distribution,South,Portugal,2025,Professional services,Consulting,Demo Supplier 027,43496.67
+spend_4a2585525034f589,2,Demo Iberia Distribution,South,Portugal,2025,Professional services,Consulting,Demo Supplier 028,18319.51
+spend_819fcde294ad33c3,1,Demo Iberia Distribution,South,Portugal,2025,Professional services,Legal and audit,Demo Supplier 029,-6150.39
+spend_5d3f81c59bd1ecd7,2,Demo Iberia Distribution,South,Portugal,2025,Professional services,Legal and audit,Demo Supplier 031,31280.13
+spend_d9f967abcb9a733b,3,Demo Iberia Distribution,South,Portugal,2025,Utilities,Electricity and gas,Demo Supplier 049,16064.94
+spend_5c6290f1f864e280,3,Demo Iberia Distribution,South,Portugal,2025,Utilities,Electricity and gas,Demo Supplier 050,15366.7
+spend_1da3ecaf2b603c1a,1,Demo Iberia Distribution,South,Portugal,2025,Utilities,Electricity and gas,Demo Supplier 051,3458.42
+spend_a1ae428520cc9fda,1,Demo Southern Support,South,Spain,2024,Facilities,Building maintenance,Demo Supplier 001,5399.18
+spend_d0cb39fc6564f390,7,Demo Southern Support,South,Spain,2024,Facilities,Building maintenance,Demo Supplier 002,66414.75
+spend_9b32df8a25e307b2,1,Demo Southern Support,South,Spain,2024,Facilities,Building maintenance,Demo Supplier 003,12067.14
+spend_3ccae42c21cb3cd9,2,Demo Southern Support,South,Spain,2024,Facilities,Building maintenance,Demo Supplier 004,8489.17
+spend_66120f0218505a59,3,Demo Southern Support,South,Spain,2024,Facilities,Cleaning and security,Demo Supplier 005,7467.29
+spend_22ce6c52136b00f7,1,Demo Southern Support,South,Spain,2024,Facilities,Cleaning and security,Demo Supplier 006,-1734.64
+spend_a4343db65d2beabd,2,Demo Southern Support,South,Spain,2024,Facilities,Cleaning and security,Demo Supplier 007,4455.09
+spend_e59e70628f8b7c32,1,Demo Southern Support,South,Spain,2024,Facilities,Cleaning and security,Demo Supplier 008,1629.76
+spend_c7a4752d1291d2ec,1,Demo Southern Support,South,Spain,2024,IT and telecom,Hardware,Demo Supplier 013,-623.37
+spend_83d6f7ea1768d5d0,1,Demo Southern Support,South,Spain,2024,IT and telecom,Hardware,Demo Supplier 014,2933.45
+spend_ea009ace9a1187c1,3,Demo Southern Support,South,Spain,2024,IT and telecom,Hardware,Demo Supplier 015,11441.49
+spend_57f46550c9c6d517,2,Demo Southern Support,South,Spain,2024,IT and telecom,Hardware,Demo Supplier 016,10141.79
+spend_1d387bd969236e92,3,Demo Southern Support,South,Spain,2024,IT and telecom,Software licensing,Demo Supplier 010,15707.83
+spend_eb93f1951a1219df,2,Demo Southern Support,South,Spain,2024,IT and telecom,Software licensing,Demo Supplier 011,12013.32
+spend_46f203442a368763,3,Demo Southern Support,South,Spain,2024,IT and telecom,Telecommunications,Demo Supplier 017,7334.52
+spend_ca127550e48243c6,1,Demo Southern Support,South,Spain,2024,IT and telecom,Telecommunications,Demo Supplier 019,1337.64
+spend_32562de67454b1cd,1,Demo Southern Support,South,Spain,2024,IT and telecom,Telecommunications,Demo Supplier 020,3553.24
+spend_dda6c5aed5b400d7,5,Demo Southern Support,South,Spain,2024,Logistics,Freight and courier,Demo Supplier 021,42053.08
+spend_1b77c08b816386b8,4,Demo Southern Support,South,Spain,2024,Logistics,Freight and courier,Demo Supplier 022,27938.11
+spend_dc125deec9cc9a1a,6,Demo Southern Support,South,Spain,2024,Logistics,Freight and courier,Demo Supplier 023,29936.28
+spend_9b528f6a16f1ea99,1,Demo Southern Support,South,Spain,2024,Logistics,Freight and courier,Demo Supplier 024,8771.24
+spend_ed2196fdb9219c1d,3,Demo Southern Support,South,Spain,2024,Marketing,Advertising and media,Demo Supplier 045,21465.56
+spend_e06d5fdba095640d,2,Demo Southern Support,South,Spain,2024,Marketing,Advertising and media,Demo Supplier 046,12376.24
+spend_5c1cd6e20b7a4a9f,2,Demo Southern Support,South,Spain,2024,Marketing,Advertising and media,Demo Supplier 047,8243.88
+spend_8bf96e6019ed622f,1,Demo Southern Support,South,Spain,2024,Marketing,Advertising and media,Demo Supplier 048,1277.87
+spend_8ab27239377756e8,2,Demo Southern Support,South,Spain,2024,Office,Office supplies,Demo Supplier 053,769.29
+spend_153cc5f549a21dae,4,Demo Southern Support,South,Spain,2024,Office,Office supplies,Demo Supplier 054,1833.97
+spend_786f2c2ceea773c8,1,Demo Southern Support,South,Spain,2024,Office,Office supplies,Demo Supplier 055,305.2
+spend_978573d9df3e0f2e,1,Demo Southern Support,South,Spain,2024,Office,Office supplies,Demo Supplier 056,1954.1
+spend_7c763a1801f7b78f,1,Demo Southern Support,South,Spain,2024,People,Recruitment,Demo Supplier 033,3671.19
+spend_8a0ff455607ead4a,3,Demo Southern Support,South,Spain,2024,People,Recruitment,Demo Supplier 034,11433.22
+spend_d949a9c0f44eaff2,5,Demo Southern Support,South,Spain,2024,People,Recruitment,Demo Supplier 036,17758.76
+spend_f31e02e9f168aac8,2,Demo Southern Support,South,Spain,2024,People,Temporary labour,Demo Supplier 041,9891.21
+spend_b18b275213290bed,5,Demo Southern Support,South,Spain,2024,People,Temporary labour,Demo Supplier 042,24322.24
+spend_e9316174c86e3059,1,Demo Southern Support,South,Spain,2024,People,Temporary labour,Demo Supplier 043,2002.2
+spend_1a8d7921725b3a5a,2,Demo Southern Support,South,Spain,2024,People,Temporary labour,Demo Supplier 044,4804.19
+spend_f095b386adbf63ec,4,Demo Southern Support,South,Spain,2024,People,Training,Demo Supplier 037,10016.46
+spend_9cede21969bb235d,1,Demo Southern Support,South,Spain,2024,People,Training,Demo Supplier 038,1774.5
+spend_d5105c6567ce6197,1,Demo Southern Support,South,Spain,2024,People,Training,Demo Supplier 040,1440.36
+spend_e19bf856bccc38ce,2,Demo Southern Support,South,Spain,2024,Professional services,Consulting,Demo Supplier 025,6381.37
+spend_7c95366e0c6f49ae,1,Demo Southern Support,South,Spain,2024,Professional services,Consulting,Demo Supplier 026,6027.28
+spend_0ce5cf1713377263,2,Demo Southern Support,South,Spain,2024,Professional services,Consulting,Demo Supplier 027,24799.83
+spend_4dc918f0236420a9,2,Demo Southern Support,South,Spain,2024,Professional services,Consulting,Demo Supplier 028,13960.53
+spend_5f7bcbf8f192c5a8,4,Demo Southern Support,South,Spain,2024,Professional services,Legal and audit,Demo Supplier 029,49419.56
+spend_e2b70e2287029e48,1,Demo Southern Support,South,Spain,2024,Professional services,Legal and audit,Demo Supplier 030,5147.14
+spend_531d4fddbefb223a,1,Demo Southern Support,South,Spain,2024,Professional services,Legal and audit,Demo Supplier 031,3773.52
+spend_48ddc54f70b1a765,4,Demo Southern Support,South,Spain,2024,Professional services,Legal and audit,Demo Supplier 032,29842.06
+spend_0b8b2ca82704e3f4,2,Demo Southern Support,South,Spain,2024,Utilities,Electricity and gas,Demo Supplier 049,10267.36
+spend_035701f36e4832f5,2,Demo Southern Support,South,Spain,2024,Utilities,Electricity and gas,Demo Supplier 050,12804.41
+spend_2cd4473b5fea8ff3,3,Demo Southern Support,South,Spain,2024,Utilities,Electricity and gas,Demo Supplier 052,21426.14
+spend_2384173ff9c54e5c,2,Demo Southern Support,South,Spain,2025,Facilities,Building maintenance,Demo Supplier 001,15106.43
+spend_8224552642aa313b,1,Demo Southern Support,South,Spain,2025,Facilities,Building maintenance,Demo Supplier 002,3501.59
+spend_b29983d80ec2f3a7,1,Demo Southern Support,South,Spain,2025,Facilities,Building maintenance,Demo Supplier 003,8663.05
+spend_2854bee80c5488a1,1,Demo Southern Support,South,Spain,2025,Facilities,Building maintenance,Demo Supplier 004,7909.99
+spend_a290005e9a824160,1,Demo Southern Support,South,Spain,2025,Facilities,Cleaning and security,Demo Supplier 005,2768.46
+spend_6c161466632e9344,1,Demo Southern Support,South,Spain,2025,Facilities,Cleaning and security,Demo Supplier 006,2248.01
+spend_6c1c0cf9e61fe6a1,2,Demo Southern Support,South,Spain,2025,Facilities,Cleaning and security,Demo Supplier 007,5621.09
+spend_823f2a1dd3775400,3,Demo Southern Support,South,Spain,2025,Facilities,Cleaning and security,Demo Supplier 008,15473.31
+spend_4bcf50a613b03360,1,Demo Southern Support,South,Spain,2025,IT and telecom,Hardware,Demo Supplier 013,2629.84
+spend_bac3e6ed73cceb4d,1,Demo Southern Support,South,Spain,2025,IT and telecom,Hardware,Demo Supplier 015,3616.4
+spend_b1c8872e1e379a27,3,Demo Southern Support,South,Spain,2025,IT and telecom,Hardware,Demo Supplier 016,15857.14
+spend_b7a4e8b5c79a348a,4,Demo Southern Support,South,Spain,2025,IT and telecom,Software licensing,Demo Supplier 009,14462.57
+spend_5ba4d7ab25aa634e,5,Demo Southern Support,South,Spain,2025,IT and telecom,Software licensing,Demo Supplier 010,30532.51
+spend_b3978e7d28acc549,4,Demo Southern Support,South,Spain,2025,IT and telecom,Software licensing,Demo Supplier 011,28226.57
+spend_ed257ba69a35633a,1,Demo Southern Support,South,Spain,2025,IT and telecom,Telecommunications,Demo Supplier 017,-587.7
+spend_0978d75929ff65bc,1,Demo Southern Support,South,Spain,2025,IT and telecom,Telecommunications,Demo Supplier 018,1164.49
+spend_b87a33b2d5ab21b6,4,Demo Southern Support,South,Spain,2025,IT and telecom,Telecommunications,Demo Supplier 019,14037.08
+spend_764d0ebb7193181f,3,Demo Southern Support,South,Spain,2025,IT and telecom,Telecommunications,Demo Supplier 020,5709.2
+spend_12ac0bc4a892f796,1,Demo Southern Support,South,Spain,2025,Logistics,Freight and courier,Demo Supplier 021,7876.47
+spend_50aa63b05e6286fb,1,Demo Southern Support,South,Spain,2025,Logistics,Freight and courier,Demo Supplier 022,8481.06
+spend_99cf980b0f3cd45f,6,Demo Southern Support,South,Spain,2025,Logistics,Freight and courier,Demo Supplier 023,45259.74
+spend_bd94bf8b11e9310c,3,Demo Southern Support,South,Spain,2025,Logistics,Freight and courier,Demo Supplier 024,31880.64
+spend_ad601786bcd39854,3,Demo Southern Support,South,Spain,2025,Marketing,Advertising and media,Demo Supplier 045,16213.91
+spend_691947acdeb2780e,1,Demo Southern Support,South,Spain,2025,Marketing,Advertising and media,Demo Supplier 046,1789.44
+spend_36166cc89a2b22ef,2,Demo Southern Support,South,Spain,2025,Marketing,Advertising and media,Demo Supplier 047,10652.72
+spend_2348ae8354a042d8,2,Demo Southern Support,South,Spain,2025,Marketing,Advertising and media,Demo Supplier 048,10525.86
+spend_e7432a490f25cf09,2,Demo Southern Support,South,Spain,2025,Office,Office supplies,Demo Supplier 053,893
+spend_3690ea14df8069da,3,Demo Southern Support,South,Spain,2025,Office,Office supplies,Demo Supplier 054,4197.53
+spend_63893fe1765363dc,2,Demo Southern Support,South,Spain,2025,Office,Office supplies,Demo Supplier 055,1289.09
+spend_8dbe77938f0e24c2,3,Demo Southern Support,South,Spain,2025,Office,Office supplies,Demo Supplier 056,1502.84
+spend_9d50cc01016593c1,1,Demo Southern Support,South,Spain,2025,People,Recruitment,Demo Supplier 035,5250.19
+spend_ef09f53958f6f58a,1,Demo Southern Support,South,Spain,2025,People,Recruitment,Demo Supplier 036,6558.32
+spend_f69324caef207bc9,2,Demo Southern Support,South,Spain,2025,People,Temporary labour,Demo Supplier 041,27200.6
+spend_de55a076a47720fa,1,Demo Southern Support,South,Spain,2025,People,Temporary labour,Demo Supplier 042,13532.58
+spend_b5bd95791afa9986,2,Demo Southern Support,South,Spain,2025,People,Temporary labour,Demo Supplier 043,3447.35
+spend_16c00c5355fb7d9f,1,Demo Southern Support,South,Spain,2025,People,Temporary labour,Demo Supplier 044,10623.81
+spend_a44ac97676585e3b,1,Demo Southern Support,South,Spain,2025,People,Training,Demo Supplier 037,1113.53
+spend_3a93ff64ce5b17fb,3,Demo Southern Support,South,Spain,2025,People,Training,Demo Supplier 038,7566.35
+spend_045ce4a76c95a8f0,1,Demo Southern Support,South,Spain,2025,People,Training,Demo Supplier 039,1064.79
+spend_7efdb8ee4ad959a5,2,Demo Southern Support,South,Spain,2025,People,Training,Demo Supplier 040,4784.05
+spend_a0ed59490fc90be6,2,Demo Southern Support,South,Spain,2025,Professional services,Consulting,Demo Supplier 025,9479.43
+spend_4034d392dde3b395,1,Demo Southern Support,South,Spain,2025,Professional services,Consulting,Demo Supplier 026,31571.53
+spend_2ae1926103addee2,2,Demo Southern Support,South,Spain,2025,Professional services,Consulting,Demo Supplier 027,14437.46
+spend_98e063f2f7e9858f,1,Demo Southern Support,South,Spain,2025,Professional services,Consulting,Demo Supplier 028,-5327.58
+spend_290534599960870e,2,Demo Southern Support,South,Spain,2025,Professional services,Legal and audit,Demo Supplier 030,11508.37
+spend_163bf0d8e8a024fe,2,Demo Southern Support,South,Spain,2025,Professional services,Legal and audit,Demo Supplier 031,13427.42
+spend_ab79bea28b954430,2,Demo Southern Support,South,Spain,2025,Utilities,Electricity and gas,Demo Supplier 049,28810.42
+spend_e41f204357090255,3,Demo Southern Support,South,Spain,2025,Utilities,Electricity and gas,Demo Supplier 050,12827.28
+spend_b0c9545404d2afc2,3,Demo Southern Support,South,Spain,2025,Utilities,Electricity and gas,Demo Supplier 051,17196.17
+spend_d60e90ec2071aec9,1,Demo Southern Support,South,Spain,2025,Utilities,Electricity and gas,Demo Supplier 052,4626.65
+spend_1078668f01e60198,3,Demo UK Operations,North,United Kingdom,2024,Facilities,Building maintenance,Demo Supplier 001,21910.48
+spend_66ed38079d910357,1,Demo UK Operations,North,United Kingdom,2024,Facilities,Building maintenance,Demo Supplier 002,1950.94
+spend_cb3556aadf936459,1,Demo UK Operations,North,United Kingdom,2024,Facilities,Building maintenance,Demo Supplier 003,2760.63
+spend_08ef61b015b42e80,5,Demo UK Operations,North,United Kingdom,2024,Facilities,Building maintenance,Demo Supplier 004,38502.81
+spend_271b382b36ccb1ef,1,Demo UK Operations,North,United Kingdom,2024,Facilities,Cleaning and security,Demo Supplier 005,3221.76
+spend_e5a5555a2a25cd76,3,Demo UK Operations,North,United Kingdom,2024,Facilities,Cleaning and security,Demo Supplier 006,8638.32
+spend_845680df8f999ebd,5,Demo UK Operations,North,United Kingdom,2024,Facilities,Cleaning and security,Demo Supplier 007,18561
+spend_bb04e332cacd91e8,1,Demo UK Operations,North,United Kingdom,2024,Facilities,Cleaning and security,Demo Supplier 008,2436.24
+spend_c7631130ae8b090a,2,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Hardware,Demo Supplier 013,12146.1
+spend_df9978049e3d01c5,9,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Hardware,Demo Supplier 014,44579.34
+spend_eb17996654b0884a,5,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Hardware,Demo Supplier 015,28958.53
+spend_1b4c02f2e52e838d,3,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Hardware,Demo Supplier 016,12112.43
+spend_c86b47f9cc3c66dc,8,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Software licensing,Demo Supplier 009,51044.43
+spend_aeb871e30395303c,2,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Software licensing,Demo Supplier 010,5545.07
+spend_cc36f9826cfdea0d,6,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Software licensing,Demo Supplier 011,33534.45
+spend_076436cb404196ac,2,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Software licensing,Demo Supplier 012,10643.52
+spend_9cd882cf7f52746d,4,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Telecommunications,Demo Supplier 017,10884.88
+spend_e2d80e403a6c32df,5,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Telecommunications,Demo Supplier 018,33281.54
+spend_b778df29d535c3ee,1,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Telecommunications,Demo Supplier 019,1493.88
+spend_debc724503cf3850,4,Demo UK Operations,North,United Kingdom,2024,IT and telecom,Telecommunications,Demo Supplier 020,14605.8
+spend_a5c271f874166e33,7,Demo UK Operations,North,United Kingdom,2024,Logistics,Freight and courier,Demo Supplier 021,53902.03
+spend_fc5920528b2cee2d,3,Demo UK Operations,North,United Kingdom,2024,Logistics,Freight and courier,Demo Supplier 022,23326.04
+spend_178304746be1b969,5,Demo UK Operations,North,United Kingdom,2024,Logistics,Freight and courier,Demo Supplier 023,42767.32
+spend_2e7262c88324d28b,5,Demo UK Operations,North,United Kingdom,2024,Logistics,Freight and courier,Demo Supplier 024,31116.14
+spend_82a381abac8bb3f4,3,Demo UK Operations,North,United Kingdom,2024,Marketing,Advertising and media,Demo Supplier 045,16563.76
+spend_b25e7788c37526d8,4,Demo UK Operations,North,United Kingdom,2024,Marketing,Advertising and media,Demo Supplier 046,27633.6
+spend_d1d48bfdb0b8b791,2,Demo UK Operations,North,United Kingdom,2024,Marketing,Advertising and media,Demo Supplier 047,2912.94
+spend_6c2eb4c837c65365,2,Demo UK Operations,North,United Kingdom,2024,Marketing,Advertising and media,Demo Supplier 048,8035.14
+spend_8b18e3a2080ef7cc,3,Demo UK Operations,North,United Kingdom,2024,Office,Office supplies,Demo Supplier 053,4823.55
+spend_73339b5f77ababa1,10,Demo UK Operations,North,United Kingdom,2024,Office,Office supplies,Demo Supplier 054,9055.1
+spend_268375ec787d0628,3,Demo UK Operations,North,United Kingdom,2024,Office,Office supplies,Demo Supplier 055,10374.98
+spend_ec03ea9ab2bab23f,1,Demo UK Operations,North,United Kingdom,2024,Office,Office supplies,Demo Supplier 056,1934.54
+spend_bf8a76670375afa9,2,Demo UK Operations,North,United Kingdom,2024,People,Recruitment,Demo Supplier 033,3728.51
+spend_b8bcd0d499642ee4,1,Demo UK Operations,North,United Kingdom,2024,People,Recruitment,Demo Supplier 034,2120.99
+spend_203550235d167c26,3,Demo UK Operations,North,United Kingdom,2024,People,Recruitment,Demo Supplier 035,22201.07
+spend_6915757a331422e1,3,Demo UK Operations,North,United Kingdom,2024,People,Recruitment,Demo Supplier 036,6845.14
+spend_2514bb3d798acfba,1,Demo UK Operations,North,United Kingdom,2024,People,Temporary labour,Demo Supplier 041,2907.66
+spend_13ccb9e04e4802e2,1,Demo UK Operations,North,United Kingdom,2024,People,Temporary labour,Demo Supplier 042,5749.03
+spend_5113ccbda7d3d0dc,2,Demo UK Operations,North,United Kingdom,2024,People,Temporary labour,Demo Supplier 043,29267.97
+spend_c1f0c573e3ea22d5,4,Demo UK Operations,North,United Kingdom,2024,People,Temporary labour,Demo Supplier 044,22867.98
+spend_3b6b21a3ed1ab8b3,4,Demo UK Operations,North,United Kingdom,2024,People,Training,Demo Supplier 038,3757.76
+spend_8b93c7a5ebc569ce,2,Demo UK Operations,North,United Kingdom,2024,People,Training,Demo Supplier 039,6413.08
+spend_e60acf7aebb20586,3,Demo UK Operations,North,United Kingdom,2024,People,Training,Demo Supplier 040,4697.97
+spend_8e4b37b8a396dd4b,4,Demo UK Operations,North,United Kingdom,2024,Professional services,Consulting,Demo Supplier 025,46443.32
+spend_ce01997554c2feb2,3,Demo UK Operations,North,United Kingdom,2024,Professional services,Consulting,Demo Supplier 026,37621.57
+spend_1edc1da5dea74cb2,6,Demo UK Operations,North,United Kingdom,2024,Professional services,Consulting,Demo Supplier 027,80339.57
+spend_80966aa13567215f,5,Demo UK Operations,North,United Kingdom,2024,Professional services,Consulting,Demo Supplier 028,35257.57
+spend_2293014b207045c0,3,Demo UK Operations,North,United Kingdom,2024,Professional services,Legal and audit,Demo Supplier 029,22865.65
+spend_c0bd3f34d63ffc1e,1,Demo UK Operations,North,United Kingdom,2024,Professional services,Legal and audit,Demo Supplier 030,6736.81
+spend_eb91d405bc8541f7,1,Demo UK Operations,North,United Kingdom,2024,Professional services,Legal and audit,Demo Supplier 031,2779.94
+spend_47dc59e068bee126,3,Demo UK Operations,North,United Kingdom,2024,Professional services,Legal and audit,Demo Supplier 032,15654.47
+spend_d2642aa85c99c1ef,7,Demo UK Operations,North,United Kingdom,2024,Utilities,Electricity and gas,Demo Supplier 049,115069.05
+spend_b87456361ab52ca4,4,Demo UK Operations,North,United Kingdom,2024,Utilities,Electricity and gas,Demo Supplier 050,35982.04
+spend_9d4cb25e2ab4c04e,3,Demo UK Operations,North,United Kingdom,2024,Utilities,Electricity and gas,Demo Supplier 051,39222.11
+spend_72e5a5db661d7df5,3,Demo UK Operations,North,United Kingdom,2024,Utilities,Electricity and gas,Demo Supplier 052,35829
+spend_3ae1ec7a7bbe4ee8,3,Demo UK Operations,North,United Kingdom,2025,Facilities,Building maintenance,Demo Supplier 001,20751.61
+spend_83e1b980576b434b,6,Demo UK Operations,North,United Kingdom,2025,Facilities,Building maintenance,Demo Supplier 002,72258.35
+spend_5dcede49ae90739c,4,Demo UK Operations,North,United Kingdom,2025,Facilities,Building maintenance,Demo Supplier 003,21874.44
+spend_dbe6234fdea2e6f3,3,Demo UK Operations,North,United Kingdom,2025,Facilities,Building maintenance,Demo Supplier 004,23074.63
+spend_4d4813a888499ba4,4,Demo UK Operations,North,United Kingdom,2025,Facilities,Cleaning and security,Demo Supplier 005,18786.76
+spend_3c00baf24e5c9807,5,Demo UK Operations,North,United Kingdom,2025,Facilities,Cleaning and security,Demo Supplier 006,44205.55
+spend_f8199142ff0e20c3,4,Demo UK Operations,North,United Kingdom,2025,Facilities,Cleaning and security,Demo Supplier 008,9305.33
+spend_af1c04fb40f907ed,4,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Hardware,Demo Supplier 013,16423.79
+spend_81e5f2003ef25b40,2,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Hardware,Demo Supplier 014,7227.71
+spend_a14fb9818ddbaa08,4,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Hardware,Demo Supplier 015,19182.14
+spend_98b261cc8a1fd532,2,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Hardware,Demo Supplier 016,11544.83
+spend_0dac85091272f900,4,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Software licensing,Demo Supplier 009,40070.86
+spend_42a66c721fa43714,4,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Software licensing,Demo Supplier 010,36544.93
+spend_ef577a6017f57b51,5,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Software licensing,Demo Supplier 011,8158.17
+spend_a899bc81a0237bc1,6,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Software licensing,Demo Supplier 012,26766.33
+spend_7dfa8f4b95894443,2,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Telecommunications,Demo Supplier 017,5905.08
+spend_83795fa13f1a3c04,2,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Telecommunications,Demo Supplier 018,1407.7
+spend_20c1beeabed9a695,3,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Telecommunications,Demo Supplier 019,20703.99
+spend_cfe79cbbcc714a4a,3,Demo UK Operations,North,United Kingdom,2025,IT and telecom,Telecommunications,Demo Supplier 020,18010.52
+spend_99de181d5e930bfd,8,Demo UK Operations,North,United Kingdom,2025,Logistics,Freight and courier,Demo Supplier 021,56293.09
+spend_ad12fd577f61b1b5,2,Demo UK Operations,North,United Kingdom,2025,Logistics,Freight and courier,Demo Supplier 022,32781.29
+spend_9afe5ee1aeb2fe80,3,Demo UK Operations,North,United Kingdom,2025,Logistics,Freight and courier,Demo Supplier 023,19324.65
+spend_ea7a286475d09199,6,Demo UK Operations,North,United Kingdom,2025,Logistics,Freight and courier,Demo Supplier 024,41414.78
+spend_5497013fea287404,1,Demo UK Operations,North,United Kingdom,2025,Marketing,Advertising and media,Demo Supplier 045,6817.78
+spend_4796008f51046816,4,Demo UK Operations,North,United Kingdom,2025,Marketing,Advertising and media,Demo Supplier 046,28810.25
+spend_d746c477a7410d0c,4,Demo UK Operations,North,United Kingdom,2025,Marketing,Advertising and media,Demo Supplier 047,34770.11
+spend_c489bdea6603409f,1,Demo UK Operations,North,United Kingdom,2025,Marketing,Advertising and media,Demo Supplier 048,1305.66
+spend_a696b906e65bd905,2,Demo UK Operations,North,United Kingdom,2025,Office,Office supplies,Demo Supplier 053,3328.18
+spend_a214708377d74b4c,4,Demo UK Operations,North,United Kingdom,2025,Office,Office supplies,Demo Supplier 054,1866.42
+spend_f05598345ae13d39,5,Demo UK Operations,North,United Kingdom,2025,Office,Office supplies,Demo Supplier 055,10022.54
+spend_8ce9acee42958b53,2,Demo UK Operations,North,United Kingdom,2025,Office,Office supplies,Demo Supplier 056,4689.27
+spend_e75393b85ae15829,1,Demo UK Operations,North,United Kingdom,2025,People,Recruitment,Demo Supplier 033,8502.24
+spend_d75626bc1078304b,1,Demo UK Operations,North,United Kingdom,2025,People,Recruitment,Demo Supplier 034,11595.21
+spend_87febfe4c941a307,3,Demo UK Operations,North,United Kingdom,2025,People,Recruitment,Demo Supplier 035,13576.83
+spend_cabf787228fea54c,1,Demo UK Operations,North,United Kingdom,2025,People,Recruitment,Demo Supplier 036,2978.54
+spend_7ce1010a512b8edf,7,Demo UK Operations,North,United Kingdom,2025,People,Temporary labour,Demo Supplier 041,33745.18
+spend_ece114f8596e3ae2,2,Demo UK Operations,North,United Kingdom,2025,People,Temporary labour,Demo Supplier 042,18073.92
+spend_663b661ad29b1d99,5,Demo UK Operations,North,United Kingdom,2025,People,Temporary labour,Demo Supplier 043,74435.55
+spend_92647b0eeb5ae3ca,5,Demo UK Operations,North,United Kingdom,2025,People,Temporary labour,Demo Supplier 044,57651.19
+spend_ae466a4d077571ec,1,Demo UK Operations,North,United Kingdom,2025,People,Training,Demo Supplier 037,536.97
+spend_53ef951b716896ec,3,Demo UK Operations,North,United Kingdom,2025,People,Training,Demo Supplier 038,2601.66
+spend_48dd22241b5af9b1,5,Demo UK Operations,North,United Kingdom,2025,People,Training,Demo Supplier 039,5934.08
+spend_fecd6129e77cbf32,2,Demo UK Operations,North,United Kingdom,2025,People,Training,Demo Supplier 040,5274.86
+spend_d882783be26290df,5,Demo UK Operations,North,United Kingdom,2025,Professional services,Consulting,Demo Supplier 025,71670.21
+spend_c213f8e4fddb7dfb,13,Demo UK Operations,North,United Kingdom,2025,Professional services,Consulting,Demo Supplier 026,142198.84
+spend_934807ba32d212ff,6,Demo UK Operations,North,United Kingdom,2025,Professional services,Consulting,Demo Supplier 027,60972.58
+spend_7b677bcbc0172e96,5,Demo UK Operations,North,United Kingdom,2025,Professional services,Consulting,Demo Supplier 028,76247.99
+spend_8b4ca552a400590f,3,Demo UK Operations,North,United Kingdom,2025,Professional services,Legal and audit,Demo Supplier 029,25469.73
+spend_2b0c6b52e02b3616,4,Demo UK Operations,North,United Kingdom,2025,Professional services,Legal and audit,Demo Supplier 031,27809.78
+spend_78c7baa7f796b0bd,3,Demo UK Operations,North,United Kingdom,2025,Professional services,Legal and audit,Demo Supplier 032,36370.22
+spend_558d38d7f05b3a6e,3,Demo UK Operations,North,United Kingdom,2025,Utilities,Electricity and gas,Demo Supplier 049,35240.03
+spend_bcc90f3ff3f98210,2,Demo UK Operations,North,United Kingdom,2025,Utilities,Electricity and gas,Demo Supplier 050,7899.07
+spend_fd22aa87bec51735,4,Demo UK Operations,North,United Kingdom,2025,Utilities,Electricity and gas,Demo Supplier 051,28486.46
+spend_56960d9e6f93a7d1,1,Demo UK Operations,North,United Kingdom,2025,Utilities,Electricity and gas,Demo Supplier 052,8776.43
+spend_2075efa57d974311,2,Demo Western Services,West,France,2024,Facilities,Building maintenance,Demo Supplier 001,10501.22
+spend_5b8ab2dae5db09e4,3,Demo Western Services,West,France,2024,Facilities,Building maintenance,Demo Supplier 002,10345.55
+spend_9c93ebf3bcda77ff,6,Demo Western Services,West,France,2024,Facilities,Building maintenance,Demo Supplier 003,66860.97
+spend_2a4d5ac6ff468ef6,6,Demo Western Services,West,France,2024,Facilities,Building maintenance,Demo Supplier 004,45155.2
+spend_1b456fd4991920ad,5,Demo Western Services,West,France,2024,Facilities,Cleaning and security,Demo Supplier 005,12356.31
+spend_9fd398d5432a371c,2,Demo Western Services,West,France,2024,Facilities,Cleaning and security,Demo Supplier 006,11483.2
+spend_65499992f45fb195,3,Demo Western Services,West,France,2024,Facilities,Cleaning and security,Demo Supplier 007,23053.85
+spend_d6d72ba4af8f3d62,6,Demo Western Services,West,France,2024,Facilities,Cleaning and security,Demo Supplier 008,14405.74
+spend_9444c18b805feecc,5,Demo Western Services,West,France,2024,IT and telecom,Hardware,Demo Supplier 013,18392.33
+spend_fe4de2ef51167bb2,3,Demo Western Services,West,France,2024,IT and telecom,Hardware,Demo Supplier 014,13934.98
+spend_56739ea19a6e98a9,2,Demo Western Services,West,France,2024,IT and telecom,Hardware,Demo Supplier 015,9799.45
+spend_25d8ef522fd39eb1,1,Demo Western Services,West,France,2024,IT and telecom,Hardware,Demo Supplier 016,9826.06
+spend_532b9b57845436ea,4,Demo Western Services,West,France,2024,IT and telecom,Software licensing,Demo Supplier 009,26128.15
+spend_35138dfa2306b3be,4,Demo Western Services,West,France,2024,IT and telecom,Software licensing,Demo Supplier 010,21638.47
+spend_b73b6ce4828b3ffe,6,Demo Western Services,West,France,2024,IT and telecom,Software licensing,Demo Supplier 011,26255.56
+spend_0ebe0acf33ac93b6,4,Demo Western Services,West,France,2024,IT and telecom,Software licensing,Demo Supplier 012,19501.24
+spend_7c41271b9b3a3661,7,Demo Western Services,West,France,2024,IT and telecom,Telecommunications,Demo Supplier 017,25394.58
+spend_ab66b7bd9dc40f59,3,Demo Western Services,West,France,2024,IT and telecom,Telecommunications,Demo Supplier 018,14325.36
+spend_9f7c305f2869ca84,2,Demo Western Services,West,France,2024,IT and telecom,Telecommunications,Demo Supplier 019,6753.57
+spend_8eceb9848066f872,3,Demo Western Services,West,France,2024,IT and telecom,Telecommunications,Demo Supplier 020,11110.97
+spend_83aace755509740d,4,Demo Western Services,West,France,2024,Logistics,Freight and courier,Demo Supplier 021,12582.31
+spend_4beec7983e1c37be,3,Demo Western Services,West,France,2024,Logistics,Freight and courier,Demo Supplier 022,15478.19
+spend_564c59c35632209f,5,Demo Western Services,West,France,2024,Logistics,Freight and courier,Demo Supplier 023,44150.88
+spend_2e0b99d7d028de43,6,Demo Western Services,West,France,2024,Logistics,Freight and courier,Demo Supplier 024,74829.74
+spend_1bd2084452d0475b,3,Demo Western Services,West,France,2024,Marketing,Advertising and media,Demo Supplier 045,10871.14
+spend_3d906fe163a0de30,1,Demo Western Services,West,France,2024,Marketing,Advertising and media,Demo Supplier 046,8742.97
+spend_3fcdfc678c506b4f,2,Demo Western Services,West,France,2024,Marketing,Advertising and media,Demo Supplier 047,-879.1
+spend_a62aa51febaa075d,4,Demo Western Services,West,France,2024,Marketing,Advertising and media,Demo Supplier 048,38399.91
+spend_a6aefbd6ed999e57,8,Demo Western Services,West,France,2024,Office,Office supplies,Demo Supplier 053,7834.07
+spend_46ee1c23d3f3311f,3,Demo Western Services,West,France,2024,Office,Office supplies,Demo Supplier 054,4223.48
+spend_91b843e29318be60,5,Demo Western Services,West,France,2024,Office,Office supplies,Demo Supplier 055,4242.87
+spend_3683dfe39ea0da77,4,Demo Western Services,West,France,2024,Office,Office supplies,Demo Supplier 056,4442.19
+spend_fd47d3157b059cdc,3,Demo Western Services,West,France,2024,People,Recruitment,Demo Supplier 033,11805.36
+spend_9faebdfde19a747a,5,Demo Western Services,West,France,2024,People,Recruitment,Demo Supplier 034,31345.24
+spend_89d96dda88e7f50a,6,Demo Western Services,West,France,2024,People,Recruitment,Demo Supplier 035,46697.63
+spend_6f10a5db43342283,2,Demo Western Services,West,France,2024,People,Recruitment,Demo Supplier 036,17046.62
+spend_0d9131818c2137b5,2,Demo Western Services,West,France,2024,People,Temporary labour,Demo Supplier 042,22360.39
+spend_107eee66e97aacfc,3,Demo Western Services,West,France,2024,People,Temporary labour,Demo Supplier 043,13877.74
+spend_6fcef22d1a91ff81,3,Demo Western Services,West,France,2024,People,Temporary labour,Demo Supplier 044,34509.98
+spend_e583d3a8d3be9da6,1,Demo Western Services,West,France,2024,People,Training,Demo Supplier 037,-261.87
+spend_0f83f37f4d7372ea,6,Demo Western Services,West,France,2024,People,Training,Demo Supplier 038,18298.65
+spend_1a559a3cf3208191,5,Demo Western Services,West,France,2024,People,Training,Demo Supplier 039,11504.92
+spend_6954659ff10b36c4,3,Demo Western Services,West,France,2024,People,Training,Demo Supplier 040,12266.58
+spend_7d4d8f53d59bbe15,5,Demo Western Services,West,France,2024,Professional services,Consulting,Demo Supplier 025,69332.85
+spend_d3d64d8e9bea868a,8,Demo Western Services,West,France,2024,Professional services,Consulting,Demo Supplier 026,38924.18
+spend_01e33f2f7233df78,1,Demo Western Services,West,France,2024,Professional services,Consulting,Demo Supplier 027,5089.41
+spend_bce3f0bd57064176,3,Demo Western Services,West,France,2024,Professional services,Consulting,Demo Supplier 028,26569.27
+spend_be3687878dc893c7,1,Demo Western Services,West,France,2024,Professional services,Legal and audit,Demo Supplier 029,1158.15
+spend_77cb0c184b6a7db2,2,Demo Western Services,West,France,2024,Professional services,Legal and audit,Demo Supplier 030,28303.08
+spend_446f6865aac7857c,3,Demo Western Services,West,France,2024,Professional services,Legal and audit,Demo Supplier 031,18747.35
+spend_fd994348231cc2b1,1,Demo Western Services,West,France,2024,Professional services,Legal and audit,Demo Supplier 032,1687.95
+spend_18604b858a5e8fa6,3,Demo Western Services,West,France,2024,Utilities,Electricity and gas,Demo Supplier 049,19178.28
+spend_a6d5ac04ef0a87e3,2,Demo Western Services,West,France,2024,Utilities,Electricity and gas,Demo Supplier 050,-2082.26
+spend_af2f6d994205f6b2,3,Demo Western Services,West,France,2024,Utilities,Electricity and gas,Demo Supplier 051,41101.84
+spend_e9e5a6d92f532437,4,Demo Western Services,West,France,2024,Utilities,Electricity and gas,Demo Supplier 052,31482.81
+spend_14e22aaecd810720,2,Demo Western Services,West,France,2025,Facilities,Building maintenance,Demo Supplier 001,9882.67
+spend_984636068129381e,3,Demo Western Services,West,France,2025,Facilities,Building maintenance,Demo Supplier 002,13701.09
+spend_2d1d6f1294920ba6,4,Demo Western Services,West,France,2025,Facilities,Building maintenance,Demo Supplier 003,20909.56
+spend_fd8bd1eb51d4db48,4,Demo Western Services,West,France,2025,Facilities,Building maintenance,Demo Supplier 004,33134.95
+spend_d388ba1d1603a889,7,Demo Western Services,West,France,2025,Facilities,Cleaning and security,Demo Supplier 005,39582.97
+spend_28e1c5dba81408f2,5,Demo Western Services,West,France,2025,Facilities,Cleaning and security,Demo Supplier 006,17579.54
+spend_fb7f1d314b24dfbe,6,Demo Western Services,West,France,2025,Facilities,Cleaning and security,Demo Supplier 007,16030.87
+spend_48ef529a930e2451,5,Demo Western Services,West,France,2025,Facilities,Cleaning and security,Demo Supplier 008,15568.58
+spend_d978c743fe4419e3,1,Demo Western Services,West,France,2025,IT and telecom,Hardware,Demo Supplier 013,11708.96
+spend_e0c790de5f9c2549,5,Demo Western Services,West,France,2025,IT and telecom,Hardware,Demo Supplier 014,34056.49
+spend_27ad7f38bea3c6c0,1,Demo Western Services,West,France,2025,IT and telecom,Hardware,Demo Supplier 015,14188.89
+spend_afe122bff19b0844,3,Demo Western Services,West,France,2025,IT and telecom,Hardware,Demo Supplier 016,24208.48
+spend_84aea91cb7b0a51d,5,Demo Western Services,West,France,2025,IT and telecom,Software licensing,Demo Supplier 009,25114.16
+spend_8165b90d601dcbe6,7,Demo Western Services,West,France,2025,IT and telecom,Software licensing,Demo Supplier 010,19163.82
+spend_ee6bebdb9a69b7cd,5,Demo Western Services,West,France,2025,IT and telecom,Software licensing,Demo Supplier 011,28559.13
+spend_9888a1d7409c3aa0,3,Demo Western Services,West,France,2025,IT and telecom,Software licensing,Demo Supplier 012,18414.69
+spend_aff6c6f7e52c26e7,4,Demo Western Services,West,France,2025,IT and telecom,Telecommunications,Demo Supplier 017,18230.79
+spend_f1828bf4d1d7ad96,6,Demo Western Services,West,France,2025,IT and telecom,Telecommunications,Demo Supplier 018,28152.04
+spend_60d58600e91512e9,4,Demo Western Services,West,France,2025,IT and telecom,Telecommunications,Demo Supplier 019,25958.35
+spend_6e2ee7fa89907692,5,Demo Western Services,West,France,2025,Logistics,Freight and courier,Demo Supplier 021,63869.67
+spend_6e618cb9a222b6f1,4,Demo Western Services,West,France,2025,Logistics,Freight and courier,Demo Supplier 022,16060.91
+spend_f42325281b931f8a,5,Demo Western Services,West,France,2025,Logistics,Freight and courier,Demo Supplier 023,77421.88
+spend_84b165ec28db62a1,3,Demo Western Services,West,France,2025,Logistics,Freight and courier,Demo Supplier 024,45272.33
+spend_40f449c24dff3bf5,1,Demo Western Services,West,France,2025,Marketing,Advertising and media,Demo Supplier 045,1248.19
+spend_0940a5b130df0b72,5,Demo Western Services,West,France,2025,Marketing,Advertising and media,Demo Supplier 046,18189.02
+spend_1b148b26ec24d987,1,Demo Western Services,West,France,2025,Marketing,Advertising and media,Demo Supplier 047,8025.2
+spend_7f68771c18c80e2c,5,Demo Western Services,West,France,2025,Marketing,Advertising and media,Demo Supplier 048,24153.26
+spend_6b7d40826c75ba81,5,Demo Western Services,West,France,2025,Office,Office supplies,Demo Supplier 053,5071.15
+spend_c828ee891515f09e,6,Demo Western Services,West,France,2025,Office,Office supplies,Demo Supplier 054,11699.2
+spend_a1c244a299594ef9,3,Demo Western Services,West,France,2025,Office,Office supplies,Demo Supplier 055,2608.97
+spend_ca84c7995b8fe8ce,3,Demo Western Services,West,France,2025,Office,Office supplies,Demo Supplier 056,2610.86
+spend_d6160eaa82cf3c66,7,Demo Western Services,West,France,2025,People,Recruitment,Demo Supplier 033,33533.27
+spend_840dc4aa7c0de654,5,Demo Western Services,West,France,2025,People,Recruitment,Demo Supplier 034,19557.06
+spend_af9f272be22e8fd8,3,Demo Western Services,West,France,2025,People,Recruitment,Demo Supplier 035,13605.2
+spend_aec4951a5a10d18b,1,Demo Western Services,West,France,2025,People,Recruitment,Demo Supplier 036,3268.89
+spend_c9d79c915f22a874,1,Demo Western Services,West,France,2025,People,Temporary labour,Demo Supplier 041,10847.44
+spend_1c404eb5aedef422,3,Demo Western Services,West,France,2025,People,Temporary labour,Demo Supplier 042,21003.3
+spend_e273806d6df59814,5,Demo Western Services,West,France,2025,People,Temporary labour,Demo Supplier 043,30473.95
+spend_b5cd619641ce8a81,4,Demo Western Services,West,France,2025,People,Temporary labour,Demo Supplier 044,21443.06
+spend_538c9f79c3bd9942,5,Demo Western Services,West,France,2025,People,Training,Demo Supplier 037,5542.08
+spend_fb524b4d943d1365,3,Demo Western Services,West,France,2025,People,Training,Demo Supplier 038,5139.35
+spend_8f78568e3803dac5,2,Demo Western Services,West,France,2025,People,Training,Demo Supplier 039,4716.34
+spend_d682bd6879cdf9c5,1,Demo Western Services,West,France,2025,People,Training,Demo Supplier 040,4134.03
+spend_811651d70987605f,9,Demo Western Services,West,France,2025,Professional services,Consulting,Demo Supplier 025,132021.45
+spend_091f8053d8c4b4de,4,Demo Western Services,West,France,2025,Professional services,Consulting,Demo Supplier 026,43489.1
+spend_7a874d8ca50a9839,1,Demo Western Services,West,France,2025,Professional services,Consulting,Demo Supplier 027,14347.84
+spend_4e1d62600ef454f0,1,Demo Western Services,West,France,2025,Professional services,Consulting,Demo Supplier 028,17973.88
+spend_2d9eaf22efce2c0e,4,Demo Western Services,West,France,2025,Professional services,Legal and audit,Demo Supplier 030,68968.72
+spend_afa87aa4b4883216,1,Demo Western Services,West,France,2025,Professional services,Legal and audit,Demo Supplier 031,1692.45
+spend_1ee5adfa8ecb4f06,2,Demo Western Services,West,France,2025,Professional services,Legal and audit,Demo Supplier 032,11471.79
+spend_0146245dd9acd92b,3,Demo Western Services,West,France,2025,Utilities,Electricity and gas,Demo Supplier 049,22485.51
+spend_5b2cc5b5271b9a7a,4,Demo Western Services,West,France,2025,Utilities,Electricity and gas,Demo Supplier 050,43711.33
+spend_1bbd701747daa2f0,2,Demo Western Services,West,France,2025,Utilities,Electricity and gas,Demo Supplier 051,25734.68
+spend_0ec4d0e140922fae,4,Demo Western Services,West,France,2025,Utilities,Electricity and gas,Demo Supplier 052,22282.36
