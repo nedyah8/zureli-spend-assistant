@@ -42,36 +42,71 @@ def _millions_ticks(max_value: float, step: float = 500_000) -> tuple[list[float
     return tickvals, ticktext
 
 
+# Minimum share of a stacked bar's own total a segment needs before it gets
+# a direct value label. Per the dataviz skill's marks-and-anatomy.md: "Only
+# place a label inside a bar or stacked segment when the rendered text fits
+# with comfortable padding... for an interior stacked segment (which has no
+# free end), skip the inline label and let the legend + tooltip carry it" —
+# shrinking to fit (Plotly's constraintext="both", which reduces font size
+# but does NOT hide the label) is not the same thing and was the bug in the
+# previous round: a real segment found in the sample data (Hardware / Demo
+# Iberia Distribution at level="l2") is ~0.7% of its bar's width, which would
+# shrink a "2,075" label well past legibility rather than omit it. 5% is
+# roughly the narrowest a comma-formatted euro figure (typically 5-7
+# characters, e.g. "296,910") can render inside a segment at the chart's
+# default font size with visible padding on both sides; below that the
+# label is dropped for that segment only — Plotly's default hover (which
+# always includes each point's x value) and the legend still carry it.
+MIN_SEGMENT_LABEL_SHARE = 0.05
+
+
+def _segment_labels(values, totals) -> list[str]:
+    """Formatted value labels per category, "" for segments too narrow to
+    hold one (below MIN_SEGMENT_LABEL_SHARE of their bar's total, including
+    zero-value segments from the reindex fill_value=0)."""
+    labels = []
+    for category, value in values.items():
+        total = totals.get(category, 0)
+        if total > 0 and value > 0 and (value / total) >= MIN_SEGMENT_LABEL_SHARE:
+            labels.append(f"{value:,.0f}")
+        else:
+            labels.append("")
+    return labels
+
+
 def build_category_spend_figure(chart_df, year_label: int) -> go.Figure:
     categories = list(chart_df["category"].cat.categories)
     breakdown_values = sorted(chart_df["breakdown"].unique())
+    stack_totals = chart_df.groupby("category", observed=True)["net_spend"].sum()
 
     fig = go.Figure()
     for i, bval in enumerate(breakdown_values):
-        sub = chart_df[chart_df["breakdown"] == bval].set_index("category")
+        # Reindex only the net_spend series (not the whole sub-frame) over
+        # the full category list, so a missing category/breakdown
+        # combination fills with a numeric 0 rather than pandas trying to
+        # fill_value=0 into the (string-typed) breakdown column too.
+        sub = chart_df[chart_df["breakdown"] == bval].set_index("category")["net_spend"]
         sub = sub.reindex(categories, fill_value=0)
         display_name = str(bval).replace("Demo ", "")
         fig.add_trace(
             go.Bar(
                 y=categories,
-                x=sub["net_spend"],
+                x=sub,
                 name=display_name,
                 orientation="h",
                 marker_color=PALETTE[i % len(PALETTE)],
-                # Direct value labels on every segment — dataviz skill's
-                # marks-and-anatomy.md: "Bars -> value at the tip." Placed
-                # inside each segment (not "outside") so labels never spill
-                # into the next stacked segment; Plotly's default
-                # constraintext="both" shrinks/hides any label that doesn't
-                # fit its own segment, so nothing overflows or clips.
-                text=sub["net_spend"],
-                texttemplate="%{text:,.0f}",
+                # Direct value labels — dataviz skill's marks-and-anatomy.md:
+                # "Bars -> value at the tip." Pre-formatted per segment (not
+                # texttemplate) so segments below the fit threshold can carry
+                # an empty string instead of a shrunk, illegible number.
+                # "inside" (not "outside") because this is a *stacked* bar —
+                # an interior segment has no free end to place a label beyond.
+                text=_segment_labels(sub, stack_totals),
                 textposition="inside",
                 insidetextanchor="middle",
             )
         )
 
-    stack_totals = chart_df.groupby("category", observed=True)["net_spend"].sum()
     tickvals, ticktext = _millions_ticks(stack_totals.max() if not stack_totals.empty else 0)
 
     fig.update_layout(
