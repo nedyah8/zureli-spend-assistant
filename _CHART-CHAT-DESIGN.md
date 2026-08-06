@@ -155,6 +155,80 @@ The chart must read as InSight's chart, not a generic default:
   style (mirroring _DEMO-DESIGN.md's triage log), before it's shown beyond
   Hayden.
 
+## Codex review triage log (6 Aug 2026)
+
+Cross-family review run via `codex exec --skip-git-repo-check --sandbox
+read-only` against the full chart-in-chat feature (nl_parser.py,
+spend_query.py, chart_query.py, chart_render.py, app.py, tests/). Codex
+verified its own findings by actually executing code against the real
+`.venv` and real sample data, not just static reading — several findings
+were confirmed with minimal repros run live. The controller independently
+re-verified the most consequential claim (negative net-spend values are
+real, not hypothetical: 12 of 813 rows, min -7637.65) before triaging.
+
+- **Fixed (Important):** `chart_query.py` rounded each category/breakdown
+  segment before summing for the chart's displayed total, while
+  `query_spend()` sums raw rows once then rounds — a real rounding-order
+  divergence (repro: two 0.014 rows give 0.02 rounded-per-group vs 0.03
+  summed-then-rounded). Fixed by returning unrounded values from
+  `category_spend()` and rounding once, after summing, in `app.py`.
+- **Fixed (Important):** `category_spend()`'s groupby used pandas' default
+  `dropna=True`, silently excluding any row with a null category/breakdown
+  value from the chart while `query_spend()` includes every matched row.
+  Not reachable with the current sample data (verified: zero nulls in the
+  relevant columns), but a real gap against the "chart must never disagree
+  with query_spend" guarantee. Fixed with `.fillna("(unspecified)")` before
+  grouping.
+- **Fixed (Important):** negative `Net spend` values (real in the sample
+  data, 12 of 813 rows) were mishandled in `chart_render.py` — tick
+  generation only built non-negative ticks, and value labels were
+  blanket-suppressed for any segment `<= 0` regardless of size. Fixed:
+  ticks now span the real min-to-max range including negative territory;
+  label suppression is now based on a segment's absolute-value share of its
+  bar's absolute total, so a materially-sized negative segment gets a
+  correctly-signed label and only genuinely narrow segments (either sign)
+  are suppressed.
+- **Fixed (Important):** breakdown-by-country/cluster keyword detection in
+  `nl_parser.py` only matched "by country"/"per country" style phrasing —
+  "country breakdown of category spend for 2024" and "show spend breakdown
+  for each country in 2024" both silently fell back to the entity default
+  with no indication anything was ignored. Fixed by broadening the keyword
+  lists ("country breakdown", "each country", "cluster breakdown", "each
+  cluster") in the existing substring-matching style.
+- **Fixed (Important):** `"compare"` was included in `CHART_KEYWORDS`
+  (added during the original build), but `_extract_filters()` only ever
+  keeps the first matching entity — "compare Alpine Operations and UK
+  Operations in 2024" silently produced a chart for one entity only, with
+  nothing indicating the comparison was dropped. True multi-entity
+  comparison is out of scope for this phase (the whole filter model is
+  single-value-per-dimension). Fixed by removing `"compare"` from
+  `CHART_KEYWORDS` rather than silently mishandling it — a "compare X and
+  Y" question now falls through to the pre-existing number-intent path
+  (unaffected by this feature) instead of falsely appearing to compare.
+- **Accepted as a documented limitation, not fixed:** unrecognised years
+  (e.g. "2099") are silently dropped from the filters rather than producing
+  an explicit "I don't recognise that year" message — this was flagged
+  independently three times during the build (Task 3, Task 6, and this
+  Codex review) and is consistent with the rule-based parser's own
+  disclosed limitation (no synonym/paraphrase understanding). Fixing it
+  properly would mean detecting "this looks like a year but isn't one we
+  know" as a distinct signal, a real change to the parser's matching
+  architecture, not a bug fix — left as an explicit open item for a future
+  phase rather than folded in here.
+- **Accepted as a documented limitation, not fixed:** category-level
+  keyword detection doesn't recognise "l2", "level two", or "subcategories"
+  — Minor, same disclosed-limitation category as above.
+- **Accepted as a deliberate simplification, not fixed:** chart bar value
+  labels round to whole numbers while the text-answer totals show cents —
+  Codex's own assessment agreed this is a reasonable visual simplification
+  (a chart label needs to stay compact; the exact figure is always in the
+  caption and the underlying data).
+
+All 5 fixes independently re-verified by a second reviewer pass (direct
+repros, a full sweep of every level/breakdown/year combination on the real
+813-row dataset for divergence, additional edge cases beyond the
+implementer's own tests) before being accepted — 41/41 tests passing.
+
 ## Explicitly unresolved (unchanged)
 
 - No ANTHROPIC_API_KEY on this machine — parsing stays rule-based; the
