@@ -99,6 +99,99 @@ No parsing/aggregation logic touched — visual/config only.
   bug — confirmed via direct DOM inspection). Hayden should still functionally
   test it himself by typing in a real browser before the meeting.
 
+## Phase 1: Category spend chart (6 Aug 2026)
+Built and verified: a plain-English question about category spend can now
+return the same horizontal stacked bar chart the InSight demo shows, inline
+in the chat, instead of only a text number. Full design record:
+`_CHART-CHAT-DESIGN.md` (includes the Codex review triage log in full).
+
+**What was built.** Two new modules plus extensions to the existing three:
+- `chart_query.py` (new) — deterministic pandas aggregation only. Filters
+  the data using `spend_query.py`'s shared filter logic (not duplicated),
+  groups by category × breakdown dimension (entity/country/cluster), sums
+  net spend, sorts categories descending. No AI in this layer, so a chart
+  can never contain an invented number.
+- `chart_render.py` (new) — builds the Plotly horizontal stacked bar figure
+  from that dataframe: € axis tick formatting, bar value labels with
+  narrow-segment suppression, "Demo " stripped from legend entries.
+- `nl_parser.py` (extended) — `parse_question` now also detects chart intent
+  (chart/graph/plot/bar/breakdown/visualise/"show me ... by"/split), the
+  breakdown dimension (entity default, or country/cluster), and category
+  level (L1 default, L2 on request), alongside its existing filter
+  extraction. Non-chart questions are unaffected — regression-tested.
+- `spend_query.py` (extended) — filter logic extracted into a shared
+  `filter_df` function so the chart path and the existing number path use
+  the identical filtering, not two copies that could drift.
+- `app.py` (extended) — wires the chart payload into the chat stream via
+  `st.plotly_chart`, with the matched-filters caption and total shown as
+  text above the figure so the exchange still reads as an answer.
+
+**Dependencies.** Added to `requirements.txt`: `pytest==9.1.1` and
+`plotly==6.9.0`. Plotly was chosen for first-class Streamlit support and
+built-in interactive horizontal stacked bars with hover tooltips, matching
+the behaviour observed live in the InSight demo, with no extra system
+dependencies.
+
+**Tests.** 41 passed (verified by running `pytest -q` directly, not assumed
+from an earlier report) — 32 from the main build (Tasks 1–7: aggregation
+correctness, chart-intent parsing, render logic, regression coverage for
+the pre-existing number path, adversarial edge cases) plus 9 added during
+the Codex fix round (Task 9) to cover the fixed findings and lock in the
+rounding/null/negative-value behaviour going forward.
+
+**Real browser verification (Task 8, high-stakes tier — this is demo
+material for Zureli higher-ups).** All 4 chart cases (default all-years
+chart, filtered to Germany/2024, breakdown-by-country, a zero-match
+question) were checked for data correctness via `get_page_text` against the
+rendered page, plus one full screenshot of the default chart to confirm
+visual correctness itself — not just the numbers behind it — which showed
+stacked bars, categories sorted descending, correct 0M–3M € axis ticks,
+"Demo " stripped from the legend, and narrow-segment label suppression
+visibly working in the actual render. A regression pass ran all 4
+pre-existing number/caveat questions through `get_page_text` and confirmed
+the answers were byte-identical to their pre-feature values (192,988.04 and
+1,267,819.75) — the chart feature changed nothing about the existing number
+path. A separate clean empty-state screenshot was also taken. Browser
+automation typing directly into the live `st.chat_input` was unreliable
+this session — a tool limitation (confirmed via DOM inspection), not an app
+bug — so a temporary debug query-param seed was used to drive the test
+questions through the app and was fully removed afterward, confirmed by an
+empty `git diff` after a final restart.
+
+**Codex cross-family review (Task 9).** Run via `codex exec
+--skip-git-repo-check --sandbox read-only` against the full feature
+(`nl_parser.py`, `spend_query.py`, `chart_query.py`, `chart_render.py`,
+`app.py`, `tests/`), with findings verified by Codex actually executing
+code against the real `.venv` and real sample data, not just static
+reading. Found 5 Important findings, all fixed in one round and
+independently re-verified by a second reviewer pass: a rounding-order
+divergence between the chart's per-group rounding and the existing
+sum-then-round number path; the chart's groupby silently dropping any row
+with a null category/breakdown value (not reachable with the current data,
+but a real gap against the "chart must never disagree with the number
+answer" guarantee); negative net-spend values (real in the sample data — 12
+of 813 rows) being mishandled in axis tick generation and label
+suppression; breakdown-by-country/cluster keyword matching missing common
+phrasings like "country breakdown"/"each country"; and `"compare"` being
+treated as a chart-triggering keyword when the underlying filter model can
+only ever hold one value per dimension, silently dropping one side of any
+comparison — fixed by removing `"compare"` from the chart keywords so those
+questions fall through to the existing number path instead of falsely
+appearing to compare. 3 Minor findings were accepted as documented
+limitations rather than fixed: unrecognised years (e.g. "2099") are
+silently dropped rather than flagged; "l2"/"level two"/"subcategories"
+aren't recognised as category-level keywords; and chart bar labels round to
+whole numbers while text-answer totals show cents. Full detail and
+reasoning for each: `_CHART-CHAT-DESIGN.md`'s "Codex review triage log"
+section.
+
+**Explicitly deferred — not started.** This phase covered category spend
+only. Per the sequencing Hayden confirmed, three more InSight views remain
+entirely unbuilt: Phase 2 (Top suppliers chart), Phase 3 (Fragmentation
+bubble chart), and Phase 4 (Overview KPI cards) — in that order, each to go
+through its own design-and-build pass after this one, not folded into this
+handoff.
+
 ## Next steps
 - Show this prototype at/before the data scientist meeting as a concrete
   demo rather than a blank question list.
@@ -106,6 +199,8 @@ No parsing/aggregation logic touched — visual/config only.
   actually confirmed about the real InSight data.
 - Decide on the LLM upgrade once there's a reason to (API key + real
   questions to test against).
+- Phases 2–4 (Top suppliers, Fragmentation, Overview KPIs) once Phase 1 has
+  been shown and Hayden confirms the next priority.
 
 ## How to run it
 ```

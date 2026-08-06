@@ -29,3 +29,13 @@ this project — check them before making changes here.
    feature, which is a materially different build. Do not extend this
    prototype toward a real deployment without a fresh design pass covering
    those concerns first.
+
+5. **Any future visual/chart work on this project must go through the
+   `dataviz` and `interface-polish` skills.** Set by `_CHART-CHAT-DESIGN.md`'s
+   build-process requirement (itself sourced from the websites-project
+   research on avoiding generic AI output). Use the `dataviz` skill for chart
+   styling — palette, typography, mark choices — on any new chart (Top
+   suppliers, Fragmentation, Overview KPIs, or any other visual added later),
+   and the `interface-polish` skill for the surrounding chat UI whenever it
+   changes. Name each skill explicitly when it's invoked, in the same turn —
+   never apply either silently.
