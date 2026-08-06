@@ -164,30 +164,50 @@ def render_payload(container, payload: dict) -> None:
 # tests/test_app_answer.py::test_multi_turn_chat_does_not_crash (AppTest,
 # scripts two chat turns and asserts no exception either time).
 
+PLACEHOLDER = "What was our IT and telecom spend for Alpine Operations in 2024?"
+
 if not st.session_state.messages:
+    # Empty state: a centered "hero" layout, matching the home screen of the
+    # chat products this is modelled on (Claude, ChatGPT, Manus) — a large
+    # heading with the input directly beneath it, roughly centered in the
+    # viewport, rather than pinned to the bottom of an empty page.
+    #
+    # st.chat_input() only pins to the page bottom when called at the root
+    # level with no wrapping container (confirmed against the installed
+    # Streamlit source, elements/widgets/chat.py) — nested inside
+    # st.container(), it renders inline instead, wherever that container
+    # sits in the page flow. That's what makes this layout possible at all.
     st.markdown(
-        f"<div style='text-align:center;padding:40px 0 32px;'>"
-        f"<p style='font-size:32px;font-weight:700;color:{BRAND};margin:0;"
+        f"<div style='text-align:center;padding:18vh 0 32px;'>"
+        f"<p style='font-size:44px;font-weight:700;color:{BRAND};margin:0;"
         f"letter-spacing:-0.01em;'>Ask about your spend</p></div>",
         unsafe_allow_html=True,
     )
+    with st.container():
+        prompt = st.chat_input(PLACEHOLDER)
+else:
+    # Conversation state: full history, input pinned to the bottom — the
+    # standard chat layout once there's something to scroll.
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"], avatar=AVATARS[message["role"]]):
+            if message.get("payload"):
+                render_payload(st, message["payload"])
+            else:
+                st.markdown(message["content"])
+    prompt = st.chat_input(PLACEHOLDER)
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"], avatar=AVATARS[message["role"]]):
-        if message.get("payload"):
-            render_payload(st, message["payload"])
-        else:
-            st.markdown(message["content"])
-
-prompt = st.chat_input("What was our IT and telecom spend for Alpine Operations in 2024?")
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt, "payload": None})
-    with st.chat_message("user", avatar=AVATARS["user"]):
-        st.markdown(prompt)
-
     payload = answer_payload(prompt)
     st.session_state.messages.append(
         {"role": "assistant", "content": payload["text"], "payload": payload}
     )
-    with st.chat_message("assistant", avatar=AVATARS["assistant"]):
-        render_payload(st, payload)
+    # Rerun rather than render the new exchange inline here: on the very
+    # first message, this branch was reached via the empty-state layout
+    # above (centered heading + centered input) — rendering the exchange
+    # directly below that would leave the centered layout stuck on screen
+    # underneath a real conversation. Rerunning re-executes the script with
+    # messages now non-empty, so it takes the conversation-state branch
+    # instead and renders cleanly (history loop + bottom-pinned input) —
+    # confirmed via a real two-question run in the browser, not assumed.
+    st.rerun()
