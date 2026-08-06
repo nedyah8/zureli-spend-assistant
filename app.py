@@ -73,7 +73,12 @@ def format_filters(filters: dict) -> str:
 
 
 def answer(question: str) -> str:
-    filters = parse_question(question, kv)
+    parsed = parse_question(question, kv)
+    filters = parsed["filters"]
+
+    if parsed["intent"] == "chart":
+        return "[[chart]] placeholder — rendered as a real chart in Task 6"
+
     result = query_spend(df, **filters)
     total = f"{result['total_net_spend']:,.2f}"
 
