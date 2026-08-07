@@ -628,6 +628,60 @@ debug artifacts in any screenshot.
 - Decide on the LLM upgrade once there's a reason to (API key + real
   questions to test against).
 
+## Phrasing bug found by Hayden's own testing (7 Aug 2026) — and the testing gap behind it
+
+Hayden typed "Show me a bar chart of the spend profile by category" and
+"...by entity" in the browser and got the comparison TABLE both times, with
+the breakdown dimension silently dropped on the second.
+
+Root cause in the code: `"spend profile"` is a `category_comparison`
+keyword, checked *before* the chart keywords, so an explicit "bar chart"
+request was ignored entirely.
+
+Root cause behind that, which matters more: **every prior test, and the
+Task 14 InSight parity checklist, exercised exactly one canonical phrasing
+per view — the phrasing that view's own keyword was written for.** That
+proves a keyword matches itself. It never proved a real client's wording
+lands on the right view. The parity checklist passing 9/9 was therefore
+weaker evidence than it appeared, and the "everything is tested" claim made
+off the back of it was wrong.
+
+Fixed by a general rule rather than a patch: an explicit output-format word
+("bar chart", "chart", "graph", "plot", or "table") now beats an inferred
+view type, in both directions — a chart word routes a table-only view to
+its chart equivalent, and "table of category spend" routes to the
+comparison table. Also added the plain-English year-over-year phrasings
+("vs last year", "year on year", "yoy") that previously matched nothing and
+dead-ended on the overview fallback.
+
+`tests/test_phrasing_matrix.py` (new, 61 cases) exists to keep this class of
+gap closed: every view, several natural phrasings each including at least
+one that does NOT contain the literal keyword, plus per-view assertions that
+the answer actually renders a figure or table rather than merely parsing to
+the right label. **14 of its cases failed before the fix.** When a view or
+keyword is added, add its phrasings there too.
+
+Suite: 231 passing (was 170).
+
+## Deployment (7 Aug 2026)
+
+Code is pushed to **https://github.com/nedyah8/zureli-spend-assistant**
+(private). `requirements.txt` was trimmed to runtime-only and pinned to the
+exact versions the suite ran against — `anthropic` was removed (never
+imported; there is no API key and parsing is rule-based) and `pytest` moved
+to `requirements-dev.txt`.
+
+Verified before handing over, rather than assumed: a fresh `git clone` into
+a clean virtualenv installing only `requirements.txt` boots the app with no
+errors and answers questions correctly — i.e. a real simulation of what
+Streamlit Community Cloud does on deploy.
+
+Remaining step is Hayden's, because it needs a sign-in: at
+share.streamlit.io, sign in with GitHub, "Create app" → pick the
+`zureli-spend-assistant` repo, branch `main`, main file `app.py`, deploy.
+A private repo needs Streamlit granted repo access during sign-in; flipping
+the repo to public removes that step if the extra permission is unwanted.
+
 ## How to run it
 ```
 cd "5. AI Chatbot"
