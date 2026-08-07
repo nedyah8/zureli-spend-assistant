@@ -343,3 +343,12 @@ def entity_category_intensity(df: pd.DataFrame, level: str = "l1", **filters) ->
         .reset_index()
         .rename(columns={"Entity": "entity", category_col: "category", "Net spend": "net_spend"})
     )
+
+
+def raw_filtered_rows(df: pd.DataFrame, **filters) -> pd.DataFrame:
+    """The exact filtered rows for the given scope, unaggregated — the
+    InSight demo's "More" tab ("Filtered supplier-year rows"). For a
+    client who wants to see the underlying rows behind a number, not just
+    the number itself.
+    """
+    return filter_df(df, **filters).copy()

@@ -110,6 +110,11 @@ INTENSITY_KEYWORDS = (
     "which entities spend most",
 )
 
+RAW_DATA_KEYWORDS = (
+    "raw data", "underlying data", "raw rows", "show me the data",
+    "export the data", "download the data", "see the data",
+)
+
 
 def _extract_filters(q: str, known: dict[str, list]) -> dict:
     filters: dict[str, object] = {}
@@ -210,6 +215,13 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
         return {
             "intent": "chart", "chart_kind": "intensity",
             "breakdown": None, "category_level": category_level,
+            "top_n": None, "filters": filters,
+        }
+
+    if any(kw in q for kw in RAW_DATA_KEYWORDS):
+        return {
+            "intent": "chart", "chart_kind": "raw_data",
+            "breakdown": None, "category_level": None,
             "top_n": None, "filters": filters,
         }
 

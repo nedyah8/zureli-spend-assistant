@@ -396,3 +396,19 @@ def test_category_comparison_no_current_year_rows_returns_empty_not_crash():
     assert list(comparison_df.columns) == [
         "category", "spend_current", "spend_prior", "change", "change_pct", "share_pct",
     ]
+
+
+from chart_query import raw_filtered_rows
+
+
+def test_raw_filtered_rows_row_count_matches_query_spend():
+    df = load_data()
+    rows_df = raw_filtered_rows(df, year=2024)
+    reference = query_spend(df, year=2024)
+    assert len(rows_df) == reference["row_count"]
+
+
+def test_raw_filtered_rows_returns_unaggregated_columns():
+    df = load_data()
+    rows_df = raw_filtered_rows(df, year=2024)
+    assert set(rows_df.columns) == set(df.columns)

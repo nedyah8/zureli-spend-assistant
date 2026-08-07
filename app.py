@@ -12,6 +12,7 @@ from chart_query import overall_concentration
 from chart_render import build_concentration_figure
 from chart_query import category_comparison, entity_category_intensity
 from chart_render import build_intensity_heatmap
+from chart_query import raw_filtered_rows
 from nl_parser import parse_question
 from overview_query import overview
 from spend_query import filter_df, known_values, load_data, query_spend
@@ -344,6 +345,31 @@ def answer_payload(question: str) -> dict:
                 "figure": fig, "caption": caption, "show_chips": False,
             }
 
+        if chart_kind == "raw_data":
+            rows_df = raw_filtered_rows(df, **filters)
+            if rows_df.empty:
+                return {
+                    "kind": "text",
+                    "text": f"I didn't find any rows matching that — {format_filters(filters)} returned no rows.",
+                    "figure": None, "caption": None, "show_chips": False,
+                }
+            display_df = rows_df.copy()
+            display_df["Entity"] = display_df["Entity"].str.replace("Demo ", "", regex=False)
+            display_df["Supplier name"] = display_df["Supplier name"].str.replace("Demo ", "", regex=False)
+            total_rows = len(display_df)
+            preview = display_df.head(RAW_DATA_PREVIEW_LIMIT)
+            truncated_note = (
+                f" (showing first {RAW_DATA_PREVIEW_LIMIT} of {total_rows})"
+                if total_rows > RAW_DATA_PREVIEW_LIMIT else ""
+            )
+            filter_text = format_filters(filters) if filters else "all data"
+            text = f"Raw spend rows for {filter_text}{truncated_note}."
+            csv_bytes = display_df.to_csv(index=False).encode("utf-8")
+            return {
+                "kind": "raw_data", "text": text, "table": preview,
+                "csv_bytes": csv_bytes, "show_chips": False,
+            }
+
         # Default an unfiltered chart question to the latest year present in
         # the data, applied as a REAL filter passed into category_spend() —
         # not just a display label. This restores _CHART-CHAT-DESIGN.md's
@@ -417,7 +443,7 @@ def answer(question: str) -> str:
     return answer_payload(question)["text"]
 
 
-def render_payload(container, payload: dict) -> None:
+def render_payload(container, payload: dict, key_suffix: str = "x") -> None:
     container.markdown(payload["text"])
     if payload["kind"] == "chart":
         container.plotly_chart(payload["figure"], use_container_width=True)
@@ -437,6 +463,13 @@ def render_payload(container, payload: dict) -> None:
         container.caption(payload["caption"])
     elif payload["kind"] == "category_comparison":
         container.dataframe(payload["table"], hide_index=True, use_container_width=True)
+    elif payload["kind"] == "raw_data":
+        container.dataframe(payload["table"], hide_index=True, use_container_width=True)
+        container.download_button(
+            "Download filtered CSV", data=payload["csv_bytes"],
+            file_name="filtered_spend.csv", mime="text/csv",
+            key=f"download_{key_suffix}",
+        )
 
 
 # render_payload must be defined above this point: Streamlit re-executes the
@@ -450,6 +483,8 @@ def render_payload(container, payload: dict) -> None:
 # scripts two chat turns and asserts no exception either time).
 
 PLACEHOLDER = "What was our IT and telecom spend for Alpine Operations in 2024?"
+
+RAW_DATA_PREVIEW_LIMIT = 50
 
 SUGGESTION_CHIPS = [
     "Give me an overview",
@@ -551,7 +586,7 @@ else:
     for i, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"], avatar=AVATARS[message["role"]]):
             if message.get("payload"):
-                render_payload(st, message["payload"])
+                render_payload(st, message["payload"], key_suffix=str(i))
             else:
                 st.markdown(message["content"])
         if i == last_index and message["role"] == "assistant" and message.get("payload", {}).get("show_chips") and not prompt:

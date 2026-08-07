@@ -326,3 +326,19 @@ def test_intensity_question_returns_chart_payload():
     payload = app.answer_payload("show me spend intensity by entity and category")
     assert payload["kind"] == "chart"
     assert "€" in payload["caption"]
+
+
+def test_raw_data_question_returns_table_payload():
+    app = _reload_app()
+    payload = app.answer_payload("show me the raw data for Germany in 2024")
+    assert payload["kind"] == "raw_data"
+    assert "table" in payload
+    assert "csv_bytes" in payload
+
+
+def test_raw_data_preview_caps_at_50_rows_and_notes_truncation():
+    app = _reload_app()
+    payload = app.answer_payload("show me the raw data")
+    assert len(payload["table"]) <= 50
+    if len(app.df) > 50:
+        assert "50" in payload["text"]

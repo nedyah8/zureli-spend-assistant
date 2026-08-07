@@ -321,3 +321,16 @@ def test_intensity_keyword_triggers_chart_intent():
 def test_heatmap_keyword_detected():
     result = parse_question("heatmap of spend", KV)
     assert result["chart_kind"] == "intensity"
+
+
+def test_raw_data_keyword_triggers_chart_intent():
+    result = parse_question("show me the raw data for Germany in 2024", KV)
+    assert result["intent"] == "chart"
+    assert result["chart_kind"] == "raw_data"
+    assert result["filters"]["country"] == "Germany"
+    assert result["filters"]["year"] == 2024
+
+
+def test_export_data_phrase_detected():
+    result = parse_question("export the data", KV)
+    assert result["chart_kind"] == "raw_data"
