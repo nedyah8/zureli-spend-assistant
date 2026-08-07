@@ -111,7 +111,30 @@ CATEGORY_COMPARISON_KEYWORDS = (
     "category comparison", "compare categories", "category spend comparison",
     "compare category spend", "year over year by category", "yoy by category",
     "spend profile",
+    # Added 7 Aug 2026 (phrasing-matrix pass): a year-over-year question is
+    # far more often phrased as a comparison in plain English than by the
+    # word "comparison" itself. Without these, "how did category spend
+    # change vs last year" matched nothing and fell through to the overview
+    # fallback — a dead-end on a question this view answers directly.
+    "vs last year", "versus last year", "compared to last year",
+    "year on year", "yoy",
 )
+
+# Words where the user explicitly names the OUTPUT FORMAT they want, rather
+# than the view. An explicit format request BEATS an inferred view type:
+# someone who types "bar chart of the spend profile" has named a chart in
+# the clearest possible terms, and handing them a table instead ignores the
+# strongest signal in their question.
+#
+# Found by Hayden's own manual testing, 7 Aug 2026 — every automated pass in
+# this project missed it because each view was only ever tested with the one
+# canonical phrasing its keyword was written for. "Show me a bar chart of the
+# spend profile by category" hit the "spend profile" keyword above (checked
+# before the chart keywords) and returned the comparison TABLE, and the
+# by-entity variant returned that same table with the breakdown dropped.
+# tests/test_phrasing_matrix.py exists to keep that class of gap closed.
+EXPLICIT_CHART_PATTERN = re.compile(r"\b(bar chart|bar graph|chart|graph|plot|visuali[sz]e)\b")
+EXPLICIT_TABLE_PATTERN = re.compile(r"\btable\b")
 
 INTENSITY_KEYWORDS = (
     "intensity", "heatmap", "heat map", "entity category breakdown",
@@ -210,7 +233,25 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
             "top_n": None, "filters": filters,
         }
 
-    if any(kw in q for kw in CATEGORY_COMPARISON_KEYWORDS) or ("compare" in q and "categor" in q):
+    # Explicit output-format preference, used by the two table-only views
+    # below (category_comparison and raw_data) to step aside when the user
+    # actually asked for a chart. Saying both ("a chart and a table") or
+    # neither leaves the view's own keyword in charge, unchanged.
+    wants_chart = bool(EXPLICIT_CHART_PATTERN.search(q)) or bool(BAR_PATTERN.search(q))
+    wants_table = bool(EXPLICIT_TABLE_PATTERN.search(q))
+    prefers_chart = wants_chart and not wants_table
+    prefers_table = wants_table and not wants_chart
+
+    matches_comparison = (
+        any(kw in q for kw in CATEGORY_COMPARISON_KEYWORDS)
+        or ("compare" in q and "categor" in q)
+        # The symmetric case: "show me a table of category spend" names the
+        # format explicitly too, and the comparison table IS this app's
+        # category table — without this it matched no view at all and
+        # dead-ended on the overview fallback.
+        or (prefers_table and "categor" in q)
+    )
+    if matches_comparison and not prefers_chart:
         category_level = "l2" if any(kw in q for kw in LEVEL_2_KEYWORDS) else "l1"
         return {
             "intent": "chart", "chart_kind": "category_comparison",
@@ -226,7 +267,10 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
             "top_n": None, "filters": filters,
         }
 
-    if any(kw in q for kw in RAW_DATA_KEYWORDS):
+    # raw_data is the other table-only view, so it steps aside for an
+    # explicit chart request the same way category_comparison does above —
+    # "chart the underlying data" is a request to see it plotted, not dumped.
+    if any(kw in q for kw in RAW_DATA_KEYWORDS) and not prefers_chart:
         return {
             "intent": "chart", "chart_kind": "raw_data",
             "breakdown": None, "category_level": None,

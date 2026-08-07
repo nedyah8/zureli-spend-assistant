@@ -569,7 +569,7 @@ def answer(question: str) -> str:
 def render_payload(container, payload: dict, key_suffix: str = "x") -> None:
     container.markdown(payload["text"])
     if payload["kind"] == "chart":
-        container.plotly_chart(payload["figure"], use_container_width=True)
+        container.plotly_chart(payload["figure"], use_container_width=True, key=f"chart_{key_suffix}")
         container.caption(payload["caption"])
     elif payload["kind"] == "overview":
         render_kpi_row(container, payload["metrics"])
@@ -577,11 +577,15 @@ def render_payload(container, payload: dict, key_suffix: str = "x") -> None:
     elif payload["kind"] == "supplier_drilldown":
         render_kpi_row(container, payload["metrics"])
         fig_cols = container.columns(2)
-        fig_cols[0].plotly_chart(payload["entity_figure"], use_container_width=True)
-        fig_cols[1].plotly_chart(payload["category_figure"], use_container_width=True)
+        fig_cols[0].plotly_chart(
+            payload["entity_figure"], use_container_width=True, key=f"chart_{key_suffix}_entity"
+        )
+        fig_cols[1].plotly_chart(
+            payload["category_figure"], use_container_width=True, key=f"chart_{key_suffix}_category"
+        )
     elif payload["kind"] == "fragmentation":
         render_kpi_row(container, payload["metrics"])
-        container.plotly_chart(payload["figure"], use_container_width=True)
+        container.plotly_chart(payload["figure"], use_container_width=True, key=f"chart_{key_suffix}")
         container.dataframe(payload["table"], hide_index=True, use_container_width=True)
         container.caption(payload["caption"])
     elif payload["kind"] == "category_comparison":

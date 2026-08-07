@@ -377,6 +377,30 @@ def test_two_raw_data_payloads_in_history_get_distinct_download_button_keys():
     assert len(set(keys)) == 2, f"expected distinct keys, got {keys}"
 
 
+def test_two_chart_payloads_in_history_do_not_raise_duplicate_element_id():
+    # Caught live by real manual testing (not by any automated pass in this
+    # project's build): render_payload()'s plotly_chart calls never got the
+    # same key_suffix treatment the download_button fix (Task 12) applied.
+    # Streamlit assigns each st.plotly_chart(...) call an auto-generated
+    # element ID from its type + parameters; two calls with the same figure
+    # content in the same script run collide and raise
+    # StreamlitDuplicateElementId. A single chart question never exercises
+    # this — the risk only appears once a SECOND chart answer with the same
+    # underlying figure lands in session_state.messages and the history-
+    # replay loop renders both in the same pass (the same shape of bug as
+    # test_two_raw_data_payloads_in_history_get_distinct_download_button_keys
+    # above, for a different widget type entirely).
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    assert not at.exception
+
+    at.chat_input[0].set_value("show me a bar chart of category spend").run()
+    assert not at.exception
+
+    at.chat_input[0].set_value("show me a bar chart of category spend").run()
+    assert not at.exception
+
+
 def test_fragmentation_suppliers_in_scope_kpi_matches_table_with_null_supplier(monkeypatch):
     # Final whole-branch review Finding 2: fragmentation()'s own by_supplier
     # groupby (chart_query.py) already fills null Supplier name with
