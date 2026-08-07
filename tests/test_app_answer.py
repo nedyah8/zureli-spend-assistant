@@ -223,3 +223,33 @@ def test_help_intent_returns_text_with_chips():
     payload = app.answer_payload("what can you do")
     assert payload["kind"] == "text"
     assert payload["show_chips"] is True
+
+
+def test_suggestion_chips_present_on_empty_state():
+    # Confirmed against the installed Streamlit build: AppTest exposes
+    # st.pills widgets via `at.pills` (a WidgetList), NOT `at.get("pills")`
+    # (which returns empty) — verified directly with a throwaway AppTest
+    # script before writing this test, not assumed from the chat_input
+    # precedent elsewhere in this file.
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    assert not at.exception
+    assert len(at.pills) == 1
+    assert at.pills[0].options == [
+        "Give me an overview",
+        "Show me a bar chart of category spend",
+        "Who are our top suppliers?",
+    ]
+
+
+def test_clicking_a_chip_submits_it_as_a_question():
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.pills[0].set_value("Give me an overview").run()
+    assert not at.exception
+    assert len(at.session_state.messages) == 2
+    assert at.session_state.messages[0]["content"] == "Give me an overview"

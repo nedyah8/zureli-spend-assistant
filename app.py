@@ -251,6 +251,43 @@ def render_payload(container, payload: dict) -> None:
 
 PLACEHOLDER = "What was our IT and telecom spend for Alpine Operations in 2024?"
 
+SUGGESTION_CHIPS = [
+    "Give me an overview",
+    "Show me a bar chart of category spend",
+    "Who are our top suppliers?",
+]
+
+
+def render_chips(container, key_suffix: str) -> None:
+    selection = container.pills(
+        "Suggested questions",
+        SUGGESTION_CHIPS,
+        selection_mode="single",
+        label_visibility="collapsed",
+        key=f"chips_{key_suffix}",
+    )
+    if selection:
+        st.session_state.pending_question = selection
+        # Deviation from the brief's verbatim code: st.pills's selection
+        # persists in session_state (keyed by chips_{key_suffix}) across the
+        # st.rerun() below, exactly like any other Streamlit selection
+        # widget. Without clearing it here, the very next script pass reads
+        # the same selection again, re-sets pending_question, and calls
+        # st.rerun() again — an infinite rerun loop. Confirmed directly: a
+        # throwaway AppTest script using the brief's original two-line body
+        # (set pending_question, st.rerun()) hung until AppTest's own
+        # timeout: session_state still held chips_empty at that point,
+        # proving the widget's value was never consumed. Deleting the
+        # widget's own key resets it to unselected before the next pass
+        # recreates it, breaking the loop; re-ran the same throwaway script
+        # with this fix and confirmed it completes and submits the
+        # question correctly.
+        del st.session_state[f"chips_{key_suffix}"]
+        st.rerun()
+
+
+pending = st.session_state.pop("pending_question", None)
+
 if not st.session_state.messages:
     # Empty state: a centered "hero" layout, matching the home screen of the
     # chat products this is modelled on (Claude, ChatGPT, Manus) — a large
@@ -269,17 +306,56 @@ if not st.session_state.messages:
         unsafe_allow_html=True,
     )
     with st.container():
-        prompt = st.chat_input(PLACEHOLDER)
+        typed = st.chat_input(PLACEHOLDER)
+    prompt = pending or typed
+    if not prompt:
+        # Second deviation from the brief's verbatim wiring: only render the
+        # empty-state chips when nothing is about to be submitted this pass.
+        # Reason: on a normal first message (typed into chat_input, not
+        # clicked), the original unconditional call rendered chips_empty in
+        # the SAME script pass that also appends the message and calls
+        # st.rerun() below — a keyed widget created and then immediately
+        # orphaned by that rerun. AppTest's tree reconstruction does not
+        # clean up that stale node, so the next simulated interaction fails
+        # with "st.session_state has no key 'chips_empty'" once Streamlit's
+        # own real state garbage-collects it. Confirmed directly: the
+        # pre-existing test_multi_turn_chat_does_not_crash_on_rerun (typed
+        # submissions, no chip involved) broke with exactly this KeyError
+        # under the brief's original unconditional render_chips call, and
+        # passed once chip rendering was gated on "nothing is being
+        # submitted this pass" — re-ran both that test and the two new chip
+        # tests against the fix to confirm all three pass together.
+        render_chips(st, key_suffix="empty")
 else:
     # Conversation state: full history, input pinned to the bottom — the
-    # standard chat layout once there's something to scroll.
-    for message in st.session_state.messages:
+    # standard chat layout once there's something to scroll. Suggestion
+    # chips only reappear here after the LAST message, and only when that
+    # message's payload asked for them (overview-fallback or help answers,
+    # A3/A2) — showing them after every past occurrence in history would
+    # clutter the conversation with stale, already-acted-on suggestions.
+    # typed/prompt are resolved BEFORE the history loop below, not after
+    # (third deviation from the brief's verbatim wiring, same root cause as
+    # the empty-state one above): if a user types a follow-up question right
+    # after an overview/help answer whose chips are showing, the history
+    # loop's render_chips(str(last_index)) call would otherwise still fire
+    # in that same pass, orphaning that keyed pills widget the instant the
+    # append+rerun below fires. Confirmed directly: a throwaway AppTest
+    # script scripting "give me an overview" (show_chips True, chips render)
+    # followed immediately by a typed follow-up question reproduced the same
+    # "st.session_state has no key ..." class of failure seen in the
+    # empty-state case until this call was moved ahead of the loop and
+    # gated on `not prompt` below.
+    last_index = len(st.session_state.messages) - 1
+    typed = st.chat_input(PLACEHOLDER)
+    prompt = pending or typed
+    for i, message in enumerate(st.session_state.messages):
         with st.chat_message(message["role"], avatar=AVATARS[message["role"]]):
             if message.get("payload"):
                 render_payload(st, message["payload"])
             else:
                 st.markdown(message["content"])
-    prompt = st.chat_input(PLACEHOLDER)
+        if i == last_index and message["role"] == "assistant" and message.get("payload", {}).get("show_chips") and not prompt:
+            render_chips(st, key_suffix=str(i))
 
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt, "payload": None})
