@@ -223,3 +223,40 @@ def test_fragmentation_concentration_index_is_hhi_style():
     expected_index = round(float((shares_pct ** 2).sum()), 0)
     actual_index = frag_df.loc[frag_df["category"] == sample_category, "concentration_index"].iloc[0]
     assert actual_index == expected_index
+
+
+def test_fragmentation_null_supplier_name_is_not_dropped():
+    # Regression guard mirroring Task 6's fix
+    # (test_supplier_drilldown_null_entity_and_category_values_are_not_dropped):
+    # fragmentation()'s per-category loop guards the category column against
+    # nulls but not the per-supplier groupby inside it — a null Supplier name
+    # would silently vanish from by_supplier, shrinking the share/CR3/
+    # concentration_index denominator relative to net_spend (Task 8 review
+    # finding).
+    df = pd.DataFrame(
+        {
+            "Supplier name": ["Demo Supplier A", "Demo Supplier B", None],
+            "L1": ["IT and telecom", "IT and telecom", "IT and telecom"],
+            "Net spend": [100.0, 50.0, 25.0],
+        }
+    )
+    frag_df = fragmentation(df, level="l1")
+    row = frag_df.iloc[0]
+
+    # (a) the null-supplier row is not dropped — it must still be counted
+    # as a distinct supplier.
+    assert row["supplier_count"] == 3
+
+    # (b) the concentration math is computed over the full net_spend, not a
+    # shrunken denominator — with 3 suppliers, CR3 (top-3 share) must reach
+    # 100%, and the concentration index must equal a hand-computed
+    # HHI-style value that includes the null-supplier row under the
+    # "(unspecified)" sentinel.
+    assert row["cr3_pct"] == 100.0
+
+    by_supplier = df.copy()
+    by_supplier["Supplier name"] = by_supplier["Supplier name"].fillna("(unspecified)")
+    by_supplier = by_supplier.groupby("Supplier name")["Net spend"].sum()
+    shares_pct = by_supplier / by_supplier.sum() * 100
+    expected_index = round(float((shares_pct ** 2).sum()), 0)
+    assert row["concentration_index"] == expected_index

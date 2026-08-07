@@ -193,6 +193,8 @@ def fragmentation(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFram
     rows = []
     for category, cat_df in matched.groupby(category_col, observed=True):
         net_spend = float(cat_df["Net spend"].sum())
+        cat_df = cat_df.copy()
+        cat_df["Supplier name"] = cat_df["Supplier name"].fillna("(unspecified)")
         by_supplier = cat_df.groupby("Supplier name")["Net spend"].sum().sort_values(ascending=False)
         supplier_count = int(len(by_supplier))
 
