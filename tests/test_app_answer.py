@@ -342,3 +342,35 @@ def test_raw_data_preview_caps_at_50_rows_and_notes_truncation():
     assert len(payload["table"]) <= 50
     if len(app.df) > 50:
         assert "50" in payload["text"]
+
+
+def test_two_raw_data_payloads_in_history_get_distinct_download_button_keys():
+    # Task 12 review finding (fix round 1): the whole reason render_payload()
+    # gained a key_suffix parameter is that st.download_button requires a
+    # stable, unique widget key — reuse the same key across two widgets in
+    # the same run and Streamlit raises a duplicate-widget-ID error. A single
+    # raw_data question never exercises this: the risk only appears once a
+    # SECOND raw_data answer lands in session_state.messages and the history-
+    # replay loop (app.py's `for i, message in enumerate(...)` loop) renders
+    # both past raw_data payloads' download buttons in the same script pass.
+    # test_multi_turn_chat_does_not_crash_on_rerun (above) covers the
+    # analogous class of bug for render_payload's definition-order NameError,
+    # but its two turns are a text question and a chart question — neither
+    # has a download button, so it does not cover this one. Mirrors the
+    # AppTest scenario already run ad hoc during Task 12 development and
+    # confirmed to pass (report's "Additional verification" section) — this
+    # commits that same scenario as permanent coverage.
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    assert not at.exception
+
+    at.chat_input[0].set_value("show me the raw data").run()
+    assert not at.exception
+
+    at.chat_input[0].set_value("show me the raw data for Germany").run()
+    assert not at.exception
+
+    download_buttons = at.get("download_button")
+    assert len(download_buttons) == 2
+    keys = [b.key for b in download_buttons]
+    assert len(set(keys)) == 2, f"expected distinct keys, got {keys}"
