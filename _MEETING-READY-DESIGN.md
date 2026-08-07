@@ -360,6 +360,52 @@ first, then A consumes it) → B including B4 (top suppliers + drill-down)
 (gauntlet). A and D ship together as one coherent change; B, C, E are
 independent tasks; F gates the lot.
 
+## Part G — Category spend tab: comparison table + intensity heatmap (added 7 Aug, mid-build)
+
+Hayden asked, mid-execution, for a full pass confirming every chart/table
+across all five InSight tabs (Overview, Category spend, Top suppliers,
+Fragmentation, More) has a chat equivalent, not just the ones already
+planned. Re-inspecting the Category spend tab live (not the 4 Aug notes)
+found two real gaps beyond the already-built stacked bar chart:
+
+- **Category comparison table**: columns L1, Spend (current year), Spend
+  (prior year), Change (€), Change %, Share %. Verified our own formula
+  reproduces every row exactly against the real dataset (e.g. Professional
+  services: €1,587,499 / €1,375,210 / +€212,289 / +15.4% / 21.5% share —
+  matches to the unit). This directly answers the "compare 2024 and 2025
+  by category" shape of question Hayden specifically asked about.
+- **Entity/category intensity heatmap**: entities × categories, coloured
+  by net spend. Answers "which entities spend most in which categories"
+  style questions.
+
+Both ship as a new Part G, detailed in `_MEETING-READY-PLAN.md`'s Task 11.
+
+## Part H — "More" tab: raw filtered data (added 7 Aug, mid-build)
+
+The demo's "More" tab is just a filtered raw-rows table plus a "Download
+filtered CSV" button — no KPIs, no chart, and the demo's own "Demo guide"
+sidebar text doesn't list it as one of the primary analytical views
+("Start on Overview, narrow the scope here, then open Category spend, Top
+suppliers or Fragmentation" — More isn't named). Given Hayden's explicit
+"every chart, table, figure" instruction, this still gets a minimal chat
+equivalent — a preview of the filtered rows plus a download button — kept
+deliberately small since that's genuinely all the tab is. Detailed in
+`_MEETING-READY-PLAN.md`'s Task 12.
+
+## One unresolved Overview metric — disclosed, not guessed
+
+The Overview tab's fourth KPI, "Supplier-year lines: 401", could not be
+reverse-engineered from `sample_spend_data.csv` despite real effort
+(tried supplier×year, supplier×year×entity, supplier×year×entity×L1 —
+none produce 401) — meanwhile every OTHER Overview number (net spend, YoY%,
+entity count, supplier count, largest category and its exact value, growth
+%, top-10 concentration, largest supplier and its exact value) matches the
+live demo exactly. Rather than guess a formula to force a match (Rule 24),
+our own fourth KPI stays "Spend rows" (the real, correctly-computed row
+count in scope) — a different, honestly-labelled statistic, not a
+relabelled guess at InSight's own metric. Documented here and in the final
+handoff so it's a disclosed limitation, not a silent gap.
+
 ## Addendum — live re-verification, 7 Aug 2026
 
 Before build, the InSight demo was re-inspected live in the browser rather
