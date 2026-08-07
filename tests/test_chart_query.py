@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 
 from chart_query import category_spend
-from spend_query import load_data, query_spend
+from spend_query import load_data, known_values, query_spend
 
 
 def test_category_totals_match_query_spend():
@@ -184,6 +184,30 @@ def test_top_suppliers_still_shows_both_years_for_ranked_suppliers():
     assert years_for_025 == {2024, 2025}
 
 
+def test_top_suppliers_null_supplier_name_is_not_dropped():
+    # Codex cross-family review, Task 14 (7 Aug 2026): groupby's default
+    # dropna=True would otherwise silently exclude a null-"Supplier name"
+    # row from top_suppliers(), while query_spend() counts every matched row
+    # regardless — the same never-diverge gap already guarded against in
+    # this file's overall_concentration(), fragmentation(), and
+    # supplier_drilldown(), but missed here. Not reachable with the current
+    # real sample_spend_data.csv (verified: 0 null Supplier name values),
+    # but the guard is defensive, matching this file's own established
+    # pattern, not reverse-fitted to today's data.
+    df = pd.DataFrame(
+        {
+            "Supplier name": ["Demo Supplier X", None],
+            "Year": [2024, 2024],
+            "Net spend": [100.0, 50.0],
+        }
+    )
+    chart_df = top_suppliers(df, n=15)
+    reference = query_spend(df)
+
+    assert round(chart_df["net_spend"].sum(), 2) == reference["total_net_spend"]
+    assert "(unspecified)" in [str(s) for s in chart_df["supplier"]]
+
+
 from chart_query import supplier_drilldown
 
 
@@ -260,6 +284,29 @@ def test_fragmentation_cr3_between_0_and_100():
     assert (frag_df["cr3_pct"] <= 100).all()
 
 
+def test_fragmentation_cr3_between_0_and_100_across_every_real_filter_scope():
+    # test_fragmentation_cr3_between_0_and_100 above only checks the
+    # unfiltered 2025 view, which happens to have zero negative
+    # supplier-category subtotals — it would NOT have caught the real
+    # cr3_pct > 100 bug (Task 14, Codex cross-family review), which only
+    # showed up under real entity/country/cluster filters (e.g. "Demo
+    # Western Services", "France", "Corporate") that isolate a scope
+    # containing a credit. Sweep every real single-dimension filter value
+    # for both years, matching the same shape of question the gauntlet and
+    # a real user would actually ask, so this bound is checked against the
+    # scopes that actually broke it, not just the one that didn't.
+    df = load_data()
+    kv = known_values(df)
+    for year in kv["year"]:
+        for dim, key in [("entity", "entity"), ("country", "country"), ("cluster", "cluster")]:
+            for value in kv[dim]:
+                frag_df = fragmentation(df, level="l1", year=year, **{key: value})
+                assert (frag_df["cr3_pct"] >= 0).all(), (year, key, value)
+                assert (frag_df["cr3_pct"] <= 100).all(), (year, key, value)
+                assert (frag_df["top_supplier_share_pct"] >= 0).all(), (year, key, value)
+                assert (frag_df["top_supplier_share_pct"] <= 100).all(), (year, key, value)
+
+
 def test_fragmentation_tier_matches_cr3_thresholds():
     df = load_data()
     frag_df = fragmentation(df, level="l1", year=2025)
@@ -320,6 +367,40 @@ def test_fragmentation_null_supplier_name_is_not_dropped():
     shares_pct = by_supplier / by_supplier.sum() * 100
     expected_index = round(float((shares_pct ** 2).sum()), 0)
     assert row["concentration_index"] == expected_index
+
+
+def test_fragmentation_shares_never_exceed_100_with_negative_supplier_spend():
+    # Codex cross-family review, Task 14 (7 Aug 2026): dividing by net_spend
+    # let a category's top-3 POSITIVE-spend suppliers' share exceed 100%
+    # whenever another supplier in the same category had negative net spend
+    # (a credit/refund) pulling the category's own net total down below what
+    # the top suppliers alone summed to. Real and reachable, not contrived:
+    # "fragmentation for Demo Western Services in 2024" (a real question
+    # against the actual sample data) put Utilities at cr3_pct = 102.3%
+    # before this fix — a number with no sensible reading in a
+    # client-facing table. Reproduced here with a minimal frame: three
+    # positive suppliers (90, 80, 70 — gross positive total 240) and one
+    # credit (-100) in the same category — net_spend = 140. Under the old
+    # net_spend-based formula the top 3 (the only 3 positive suppliers)
+    # would have summed to 90/140 + 80/140 + 70/140 = 171.4%. Shares must
+    # instead be computed against gross positive spend (240), so the same
+    # top 3 correctly sum to exactly 100% (they ARE the entire positive
+    # total) rather than exceeding it.
+    df = pd.DataFrame(
+        {
+            "Supplier name": ["Demo A", "Demo B", "Demo C", "Demo Credit"],
+            "L1": ["Utilities", "Utilities", "Utilities", "Utilities"],
+            "Net spend": [90.0, 80.0, 70.0, -100.0],
+        }
+    )
+    frag_df = fragmentation(df, level="l1")
+    row = frag_df.iloc[0]
+
+    assert row["net_spend"] == 140.0
+    assert row["top_supplier_share_pct"] == 37.5  # 90 / 240 gross positive
+    assert row["cr3_pct"] == 100.0  # 90+80+70 = the full 240 gross positive total
+    assert row["top_supplier_share_pct"] <= 100.0
+    assert row["cr3_pct"] <= 100.0
 
 
 from chart_query import overall_concentration

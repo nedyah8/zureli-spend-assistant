@@ -3,6 +3,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import pandas as pd
+
 from overview_query import overview
 from spend_query import load_data, query_spend
 
@@ -77,3 +79,40 @@ def test_empty_scope_returns_none_year():
     assert stats["year"] is None
     assert stats["net_spend"] == 0.0
     assert stats["largest_category"] is None
+
+
+def test_null_entity_l1_supplier_values_are_not_dropped_from_callouts():
+    # Codex cross-family review, Task 14 (7 Aug 2026): groupby's default
+    # dropna=True (and nunique()'s own NaN-skipping) would otherwise silently
+    # exclude null Entity/L1/Supplier-name rows from every callout, while
+    # net_spend already counts every matched row regardless — the same
+    # never-diverge gap chart_query.py's functions already guard against,
+    # missed here since this file predates those fixes. Worse: if EVERY row
+    # in scope has null L1 AND null Supplier name, every callout comes back
+    # None, which crashes app.py's render_callouts() at
+    # `container.columns(len(callouts))` == `st.columns(0)` (confirmed
+    # directly: raises StreamlitInvalidColumnSpecError) — reproduced here at
+    # the computation layer, since render_callouts() itself needs a running
+    # Streamlit script context to call.
+    df = pd.DataFrame(
+        {
+            "Entity": ["Demo X", "Demo Y"],
+            "L1": [None, None],
+            "Supplier name": [None, None],
+            "Year": [2025, 2025],
+            "Net spend": [100.0, 50.0],
+        }
+    )
+    stats = overview(df)
+
+    # (a) the null rows are not dropped — net_spend still counts both.
+    assert stats["net_spend"] == 150.0
+    # (b) every callout now resolves to a real (unspecified-sentinel) value
+    # instead of None — callouts is never empty as long as there is real
+    # spend in scope, so app.py's build_overview_payload can never produce
+    # an empty `callouts` list here.
+    assert stats["largest_category"] == {"name": "(unspecified)", "net_spend": 150.0}
+    assert stats["largest_supplier"] == {"name": "(unspecified)", "net_spend": 150.0}
+    assert stats["top10_concentration_pct"] == 100.0
+    assert stats["entity_count"] == 2
+    assert stats["supplier_count"] == 1

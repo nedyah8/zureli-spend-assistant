@@ -96,6 +96,17 @@ def test_zero_row_result_per_chart_kind_has_honest_empty_answer():
         assert "didn't find" in payload["text"].lower(), (chart_kind, payload["text"])
 
 
+# --- 4b. Abuse found by the Codex cross-family review pass (Task 14),
+# folded back into the permanent gauntlet rather than left as a one-off
+# fix note: a huge digit string in a "top N suppliers" question used to
+# crash before nl_parser.py's own N-clamping ever ran. ---
+
+def test_huge_top_n_number_never_crashes():
+    app = _reload_app()
+    payload = app.answer_payload("top " + "9" * 5000 + " suppliers")
+    assert "kind" in payload
+
+
 # --- 7. Cross-feature: filters must compose with every new chart kind ---
 
 def test_cross_feature_filter_composition():

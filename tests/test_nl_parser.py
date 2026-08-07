@@ -238,6 +238,25 @@ def test_top_n_suppliers_clamps_to_min():
     assert result["top_n"] == 3
 
 
+def test_huge_top_n_digit_string_does_not_crash():
+    # Codex cross-family review, Task 14 (7 Aug 2026): TOP_N_PATTERN used to
+    # be unbounded (\d+), so a 5000-digit "top N" question reached Python's
+    # own int() conversion and raised ValueError ("Exceeds the limit (4300
+    # digits) for integer string conversion") before parse_question ever got
+    # to clamp it — a real, reproducible adversarial-input crash (Part F
+    # gauntlet's "abuse must never crash" requirement). The pattern is now
+    # capped at 10 digits, comfortably above any real top-N request but far
+    # below the 4300-digit limit.
+    # The regex itself never matches this input (10-digit cap means every
+    # backtrack attempt still has more digits before the next word boundary),
+    # so top_n stays unset and this honestly falls through to the plain
+    # number path rather than being (mis)recognised as a top-suppliers
+    # question — no crash either way is the actual requirement being tested.
+    result = parse_question("top " + "9" * 5000 + " suppliers", KV)
+    assert result["intent"] == "number"
+    assert result["top_n"] is None
+
+
 def test_biggest_suppliers_phrase_detected():
     result = parse_question("who are our biggest suppliers", KV)
     assert result["chart_kind"] == "top_suppliers"

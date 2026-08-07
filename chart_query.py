@@ -88,6 +88,14 @@ def top_suppliers(df: pd.DataFrame, n: int = 15, **filters) -> pd.DataFrame:
     ORDER criterion changes here.
     """
     matched = filter_df(df, **filters).copy()
+    # A null Supplier name would otherwise be silently dropped by groupby's
+    # default dropna=True, while query_spend() counts every matched row
+    # regardless — same guard, same reason, as overall_concentration()'s
+    # by_supplier groupby, fragmentation()'s per-category by_supplier, and
+    # supplier_drilldown()'s by_entity/by_category in this file (Codex
+    # cross-family review, Task 14, 7 Aug 2026 — this function was the one
+    # place in this file the pattern had been missed).
+    matched["Supplier name"] = matched["Supplier name"].fillna("(unspecified)")
     grouped = (
         matched.groupby(["Supplier name", "Year"])["Net spend"]
         .sum()
@@ -208,6 +216,18 @@ def fragmentation(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFram
     percentage shares of that category's spend), tiered by CR3 against
     CONCENTRATED_THRESHOLD/MEDIUM_THRESHOLD above.
 
+    Every share (top_supplier_share_pct, cr3_pct, and the per-supplier
+    shares behind concentration_index) is a percentage of the category's
+    GROSS POSITIVE supplier spend, not its net_spend total — the two only
+    differ when a category has a supplier with negative net spend (a
+    credit/refund), in which case net_spend alone can be lower than what
+    the top positive suppliers spent, which would otherwise push a share
+    over 100% (found and fixed, Task 14 Codex cross-family review, 7 Aug
+    2026 — see tests/test_chart_query.py's
+    test_fragmentation_shares_never_exceed_100_with_negative_supplier_spend
+    for the real reachable case). net_spend itself is still the true net
+    figure, unaffected by this — only the share/index basis changes.
+
     Returns a tidy dataframe: [category, net_spend, supplier_count,
     top_supplier_share_pct, cr3_pct, concentration_index, tier].
     """
@@ -226,13 +246,34 @@ def fragmentation(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFram
         by_supplier = cat_df.groupby("Supplier name")["Net spend"].sum().sort_values(ascending=False)
         supplier_count = int(len(by_supplier))
 
-        if net_spend <= 0 or by_supplier.empty:
+        # Share basis: sum of POSITIVE per-supplier spend only, not the raw
+        # net_spend total. A category with real net spend > 0 can still have
+        # individual suppliers with negative net spend (credits/refunds —
+        # confirmed real in this data, e.g. supplier 052 in Utilities/Iberia
+        # Distribution). Dividing by net_spend in that case lets the top
+        # suppliers' POSITIVE share exceed the category's own (credit-
+        # reduced) net total — a real, reachable case found by Task 14's
+        # Codex cross-family review: "fragmentation for Demo Western
+        # Services in 2024" put Utilities at cr3_pct = 102.3%, a number with
+        # no sensible reading in a client-facing table. Dividing by gross
+        # positive spend instead keeps every share within [0, 100] by
+        # construction (no top-3 subset of positive values can exceed the
+        # sum of all positive values), and is unchanged from the previous
+        # net_spend-based figure for every category that has no negative
+        # supplier subtotal — confirmed by checking the already
+        # InSight-verified unfiltered-2025 table (this file's own review):
+        # zero negative supplier-category combinations exist in that scope,
+        # so gross_positive == net_spend there and none of Task 14's
+        # parity-checked numbers change.
+        gross_positive = float(by_supplier[by_supplier > 0].sum())
+
+        if gross_positive <= 0 or by_supplier.empty:
             top_share, cr3, index = 0.0, 0.0, 0.0
         else:
-            shares_pct = by_supplier / net_spend * 100
+            shares_pct = by_supplier / gross_positive * 100
             top_share = round(float(shares_pct.iloc[0]), 1)
             cr3 = round(float(shares_pct.head(3).sum()), 1)
-            index = round(float((shares_pct ** 2).sum()), 0)
+            index = round(float((shares_pct[shares_pct > 0] ** 2).sum()), 0)
 
         if cr3 >= CONCENTRATED_THRESHOLD:
             tier = "Concentrated"

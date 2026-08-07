@@ -109,6 +109,33 @@ def _millions_ticks(min_value: float, max_value: float) -> tuple[list[float], li
     return tickvals, ticktext
 
 
+# Headroom fraction reserved beyond the data's own max value so a bar chart's
+# textposition="outside" value labels have room to render — without an
+# explicit xaxis range, Plotly's autorange fits tightly to the data (plus a
+# small default pad that is not enough at this chart family's margin=0), so
+# the widest bar's own label gets clipped by the plot's right edge (Task 14
+# screenshot-gate finding, 7 Aug 2026: confirmed in both the full-width Top
+# suppliers chart — "368,010" rendered as "368,01" cut off — and the
+# supplier drill-down's category chart, worse there since it also renders in
+# a half-width st.columns(2) cell). 15% is enough for a 6-7 digit
+# comma-formatted euro figure (the longest labels this app renders, e.g.
+# "1,404,765") at the chart family's default font size, confirmed by
+# re-screenshotting both affected charts after applying it (Task 14).
+OUTSIDE_LABEL_HEADROOM = 0.15
+
+
+def _range_with_label_headroom(min_value: float, max_value: float) -> list[float]:
+    """xaxis range for a horizontal bar chart with outside value labels:
+    the data's own min..max, extended on the max side by
+    OUTSIDE_LABEL_HEADROOM so the longest label isn't clipped. Falls back to
+    a fixed small span when max_value is 0 (all-zero data), matching
+    _millions_ticks' own zero-range handling above."""
+    if max_value <= 0:
+        return [min_value, 1.0]
+    span = max_value - min(0.0, min_value)
+    return [min(0.0, min_value), max_value + span * OUTSIDE_LABEL_HEADROOM]
+
+
 # Minimum share of a stacked bar's own total ABSOLUTE width a segment needs
 # before it gets a direct value label. Per the dataviz skill's
 # marks-and-anatomy.md: "Only place a label inside a bar or stacked segment
@@ -305,6 +332,7 @@ def build_top_suppliers_figure(chart_df) -> go.Figure:
         tickmode="array",
         tickvals=tickvals,
         ticktext=ticktext,
+        range=_range_with_label_headroom(min_value, max_value),
     )
     return fig
 
@@ -334,13 +362,24 @@ def _single_series_bar_figure(data, x_title: str) -> go.Figure:
         yaxis=dict(autorange="reversed"),
         showlegend=False,
         margin=dict(l=0, r=0, t=10, b=0),
-        height=60 + 30 * len(names),
+        # A floor, not just 60 + 30*len(names): with only 1-2 bars (a real
+        # case — a single-category supplier in the drill-down, e.g. "Demo
+        # Supplier 025" which sells only "Professional services") that
+        # formula gives ~90px total, too little room for both the bar AND
+        # the x-axis tick row + "Net spend (€)" title beneath it — the two
+        # visually collided in Task 14's screenshot gate (7 Aug 2026),
+        # confirmed by re-screenshotting after this fix. 180px is enough
+        # even at n=1, confirmed the same way, without visibly over-growing
+        # the many-bar case (the entity chart's own 8-bar/300px render was
+        # already unaffected by this bug and stays unaffected by the floor).
+        height=max(180, 60 + 30 * len(names)),
     )
     fig.update_xaxes(
         title_text=x_title,
         tickmode="array",
         tickvals=tickvals,
         ticktext=ticktext,
+        range=_range_with_label_headroom(min_value, max_value),
     )
     return fig
 

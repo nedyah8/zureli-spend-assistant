@@ -41,7 +41,30 @@ def overview(df: pd.DataFrame, **filters) -> dict:
         }
 
     year = int(matched["Year"].max())
-    year_rows = matched[matched["Year"] == year]
+    year_rows = matched[matched["Year"] == year].copy()
+
+    # A null Entity/L1/Supplier name would otherwise be silently dropped by
+    # groupby's default dropna=True (and excluded from nunique(), which also
+    # ignores NaN by default) — while net_spend above already sums every
+    # matched row regardless of nulls in ANY column. Without this guard, an
+    # all-null L1/Supplier-name scope would report net_spend correctly but
+    # every callout (largest category, fastest growth, top-10 concentration,
+    # largest supplier) as None, silently disagreeing with the headline
+    # number, AND — if EVERY callout comes back None — leaves
+    # app.py's build_overview_payload with an empty `callouts` list, which
+    # crashes render_callouts()'s `container.columns(len(callouts))` as
+    # `st.columns(0)` (confirmed directly: raises
+    # StreamlitInvalidColumnSpecError). Same guard, same reasoning, as
+    # chart_query.py's category_spend()/supplier_drilldown()/
+    # fragmentation()/overall_concentration()/entity_category_intensity()
+    # (Codex cross-family review, Task 14, 7 Aug 2026 — this file predates
+    # those fixes and had never received the equivalent guard). Not
+    # reachable with the current real sample_spend_data.csv (verified: zero
+    # nulls in any column), but defensive per this codebase's own
+    # established pattern, not reverse-fitted to today's data.
+    year_rows["Entity"] = year_rows["Entity"].fillna("(unspecified)")
+    year_rows["L1"] = year_rows["L1"].fillna("(unspecified)")
+    year_rows["Supplier name"] = year_rows["Supplier name"].fillna("(unspecified)")
 
     net_spend = round(float(year_rows["Net spend"].sum()), 2)
     entity_count = int(year_rows["Entity"].nunique())
@@ -49,7 +72,7 @@ def overview(df: pd.DataFrame, **filters) -> dict:
     row_count = int(len(year_rows))
 
     prior_year_candidate = year - 1
-    prior_rows = matched[matched["Year"] == prior_year_candidate]
+    prior_rows = matched[matched["Year"] == prior_year_candidate].copy()
     if prior_rows.empty:
         prior_year = None
         yoy_pct = None
@@ -57,6 +80,7 @@ def overview(df: pd.DataFrame, **filters) -> dict:
         prior_year = prior_year_candidate
         prior_spend = float(prior_rows["Net spend"].sum())
         yoy_pct = round((net_spend - prior_spend) / prior_spend * 100, 1) if prior_spend != 0 else None
+        prior_rows["L1"] = prior_rows["L1"].fillna("(unspecified)")
 
     by_category = year_rows.groupby("L1")["Net spend"].sum()
     if by_category.empty:

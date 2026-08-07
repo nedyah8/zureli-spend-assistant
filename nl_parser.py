@@ -84,7 +84,15 @@ TOP_SUPPLIERS_KEYWORDS = (
     "top suppliers", "top supplier", "biggest suppliers", "largest suppliers",
     "top vendors", "supplier ranking", "who do we spend the most with",
 )
-TOP_N_PATTERN = re.compile(r"\btop\s+(\d+)\b")
+# Digit count capped at 10 (not unbounded \d+): an adversarial question like
+# "top " + "9" * 5000 + " suppliers" previously reached int() with a 5000-
+# digit string and crashed with ValueError ("Exceeds the limit (4300
+# digits) for integer string conversion") — CPython 3.11+'s own int-string
+# conversion guard, not a bug in this file, but this file's job is to never
+# let a crash reach it. 10 digits comfortably exceeds any real "top N"
+# question (MAX_TOP_SUPPLIERS_N below is 56) while staying far under the
+# 4300-digit limit (Codex cross-family review, Task 14, 7 Aug 2026).
+TOP_N_PATTERN = re.compile(r"\btop\s+(\d{1,10})\b")
 MIN_TOP_SUPPLIERS_N = 3
 MAX_TOP_SUPPLIERS_N = 56
 DEFAULT_TOP_SUPPLIERS_N = 15
