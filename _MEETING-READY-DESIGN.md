@@ -407,19 +407,26 @@ equivalent — a preview of the filtered rows plus a download button — kept
 deliberately small since that's genuinely all the tab is. Detailed in
 `_MEETING-READY-PLAN.md`'s Task 12.
 
-## One unresolved Overview metric — disclosed, not guessed
+## One unresolved Overview metric — now resolved as a genuine match
 
+RESOLVED, Task 14 parity check (see `_HANDOFF.md`'s "One unresolved
+Overview metric — now resolved as a genuine match" for the full account).
 The Overview tab's fourth KPI, "Supplier-year lines: 401", could not be
-reverse-engineered from `sample_spend_data.csv` despite real effort
-(tried supplier×year, supplier×year×entity, supplier×year×entity×L1 —
-none produce 401) — meanwhile every OTHER Overview number (net spend, YoY%,
+reverse-engineered from `sample_spend_data.csv` by re-aggregating it
+(supplier×year, supplier×year×entity, supplier×year×entity×L1 — none
+produce 401) — meanwhile every OTHER Overview number (net spend, YoY%,
 entity count, supplier count, largest category and its exact value, growth
-%, top-10 concentration, largest supplier and its exact value) matches the
-live demo exactly. Rather than guess a formula to force a match (Rule 24),
-our own fourth KPI stays "Spend rows" (the real, correctly-computed row
-count in scope) — a different, honestly-labelled statistic, not a
-relabelled guess at InSight's own metric. Documented here and in the final
-handoff so it's a disclosed limitation, not a silent gap.
+%, top-10 concentration, largest supplier and its exact value) matched the
+live demo exactly. This was never actually a mismatch: `sample_spend_data.csv`
+already carries `Spend line id` and `Source row count` columns (missed in
+earlier inspection), and each CSV row IS already one aggregated "spend
+line," at exactly the grain the demo's own metric counts —
+`overview(df)["row_count"]` for the unfiltered 2025 scope is exactly 401,
+matching the demo exactly, with no reaggregation and no tuning. Our own
+fourth KPI keeps the "Spend rows" label (Rule 26 — it's still the more
+honestly self-descriptive name for what the number is), but it is confirmed
+to equal the demo's own metric for every scope, not just coincidentally for
+the unfiltered view (both are literally `len()` of the same rows).
 
 ## Addendum — live re-verification, 7 Aug 2026
 

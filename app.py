@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 
 from chart_query import category_spend
@@ -127,9 +128,16 @@ LABELS = {
 
 
 def format_filters(filters: dict) -> str:
+    # Final whole-branch review Finding 3: this used to only strip "Demo "
+    # for key == "entity", never for key == "supplier" — violating this
+    # project's own Global Constraint (_MEETING-READY-PLAN.md line 15:
+    # "Entity/supplier names always display with the `Demo ` prefix
+    # stripped"). A question naming both an entity and a supplier used to
+    # leave the supplier's "Demo " prefix intact right next to an
+    # already-stripped entity.
     parts = []
     for key, value in filters.items():
-        display = value.replace("Demo ", "") if key == "entity" else value
+        display = value.replace("Demo ", "") if key in ("entity", "supplier") else value
         parts.append(f"{LABELS[key]} = {display}")
     return ", ".join(parts)
 
@@ -144,6 +152,44 @@ def format_currency(value: float) -> str:
     entity="Demo Iberia Distribution", l1="Utilities" nets to -7,637.65)."""
     magnitude = f"{abs(value):,.2f}"
     return f"-€{magnitude}" if value < 0 else f"€{magnitude}"
+
+
+def _resolve_chart_year(filters: dict, df: pd.DataFrame) -> dict:
+    """Resolve an unfiltered-year chart question to the latest year present
+    WITHIN the filtered scope (not the whole dataset) — matches what
+    overview_query.overview() and chart_query.py's other functions already
+    document as the default-year rule. A scope with data in 2024 but none
+    in 2025 must not dead-end on a phantom 2025 filter.
+
+    Final whole-branch review Finding 4: every chart dispatch block below
+    used to default to max(kv["year"]) — the latest year in the WHOLE
+    dataset — regardless of the filters already in scope. 42 real
+    entity+supplier combos have data in 2024 only; a chart question for one
+    of them wrongly resolved to year=2025 and reported zero rows, even
+    though the identical scope's overview question correctly found the 2024
+    data (overview() already resolves its year this way). If the scope
+    itself has no rows in any year, falls back to the dataset's own latest
+    year — same as the old behaviour — so the existing "zero rows" honest-
+    empty message still fires downstream instead of crashing on an empty
+    scoped frame.
+    """
+    if "year" in filters:
+        return dict(filters)
+    scoped = filter_df(df, **filters)
+    if scoped.empty:
+        return {"year": max(kv["year"]), **filters}
+    return {"year": int(scoped["Year"].max()), **filters}
+
+
+def _scoped_supplier_count(chart_filters: dict) -> int:
+    """Distinct suppliers in a filtered scope, guarded against a null
+    Supplier name being silently dropped by nunique()'s default
+    dropna=True — same guard fragmentation() itself already applies to its
+    own by_supplier groupby before counting (final whole-branch review
+    Finding 2: this KPI's count previously called nunique() directly on the
+    unguarded column, so a null Supplier name in scope could make
+    "Suppliers in scope" show one fewer than fragmentation()'s own table)."""
+    return int(filter_df(df, **chart_filters)["Supplier name"].fillna("(unspecified)").nunique())
 
 
 def render_kpi_row(container, metrics: list[tuple[str, str, str | None]]) -> None:
@@ -294,18 +340,36 @@ def answer_payload(question: str) -> dict:
             years_in_scope = sorted(chart_df["year"].unique())
             year_text = " vs ".join(str(y) for y in years_in_scope) if len(years_in_scope) > 1 else str(years_in_scope[0])
             total = format_currency(round(chart_df["net_spend"].sum(), 2))
-            clamp_note = f" (clamped from {requested_n})" if actual_n != requested_n else ""
-            caption = f"Top {actual_n} suppliers{clamp_note} by net spend, {year_text} — these {actual_n} account for {total} of the period's spend."
+            # Final whole-branch review Finding 5: the old "(clamped from N)"
+            # note fired whenever actual_n != requested_n — true whenever a
+            # scope simply has FEWER suppliers than the unrequested default
+            # of 15 (the common case), not just on a genuine clamp-to-[3,56]
+            # event from nl_parser.py. Real example: "top suppliers for
+            # Alpine Operations in Facilities" has only 8 suppliers in
+            # scope, so it used to say "Top 8 suppliers (clamped from
+            # 15)..." even though nothing was ever clamped. Removed rather
+            # than inferred — a genuine clamp note would need to be computed
+            # and passed from nl_parser.py's own clamping step, which this
+            # caption has no access to.
+            #
+            # Minor fix 1: same caption also used to read "by net spend,
+            # 2024 vs 2025" as if ranking spanned both years, but Task 14
+            # changed ranking to be by the single rank year alone (both
+            # years are still plotted, only one ranks/selects) — name that
+            # year explicitly so the caption can't be misread as a two-year
+            # ranking.
+            rank_year = filters.get("year", max(years_in_scope))
+            caption = (
+                f"Top {actual_n} suppliers by {rank_year} net spend, shown for {year_text} — "
+                f"these {actual_n} account for {total} of the period's spend."
+            )
             return {
                 "kind": "chart", "text": f"Top {actual_n} suppliers",
                 "figure": fig, "caption": caption, "show_chips": False,
             }
 
         if chart_kind == "fragmentation":
-            if "year" in filters:
-                chart_filters = dict(filters)
-            else:
-                chart_filters = {"year": max(kv["year"]), **filters}
+            chart_filters = _resolve_chart_year(filters, df)
             frag_df = fragmentation(df, level=parsed["category_level"], **chart_filters)
             if frag_df.empty:
                 return {
@@ -318,7 +382,7 @@ def answer_payload(question: str) -> dict:
             total_spend = float(frag_df["net_spend"].sum())
             high_spend = float(frag_df.loc[frag_df["tier"] == "High fragmentation", "net_spend"].sum())
             fragmented_pct = round(high_spend / total_spend * 100, 1) if total_spend else 0.0
-            supplier_count = int(filter_df(df, **chart_filters)["Supplier name"].nunique())
+            supplier_count = _scoped_supplier_count(chart_filters)
             metrics = [
                 ("Categories assessed", str(len(frag_df)), None),
                 ("Highly fragmented", str(high_count), None),
@@ -343,10 +407,7 @@ def answer_payload(question: str) -> dict:
             }
 
         if chart_kind == "overall_concentration":
-            if "year" in filters:
-                chart_filters = dict(filters)
-            else:
-                chart_filters = {"year": max(kv["year"]), **filters}
+            chart_filters = _resolve_chart_year(filters, df)
             conc_df = overall_concentration(df, **chart_filters)
             if conc_df.empty:
                 return {
@@ -368,10 +429,7 @@ def answer_payload(question: str) -> dict:
             }
 
         if chart_kind == "category_comparison":
-            if "year" in filters:
-                chart_filters = dict(filters)
-            else:
-                chart_filters = {"year": max(kv["year"]), **filters}
+            chart_filters = _resolve_chart_year(filters, df)
             comparison_df = category_comparison(df, level=parsed["category_level"], **chart_filters)
             if comparison_df.empty:
                 return {
@@ -392,10 +450,7 @@ def answer_payload(question: str) -> dict:
             return {"kind": "category_comparison", "text": text, "table": table, "show_chips": False}
 
         if chart_kind == "intensity":
-            if "year" in filters:
-                chart_filters = dict(filters)
-            else:
-                chart_filters = {"year": max(kv["year"]), **filters}
+            chart_filters = _resolve_chart_year(filters, df)
             intensity_df = entity_category_intensity(df, level=parsed["category_level"], **chart_filters)
             if intensity_df.empty:
                 return {
@@ -436,20 +491,22 @@ def answer_payload(question: str) -> dict:
                 "csv_bytes": csv_bytes, "show_chips": False,
             }
 
-        # Default an unfiltered chart question to the latest year present in
-        # the data, applied as a REAL filter passed into category_spend() —
-        # not just a display label. This restores _CHART-CHAT-DESIGN.md's
-        # spec ("unfiltered chart → the latest year present in the data",
-        # matching the InSight demo's own default focus year), which an
-        # earlier fix round (Task 6) had only half-fixed: it made the axis
-        # label honest ("all years") instead of restoring this filter, so an
-        # unfiltered chart still silently combined every year's data (final
-        # whole-branch review, Fix 2). Chart-path only — query_spend()'s own
-        # unfiltered behaviour (sum across all rows/years) is unchanged.
-        if "year" in filters:
-            chart_filters = dict(filters)
-        else:
-            chart_filters = {"year": max(kv["year"]), **filters}
+        # Default an unfiltered chart question to the latest year present
+        # WITHIN the filtered scope, applied as a REAL filter passed into
+        # category_spend() — not just a display label. This restores
+        # _CHART-CHAT-DESIGN.md's spec ("unfiltered chart → the latest year
+        # present in the data", matching the InSight demo's own default
+        # focus year), which an earlier fix round (Task 6) had only
+        # half-fixed: it made the axis label honest ("all years") instead of
+        # restoring this filter, so an unfiltered chart still silently
+        # combined every year's data (final whole-branch review, Fix 2).
+        # Chart-path only — query_spend()'s own unfiltered behaviour (sum
+        # across all rows/years) is unchanged. _resolve_chart_year() (Finding
+        # 4, later review round) further corrected "latest year" to mean the
+        # latest year present in THIS question's filtered scope, not the
+        # whole dataset — the two only differ once an entity/supplier/etc.
+        # filter narrows the scope to a subset of years.
+        chart_filters = _resolve_chart_year(filters, df)
         chart_df = category_spend(
             df, level=parsed["category_level"], breakdown=parsed["breakdown"], **chart_filters
         )

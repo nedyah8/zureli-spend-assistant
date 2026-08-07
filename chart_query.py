@@ -168,16 +168,22 @@ def supplier_drilldown(df: pd.DataFrame, supplier: str, **filters) -> dict:
     scope_year_total = float(scope_matched[scope_matched["Year"] == year]["Net spend"].sum())
     share_of_scope_pct = round(net_spend / scope_year_total * 100, 1) if scope_year_total != 0 else None
 
-    entity_count = int(year_rows["Entity"].nunique())
-    category_count = int(year_rows["L1"].nunique())
-
     # A null Entity/L1 value would otherwise be silently dropped by
-    # groupby's default dropna=True — same guard as category_spend() above,
-    # so by_entity/by_category can never disagree with net_spend purely
-    # because of a missing dimension value (Task 6 review finding).
+    # groupby's default dropna=True (and by nunique()'s own default
+    # dropna=True) — same guard as category_spend() above, so
+    # entity_count/category_count and by_entity/by_category are all
+    # computed from the SAME filled frame and can never disagree with each
+    # other, or with net_spend, purely because of a missing dimension value
+    # (Task 6 review finding; final whole-branch review Finding 1: the
+    # counts were originally computed BEFORE this fillna, so a null-Entity
+    # row could make entity_count under-count relative to by_entity's own
+    # row count).
     year_rows = year_rows.copy()
     year_rows["Entity"] = year_rows["Entity"].fillna("(unspecified)")
     year_rows["L1"] = year_rows["L1"].fillna("(unspecified)")
+
+    entity_count = int(year_rows["Entity"].nunique())
+    category_count = int(year_rows["L1"].nunique())
 
     by_entity = (
         year_rows.groupby("Entity")["Net spend"].sum().sort_values(ascending=False)

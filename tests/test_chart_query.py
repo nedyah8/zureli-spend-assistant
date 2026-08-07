@@ -266,6 +266,36 @@ def test_supplier_drilldown_null_entity_and_category_values_are_not_dropped():
     assert "(unspecified)" in [str(n) for n in result["by_category"]["name"]]
 
 
+def test_supplier_drilldown_entity_and_category_counts_match_breakdown_row_counts():
+    # Final whole-branch review Finding 1: entity_count/category_count were
+    # computed with year_rows["Entity"].nunique() / ["L1"].nunique() BEFORE
+    # the fillna("(unspecified)") guard a few lines below them — nunique()
+    # drops NaN by default, same as groupby's default dropna=True, so a
+    # null-Entity row could make entity_count disagree with by_entity's own
+    # row count (e.g. KPI says "Entities served: 1" while the chart below it
+    # plots 2 bars, one of them "(unspecified)"). entity_count/category_count
+    # must be computed from the SAME filled frame that by_entity/by_category
+    # are built from, so the KPI and the chart can never contradict each
+    # other on a null-dimension row.
+    df = pd.DataFrame(
+        {
+            "Supplier name": ["Demo Supplier X", "Demo Supplier X"],
+            "Year": [2024, 2024],
+            "Entity": ["Demo Alpine", None],
+            "L1": ["IT and telecom", "IT and telecom"],
+            "Net spend": [100.0, 50.0],
+        }
+    )
+    result = supplier_drilldown(df, "Demo Supplier X")
+
+    assert result["entity_count"] == len(result["by_entity"])
+    assert result["category_count"] == len(result["by_category"])
+    # Concretely: 2 distinct Entity buckets ("Demo Alpine" + "(unspecified)"),
+    # 1 distinct L1 bucket ("IT and telecom").
+    assert result["entity_count"] == 2
+    assert result["category_count"] == 1
+
+
 from chart_query import fragmentation
 
 
