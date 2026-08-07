@@ -2340,7 +2340,693 @@ git commit -m "feat: overall supplier concentration (Pareto chart) understanding
 
 ---
 
-## Task 11: Answered-state interface improvements
+## Task 11: Category spend — comparison table + entity/category intensity heatmap
+
+Added mid-build (7 Aug) after a live re-audit of the InSight demo's Category
+spend tab found two elements with no chat equivalent yet: a year-over-year
+"Category comparison table" and an "Entity/category intensity" heatmap. See
+`_MEETING-READY-DESIGN.md` Part G.
+
+**Files:**
+- Modify: `nl_parser.py`
+- Modify: `chart_query.py`
+- Modify: `chart_render.py`
+- Modify: `app.py`
+- Test: `tests/test_nl_parser.py`, `tests/test_chart_query.py`, `tests/test_chart_render.py`, `tests/test_app_answer.py` (append to each)
+
+**Interfaces:**
+- Produces: `nl_parser.parse_question()` may now return `chart_kind` values `"category_comparison"` and `"intensity"`.
+- Produces: `chart_query.category_comparison(df, level="l1", **filters) -> pd.DataFrame` with columns `[category, spend_current, spend_prior, change, change_pct, share_pct]`. `filters` must include `year` (app.py resolves the default before calling, same pattern as every other chart_kind); `prior` is `year - 1`.
+- Produces: `chart_query.entity_category_intensity(df, level="l1", **filters) -> pd.DataFrame` with columns `[entity, category, net_spend]`.
+- Produces: `chart_render.build_intensity_heatmap(intensity_df) -> go.Figure`.
+
+- [ ] **Step 1: Write the failing parser tests**
+
+Append to `tests/test_nl_parser.py`:
+
+```python
+def test_category_comparison_keyword_triggers_chart_intent():
+    result = parse_question("show me the category comparison", KV)
+    assert result["intent"] == "chart"
+    assert result["chart_kind"] == "category_comparison"
+
+
+def test_compare_categories_phrase_detected():
+    result = parse_question("compare categories for 2024 and 2025", KV)
+    assert result["chart_kind"] == "category_comparison"
+
+
+def test_spend_profile_phrase_detected():
+    result = parse_question("show me the spend profile", KV)
+    assert result["chart_kind"] == "category_comparison"
+
+
+def test_intensity_keyword_triggers_chart_intent():
+    result = parse_question("show me spend intensity by entity and category", KV)
+    assert result["intent"] == "chart"
+    assert result["chart_kind"] == "intensity"
+
+
+def test_heatmap_keyword_detected():
+    result = parse_question("heatmap of spend", KV)
+    assert result["chart_kind"] == "intensity"
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+```bash
+cd "/Users/hayden/Documents/iCloud/Zureli/Projects/5. AI Chatbot"
+source .venv/bin/activate
+pytest tests/test_nl_parser.py -v -k "category_comparison or compare_categories or spend_profile or intensity or heatmap"
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Add the two new keyword checks to `nl_parser.py`**
+
+Add near the top of `nl_parser.py`, below `CONCENTRATION_KEYWORDS`:
+
+```python
+CATEGORY_COMPARISON_KEYWORDS = (
+    "category comparison", "compare categories", "category spend comparison",
+    "compare category spend", "year over year by category", "yoy by category",
+    "spend profile",
+)
+
+INTENSITY_KEYWORDS = (
+    "intensity", "heatmap", "heat map", "entity category breakdown",
+    "which entities spend most",
+)
+```
+
+In `parse_question`, insert this block right after the `if any(kw in q for kw in FRAGMENTATION_KEYWORDS): ...` block (Task 8) and before the existing `is_chart = (...)` line:
+
+```python
+    if any(kw in q for kw in CATEGORY_COMPARISON_KEYWORDS) or ("compare" in q and "categor" in q):
+        category_level = "l2" if any(kw in q for kw in LEVEL_2_KEYWORDS) else "l1"
+        return {
+            "intent": "chart", "chart_kind": "category_comparison",
+            "breakdown": None, "category_level": category_level,
+            "top_n": None, "filters": filters,
+        }
+
+    if any(kw in q for kw in INTENSITY_KEYWORDS):
+        category_level = "l2" if any(kw in q for kw in LEVEL_2_KEYWORDS) else "l1"
+        return {
+            "intent": "chart", "chart_kind": "intensity",
+            "breakdown": None, "category_level": category_level,
+            "top_n": None, "filters": filters,
+        }
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+```bash
+pytest tests/test_nl_parser.py -v -k "category_comparison or compare_categories or spend_profile or intensity or heatmap"
+```
+
+Expected: PASS (5 passed).
+
+- [ ] **Step 5: Write the failing computation tests**
+
+Append to `tests/test_chart_query.py`:
+
+```python
+from chart_query import category_comparison, entity_category_intensity
+
+
+def test_category_comparison_matches_query_spend():
+    df = load_data()
+    comparison_df = category_comparison(df, level="l1", year=2025)
+    for _, row in comparison_df.iterrows():
+        reference = query_spend(df, l1=str(row["category"]), year=2025)
+        assert row["spend_current"] == reference["total_net_spend"], row["category"]
+
+
+def test_category_comparison_change_pct_none_when_no_prior_spend():
+    df = pd.DataFrame({
+        "L1": ["NewCat"], "Entity": ["Demo X"], "Year": [2025], "Net spend": [100.0],
+    })
+    comparison_df = category_comparison(df, level="l1", year=2025)
+    row = comparison_df.iloc[0]
+    assert row["spend_prior"] == 0.0
+    assert row["change_pct"] is None
+
+
+def test_category_comparison_share_pct_sums_to_100():
+    df = load_data()
+    comparison_df = category_comparison(df, level="l1", year=2025)
+    assert round(comparison_df["share_pct"].sum(), 0) == 100
+
+
+def test_category_comparison_null_category_not_dropped():
+    df = pd.DataFrame({
+        "L1": ["Cat", None], "Entity": ["Demo X", "Demo Y"],
+        "Year": [2025, 2025], "Net spend": [100.0, 50.0],
+    })
+    comparison_df = category_comparison(df, level="l1", year=2025)
+    assert round(comparison_df["spend_current"].sum(), 2) == 150.0
+    assert "(unspecified)" in [str(c) for c in comparison_df["category"]]
+
+
+def test_entity_category_intensity_matches_query_spend():
+    df = load_data()
+    intensity_df = entity_category_intensity(df, level="l1", year=2025)
+    sample = intensity_df.iloc[0]
+    reference = query_spend(df, entity=str(sample["entity"]), l1=str(sample["category"]), year=2025)
+    assert sample["net_spend"] == reference["total_net_spend"]
+
+
+def test_entity_category_intensity_null_category_not_dropped():
+    df = pd.DataFrame({
+        "L1": ["Cat", None], "Entity": ["Demo X", "Demo X"],
+        "Year": [2025, 2025], "Net spend": [100.0, 50.0],
+    })
+    intensity_df = entity_category_intensity(df, level="l1", year=2025)
+    assert round(intensity_df["net_spend"].sum(), 2) == 150.0
+```
+
+- [ ] **Step 6: Run test to verify it fails**
+
+```bash
+pytest tests/test_chart_query.py -v -k "category_comparison or entity_category_intensity"
+```
+
+Expected: FAIL with `ImportError`.
+
+- [ ] **Step 7: Add both functions to `chart_query.py`**
+
+Append to `chart_query.py`:
+
+```python
+def category_comparison(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFrame:
+    """Year-over-year spend comparison per category — the InSight demo's
+    "Category comparison table" (Category spend tab). `filters` must
+    include `year` (the "current" year) — app.py resolves an unfiltered
+    question's year to the latest year present in scope before calling
+    this, same pattern as every other chart_kind. `prior` is `year - 1`; a
+    category with no prior-year rows in scope gets spend_prior=0.0 and
+    change_pct=None (never a fabricated percentage from a zero/absent
+    base, same rule as overview_query.overview()'s yoy_pct).
+
+    Returns [category, spend_current, spend_prior, change, change_pct,
+    share_pct], sorted descending by spend_current.
+    """
+    if level not in CATEGORY_COLUMNS:
+        raise ValueError(f"level must be one of {list(CATEGORY_COLUMNS)}, got {level!r}")
+    category_col = CATEGORY_COLUMNS[level]
+
+    current_year = filters["year"]
+    prior_year = current_year - 1
+    non_year_filters = {k: v for k, v in filters.items() if k != "year"}
+    scoped = filter_df(df, **non_year_filters).copy()
+
+    current_rows = scoped[scoped["Year"] == current_year].copy()
+    prior_rows = scoped[scoped["Year"] == prior_year].copy()
+    current_rows[category_col] = current_rows[category_col].fillna("(unspecified)")
+    prior_rows[category_col] = prior_rows[category_col].fillna("(unspecified)")
+
+    current_by_cat = current_rows.groupby(category_col)["Net spend"].sum()
+    prior_by_cat = prior_rows.groupby(category_col)["Net spend"].sum()
+    total_current = float(current_by_cat.sum())
+
+    rows = []
+    for category, spend_current in current_by_cat.items():
+        spend_prior = float(prior_by_cat.get(category, 0.0))
+        change = round(float(spend_current) - spend_prior, 2)
+        change_pct = (
+            round((float(spend_current) - spend_prior) / spend_prior * 100, 1)
+            if spend_prior > 0 else None
+        )
+        share_pct = round(float(spend_current) / total_current * 100, 1) if total_current != 0 else None
+        rows.append({
+            "category": category, "spend_current": round(float(spend_current), 2),
+            "spend_prior": round(spend_prior, 2), "change": change,
+            "change_pct": change_pct, "share_pct": share_pct,
+        })
+    return pd.DataFrame(rows).sort_values("spend_current", ascending=False).reset_index(drop=True)
+
+
+def entity_category_intensity(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFrame:
+    """Net spend by entity x category — the InSight demo's "Entity/category
+    intensity" heatmap (Category spend tab). Null category values are
+    filled with "(unspecified)" before grouping, same null-guard rule as
+    category_spend()/supplier_drilldown() in this file.
+
+    Returns [entity, category, net_spend], one row per entity x category
+    combination present in the filtered scope.
+    """
+    if level not in CATEGORY_COLUMNS:
+        raise ValueError(f"level must be one of {list(CATEGORY_COLUMNS)}, got {level!r}")
+    category_col = CATEGORY_COLUMNS[level]
+
+    matched = filter_df(df, **filters).copy()
+    matched[category_col] = matched[category_col].fillna("(unspecified)")
+
+    return (
+        matched.groupby(["Entity", category_col])["Net spend"]
+        .sum()
+        .reset_index()
+        .rename(columns={"Entity": "entity", category_col: "category", "Net spend": "net_spend"})
+    )
+```
+
+- [ ] **Step 8: Run tests to verify they pass**
+
+```bash
+pytest tests/test_chart_query.py -v
+```
+
+Expected: PASS, all tests in the file.
+
+- [ ] **Step 9: Write the failing render test**
+
+Append to `tests/test_chart_render.py`:
+
+```python
+from chart_query import entity_category_intensity
+from chart_render import build_intensity_heatmap
+
+
+def test_intensity_heatmap_shape_matches_data():
+    df = load_data()
+    intensity_df = entity_category_intensity(df, level="l1", year=2025)
+    fig = build_intensity_heatmap(intensity_df)
+    assert fig.data[0].type == "heatmap"
+    assert len(fig.data[0].y) == intensity_df["entity"].nunique()
+    assert len(fig.data[0].x) == intensity_df["category"].nunique()
+```
+
+- [ ] **Step 10: Run test to verify it fails**
+
+```bash
+pytest tests/test_chart_render.py -v -k intensity
+```
+
+Expected: FAIL with `ImportError: cannot import name 'build_intensity_heatmap'`.
+
+- [ ] **Step 11: Add `build_intensity_heatmap()` to `chart_render.py`**
+
+Append to `chart_render.py`:
+
+```python
+def build_intensity_heatmap(intensity_df) -> go.Figure:
+    """Heatmap: entities (rows) x categories (columns), coloured by net
+    spend — matching the InSight demo's "Entity/category intensity" view.
+    """
+    pivot = intensity_df.pivot(index="entity", columns="category", values="net_spend").fillna(0)
+    entities = [str(e).replace("Demo ", "") for e in pivot.index]
+    categories = list(pivot.columns)
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=pivot.values,
+            x=categories,
+            y=entities,
+            colorscale=[[0, "#eaf2f8"], [1, PALETTE[0]]],
+            colorbar=dict(title="Net spend (€)"),
+            hovertemplate="%{y} / %{x}<br>€%{z:,.0f}<extra></extra>",
+        )
+    )
+    fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=80 + 30 * len(entities))
+    fig.update_xaxes(tickangle=-45)
+    return fig
+```
+
+- [ ] **Step 12: Run test to verify it passes**
+
+```bash
+pytest tests/test_chart_render.py -v -k intensity
+```
+
+Expected: PASS.
+
+- [ ] **Step 13: Write the failing wiring tests**
+
+Append to `tests/test_app_answer.py`:
+
+```python
+def test_category_comparison_question_returns_table_payload():
+    app = _reload_app()
+    payload = app.answer_payload("compare category spend")
+    assert payload["kind"] == "category_comparison"
+    assert "table" in payload
+
+
+def test_intensity_question_returns_chart_payload():
+    app = _reload_app()
+    payload = app.answer_payload("show me spend intensity by entity and category")
+    assert payload["kind"] == "chart"
+    assert "€" in payload["caption"]
+```
+
+- [ ] **Step 14: Run tests to verify they fail**
+
+```bash
+pytest tests/test_app_answer.py -v -k "category_comparison or intensity"
+```
+
+Expected: FAIL — `answer_payload` doesn't dispatch these `chart_kind`s yet.
+
+- [ ] **Step 15: Wire both into `app.py`**
+
+Add to the import block at the top of `app.py`:
+
+```python
+from chart_query import category_comparison, entity_category_intensity
+from chart_render import build_intensity_heatmap
+```
+
+In `app.py`, inside the `if parsed["intent"] == "chart":` branch, add this dispatch right after the `if chart_kind == "overall_concentration": ...` block (Task 10) and before the `if "year" in filters: chart_filters = ...` line that handles `category_spend`:
+
+```python
+        if chart_kind == "category_comparison":
+            if "year" in filters:
+                chart_filters = dict(filters)
+            else:
+                chart_filters = {"year": max(kv["year"]), **filters}
+            comparison_df = category_comparison(df, level=parsed["category_level"], **chart_filters)
+            if comparison_df.empty:
+                return {
+                    "kind": "text",
+                    "text": f"I didn't find any categories matching that — {format_filters(chart_filters)} returned no rows.",
+                    "figure": None, "caption": None, "show_chips": False,
+                }
+            prior_year = chart_filters["year"] - 1
+            level_col = "L1" if parsed["category_level"] == "l1" else "L2"
+            table = comparison_df.rename(columns={
+                "category": level_col,
+                "spend_current": f"Spend {chart_filters['year']} (€)",
+                "spend_prior": f"Spend {prior_year} (€)",
+                "change": "Change (€)", "change_pct": "Change %", "share_pct": "Share %",
+            })
+            total_current = format_currency(round(comparison_df["spend_current"].sum(), 2))
+            text = f"Category spend comparison, {prior_year} vs {chart_filters['year']} — total {total_current} in {chart_filters['year']}."
+            return {"kind": "category_comparison", "text": text, "table": table, "show_chips": False}
+
+        if chart_kind == "intensity":
+            if "year" in filters:
+                chart_filters = dict(filters)
+            else:
+                chart_filters = {"year": max(kv["year"]), **filters}
+            intensity_df = entity_category_intensity(df, level=parsed["category_level"], **chart_filters)
+            if intensity_df.empty:
+                return {
+                    "kind": "text",
+                    "text": f"I didn't find any spend matching that — {format_filters(chart_filters)} returned no rows.",
+                    "figure": None, "caption": None, "show_chips": False,
+                }
+            fig = build_intensity_heatmap(intensity_df)
+            total = format_currency(round(intensity_df["net_spend"].sum(), 2))
+            caption = f"Spend intensity by entity and category, {chart_filters['year']} — total {total}."
+            return {
+                "kind": "chart", "text": "Entity / category spend intensity",
+                "figure": fig, "caption": caption, "show_chips": False,
+            }
+```
+
+Add the new table payload kind to `render_payload`, appending an `elif` branch after the `elif payload["kind"] == "fragmentation": ...` branch (Task 9):
+
+```python
+    elif payload["kind"] == "category_comparison":
+        container.dataframe(payload["table"], hide_index=True, use_container_width=True)
+```
+
+- [ ] **Step 16: Run tests to verify they pass**
+
+```bash
+pytest tests/test_app_answer.py -v -k "category_comparison or intensity"
+```
+
+Expected: PASS.
+
+- [ ] **Step 17: Run the full suite**
+
+```bash
+pytest tests/ -v
+```
+
+Expected: PASS, no failures.
+
+- [ ] **Step 18: Commit**
+
+```bash
+git add nl_parser.py chart_query.py chart_render.py app.py tests/
+git commit -m "feat: category comparison table + entity/category intensity heatmap"
+```
+
+---
+
+## Task 12: Raw filtered data view (More tab equivalent)
+
+Added mid-build (7 Aug). The InSight demo's "More" tab is a filtered
+raw-rows table plus a CSV download button — see `_MEETING-READY-DESIGN.md`
+Part H. This gets a minimal chat equivalent: a preview table plus a real
+download button, capped at a readable size, not the full unbounded row set
+inline in a chat bubble.
+
+**Files:**
+- Modify: `nl_parser.py`
+- Modify: `chart_query.py`
+- Modify: `app.py`
+- Test: `tests/test_nl_parser.py`, `tests/test_chart_query.py`, `tests/test_app_answer.py` (append to each)
+
+**Interfaces:**
+- Produces: `nl_parser.parse_question()` may now return `chart_kind == "raw_data"`.
+- Produces: `chart_query.raw_filtered_rows(df, **filters) -> pd.DataFrame` — the unaggregated matched rows, unchanged.
+- Produces: `render_payload`'s new `"raw_data"` branch takes an optional `key_suffix` parameter on `render_payload` itself, threaded from the history-loop's own index — needed because `st.download_button` requires a stable, unique key when the same payload kind can appear more than once across a replayed chat history, or Streamlit raises a duplicate-widget-ID error on rerun.
+
+- [ ] **Step 1: Write the failing parser test**
+
+Append to `tests/test_nl_parser.py`:
+
+```python
+def test_raw_data_keyword_triggers_chart_intent():
+    result = parse_question("show me the raw data for Germany in 2024", KV)
+    assert result["intent"] == "chart"
+    assert result["chart_kind"] == "raw_data"
+    assert result["filters"]["country"] == "Germany"
+    assert result["filters"]["year"] == 2024
+
+
+def test_export_data_phrase_detected():
+    result = parse_question("export the data", KV)
+    assert result["chart_kind"] == "raw_data"
+```
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+```bash
+cd "/Users/hayden/Documents/iCloud/Zureli/Projects/5. AI Chatbot"
+source .venv/bin/activate
+pytest tests/test_nl_parser.py -v -k "raw_data or export_data"
+```
+
+Expected: FAIL.
+
+- [ ] **Step 3: Add the keyword check to `nl_parser.py`**
+
+Add near the top of `nl_parser.py`, below `INTENSITY_KEYWORDS`:
+
+```python
+RAW_DATA_KEYWORDS = (
+    "raw data", "underlying data", "raw rows", "show me the data",
+    "export the data", "download the data", "see the data",
+)
+```
+
+In `parse_question`, insert this block right after the `if any(kw in q for kw in INTENSITY_KEYWORDS): ...` block (Task 11) and before the existing `is_chart = (...)` line:
+
+```python
+    if any(kw in q for kw in RAW_DATA_KEYWORDS):
+        return {
+            "intent": "chart", "chart_kind": "raw_data",
+            "breakdown": None, "category_level": None,
+            "top_n": None, "filters": filters,
+        }
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+```bash
+pytest tests/test_nl_parser.py -v -k "raw_data or export_data"
+```
+
+Expected: PASS (2 passed).
+
+- [ ] **Step 5: Write the failing computation test**
+
+Append to `tests/test_chart_query.py`:
+
+```python
+from chart_query import raw_filtered_rows
+
+
+def test_raw_filtered_rows_row_count_matches_query_spend():
+    df = load_data()
+    rows_df = raw_filtered_rows(df, year=2024)
+    reference = query_spend(df, year=2024)
+    assert len(rows_df) == reference["row_count"]
+
+
+def test_raw_filtered_rows_returns_unaggregated_columns():
+    df = load_data()
+    rows_df = raw_filtered_rows(df, year=2024)
+    assert set(rows_df.columns) == set(df.columns)
+```
+
+- [ ] **Step 6: Run test to verify it fails**
+
+```bash
+pytest tests/test_chart_query.py -v -k raw_filtered_rows
+```
+
+Expected: FAIL with `ImportError: cannot import name 'raw_filtered_rows'`.
+
+- [ ] **Step 7: Add `raw_filtered_rows()` to `chart_query.py`**
+
+Append to `chart_query.py`:
+
+```python
+def raw_filtered_rows(df: pd.DataFrame, **filters) -> pd.DataFrame:
+    """The exact filtered rows for the given scope, unaggregated — the
+    InSight demo's "More" tab ("Filtered supplier-year rows"). For a
+    client who wants to see the underlying rows behind a number, not just
+    the number itself.
+    """
+    return filter_df(df, **filters).copy()
+```
+
+- [ ] **Step 8: Run tests to verify they pass**
+
+```bash
+pytest tests/test_chart_query.py -v
+```
+
+Expected: PASS, all tests in the file.
+
+- [ ] **Step 9: Write the failing wiring test**
+
+Append to `tests/test_app_answer.py`:
+
+```python
+def test_raw_data_question_returns_table_payload():
+    app = _reload_app()
+    payload = app.answer_payload("show me the raw data for Germany in 2024")
+    assert payload["kind"] == "raw_data"
+    assert "table" in payload
+    assert "csv_bytes" in payload
+
+
+def test_raw_data_preview_caps_at_50_rows_and_notes_truncation():
+    app = _reload_app()
+    payload = app.answer_payload("show me the raw data")
+    assert len(payload["table"]) <= 50
+    if len(app.df) > 50:
+        assert "50" in payload["text"]
+```
+
+- [ ] **Step 10: Run tests to verify they fail**
+
+```bash
+pytest tests/test_app_answer.py -v -k raw_data
+```
+
+Expected: FAIL — `answer_payload` doesn't dispatch `chart_kind == "raw_data"` yet.
+
+- [ ] **Step 11: Wire raw data into `app.py`**
+
+Add to the import block at the top of `app.py`:
+
+```python
+from chart_query import raw_filtered_rows
+```
+
+Add this constant near `PLACEHOLDER`:
+
+```python
+RAW_DATA_PREVIEW_LIMIT = 50
+```
+
+In `app.py`, inside the `if parsed["intent"] == "chart":` branch, add this dispatch right after the `if chart_kind == "intensity": ...` block (Task 11) and before the `if "year" in filters: chart_filters = ...` line that handles `category_spend`:
+
+```python
+        if chart_kind == "raw_data":
+            rows_df = raw_filtered_rows(df, **filters)
+            if rows_df.empty:
+                return {
+                    "kind": "text",
+                    "text": f"I didn't find any rows matching that — {format_filters(filters)} returned no rows.",
+                    "figure": None, "caption": None, "show_chips": False,
+                }
+            display_df = rows_df.copy()
+            display_df["Entity"] = display_df["Entity"].str.replace("Demo ", "", regex=False)
+            display_df["Supplier name"] = display_df["Supplier name"].str.replace("Demo ", "", regex=False)
+            total_rows = len(display_df)
+            preview = display_df.head(RAW_DATA_PREVIEW_LIMIT)
+            truncated_note = (
+                f" (showing first {RAW_DATA_PREVIEW_LIMIT} of {total_rows})"
+                if total_rows > RAW_DATA_PREVIEW_LIMIT else ""
+            )
+            filter_text = format_filters(filters) if filters else "all data"
+            text = f"Raw spend rows for {filter_text}{truncated_note}."
+            csv_bytes = display_df.to_csv(index=False).encode("utf-8")
+            return {
+                "kind": "raw_data", "text": text, "table": preview,
+                "csv_bytes": csv_bytes, "show_chips": False,
+            }
+```
+
+Update `render_payload`'s signature to accept an optional `key_suffix`, and add the new branch. Replace the existing `def render_payload(container, payload: dict) -> None:` line with:
+
+```python
+def render_payload(container, payload: dict, key_suffix: str = "x") -> None:
+```
+
+Add this `elif` branch after the `elif payload["kind"] == "category_comparison": ...` branch (Task 11):
+
+```python
+    elif payload["kind"] == "raw_data":
+        container.dataframe(payload["table"], hide_index=True, use_container_width=True)
+        container.download_button(
+            "Download filtered CSV", data=payload["csv_bytes"],
+            file_name="filtered_spend.csv", mime="text/csv",
+            key=f"download_{key_suffix}",
+        )
+```
+
+Finally, update the two existing call sites of `render_payload` in `app.py`'s conversation-state history loop and empty-state's (none — only the history loop replays payloads) to pass a real `key_suffix`. Find `render_payload(st, message["payload"])` inside the `for i, message in enumerate(st.session_state.messages):` loop and change it to:
+
+```python
+                render_payload(st, message["payload"], key_suffix=str(i))
+```
+
+- [ ] **Step 12: Run tests to verify they pass**
+
+```bash
+pytest tests/test_app_answer.py -v -k raw_data
+```
+
+Expected: PASS.
+
+- [ ] **Step 13: Run the full suite**
+
+```bash
+pytest tests/ -v
+```
+
+Expected: PASS, no failures.
+
+- [ ] **Step 14: Commit**
+
+```bash
+git add nl_parser.py chart_query.py app.py tests/
+git commit -m "feat: raw filtered data view with CSV download (More tab equivalent)"
+```
+
+---
+
+## Task 13: Answered-state interface improvements
 
 **Files:**
 - Modify: `app.py`
@@ -2397,7 +3083,7 @@ Screenshot the empty-state chips (`st.pills`) close up. `st.pills`' default sele
 
 - [ ] **Step 5: Attempt the ChatGPT-style right-aligned user bubble, only if a stable selector exists**
 
-Inspect the rendered DOM for a stable, version-independent way to target only user-role chat messages (e.g. a `data-testid` attribute Streamlit attaches to `st.chat_message(..., avatar=...)` calls made with `"user"`). If one exists and looks robust, add a scoped CSS override via `st.markdown(..., unsafe_allow_html=True)` to right-align it. If the only available selector is a generated class name that looks likely to change across Streamlit versions, skip this and record why in `_HANDOFF.md`'s update (Task 12) — Part E marks this "not load-bearing."
+Inspect the rendered DOM for a stable, version-independent way to target only user-role chat messages (e.g. a `data-testid` attribute Streamlit attaches to `st.chat_message(..., avatar=...)` calls made with `"user"`). If one exists and looks robust, add a scoped CSS override via `st.markdown(..., unsafe_allow_html=True)` to right-align it. If the only available selector is a generated class name that looks likely to change across Streamlit versions, skip this and record why in `_HANDOFF.md`'s update (Task 14) — Part E marks this "not load-bearing."
 
 - [ ] **Step 6: Run the full test suite to confirm no regression**
 
@@ -2416,7 +3102,7 @@ git commit -m "polish: answered-state layout width and chip styling pass"
 
 ---
 
-## Task 12: Final gate — regression, adversarial gauntlet, cross-family review, screenshot verification
+## Task 14: Final gate — regression, adversarial gauntlet, cross-family review, screenshot verification
 
 **Files:**
 - Test: `tests/test_gauntlet.py` (new)
@@ -2424,9 +3110,27 @@ git commit -m "polish: answered-state layout width and chip styling pass"
 - Modify: `CLAUDE.md` (project-level, in this folder)
 
 **Interfaces:**
-- Consumes: every function and payload kind from Tasks 1–11. This task adds no new production code — it is entirely verification and documentation.
+- Consumes: every function and payload kind from Tasks 1–13. This task adds no new production code — it is entirely verification and documentation.
 
 This is the Part F gate from `_MEETING-READY-DESIGN.md` — high-stakes tier (client-facing demo, explicit "challenge every part, try to break it" instruction). Do not skip steps under time pressure; a gap found and fixed here is far cheaper than one found in the meeting.
+
+- [ ] **Step 1a: InSight demo parity checklist — every tab, every element, provably answerable and numerically correct**
+
+This step exists because Hayden explicitly required it: every chart, table, and figure in the live InSight demo (https://zureli-insight-demo.streamlit.app/) must have a chat equivalent, and every number that equivalent produces must be checked against the real demo, not assumed. Do this by hand, with the app running locally (`streamlit run app.py`) and the InSight demo open side by side. For EACH row below, ask the exact question shown, screenshot or copy the app's answer, and record PASS/FAIL with the actual numbers compared — this table becomes part of `_HANDOFF.md`'s Step 6 record, not a private scratch note:
+
+| InSight tab | Element | Chat question to test | What must match |
+|---|---|---|---|
+| Overview | KPI row + 3 callouts | "give me an overview" | Net spend, YoY%, entities, suppliers vs demo's Overview cards; largest category, fastest growth, top-10 concentration + largest supplier vs demo's 3 callouts. (Spend-rows KPI is a disclosed, differently-defined stand-in for the demo's "Supplier-year lines" — note this, don't force a match.) |
+| Category spend | Stacked bar chart | "show me a bar chart of category spend" | Chart total vs `query_spend(df, year=<latest>)` |
+| Category spend | Comparison table (Task 11) | "compare category spend" | Every row's Spend/Change/Change%/Share% vs the demo's Category comparison table, same focus year |
+| Category spend | Intensity heatmap (Task 11) | "spend intensity by entity and category" | Spot-check 2-3 cells' net spend vs a direct `query_spend(df, entity=X, l1=Y, year=<latest>)` call |
+| Top suppliers | Ranked bar chart | "who are our top suppliers?" | Top-15 ranking and per-supplier 2024/2025 values vs the demo's Top suppliers chart |
+| Top suppliers | Supplier drill-down (Task 6/7) | "tell me about Demo Supplier 025" | Spend, YoY%, share of scope, entities served, categories vs the demo's own drill-down for the same supplier |
+| Fragmentation | KPI row + bubble chart + table | "show me fragmentation" | Categories assessed, highly fragmented count, fragmented spend %, suppliers in scope vs the demo's 4 KPI cards; per-category Top 3 share % vs the demo's own table column (tier may legitimately differ — see `_MEETING-READY-DESIGN.md` Part C1) |
+| Fragmentation | Overall concentration Pareto (Task 10) | "show me the pareto chart" | Top-10 cumulative share % vs the demo's own Pareto view |
+| More | Filtered raw rows (Task 12) | "show me the raw data for Germany in 2024" | Row count and a sample of values vs the demo's own "Filtered supplier-year rows" table for the same scope |
+
+If any row fails, that is a real defect — fix it before proceeding to Step 1b, the same TDD discipline as every other task in this plan (write/extend a test that catches it, then fix).
 
 - [ ] **Step 1: Write the adversarial gauntlet as real, catalogued tests**
 
@@ -2565,7 +3269,7 @@ With the app running (`streamlit run app.py`), in the browser: click a suggestio
 pytest tests/ -v
 ```
 
-Expected: PASS, full suite (Tasks 1–11's tests plus the gauntlet), no failures. Record the final test count.
+Expected: PASS, full suite (Tasks 1–13's tests plus the gauntlet), no failures. Record the final test count.
 
 - [ ] **Step 5: Codex cross-family review of all new code**
 
@@ -2578,7 +3282,7 @@ Triage every finding: fix real Important/Critical findings in a new fix round (w
 
 - [ ] **Step 6: `interface-polish` screenshot gate**
 
-Invoke the `interface-polish` skill. Screenshot at ≥1200px: the empty state (with chips), and one full exchange of each answer kind — a plain number, a category chart, a top-suppliers chart, a supplier drill-down, a fragmentation answer, an overview, and a help answer. For each, state what was actually observed (spacing against Task 11's established rhythm, no empty/stray containers, KPI rows and callout cards breathing consistently with the rest of the app) per the skill's quality gate — measured px or named neighbour comparisons, not "looks fine."
+Invoke the `interface-polish` skill. Screenshot at ≥1200px: the empty state (with chips), and one full exchange of each answer kind — a plain number, a category chart, a category comparison table, an intensity heatmap, a top-suppliers chart, a supplier drill-down, a fragmentation answer, an overall concentration chart, a raw-data view, an overview, and a help answer. For each, state what was actually observed (spacing against Task 13's established rhythm, no empty/stray containers, KPI rows and callout cards breathing consistently with the rest of the app) per the skill's quality gate — measured px or named neighbour comparisons, not "looks fine."
 
 - [ ] **Step 7: Personal controller screenshot pass**
 
@@ -2586,7 +3290,7 @@ Independently of the `interface-polish` gate above, personally view the rendered
 
 - [ ] **Step 8: Update `_HANDOFF.md` and this project's `CLAUDE.md`**
 
-In `_HANDOFF.md`: mark Phases 2–4 and the robustness/interface work complete; record the final test count; record the fragmentation formula comparison table (our CR3/tier/index vs the InSight demo's Top 3 share %/Profile/Concentration index for the unfiltered 2025 view, per `_MEETING-READY-DESIGN.md` Part C1's "record the per-category table" instruction); record the Codex triage from Step 5; record what Step 3's manual UI-abuse pass actually observed; record the `layout="wide"` vs `"centered"` decision and why (Task 11); note that real LLM parsing, InSight's actual production data shape, multi-tenancy, multi-entity comparison charts, and deployment remain explicitly out of scope, unchanged from Phase 1.
+In `_HANDOFF.md`: mark Phases 2–4 and the robustness/interface work complete; record the final test count; record the fragmentation formula comparison table (our CR3/tier/index vs the InSight demo's Top 3 share %/Profile/Concentration index for the unfiltered 2025 view, per `_MEETING-READY-DESIGN.md` Part C1's "record the per-category table" instruction); record the Codex triage from Step 5; record what Step 3's manual UI-abuse pass actually observed; record the `layout="wide"` vs `"centered"` decision and why (Task 13); record the tab-by-tab InSight parity checklist from Step 1a below; record the unresolved "Supplier-year lines" metric as a disclosed limitation (`_MEETING-READY-DESIGN.md`'s "One unresolved Overview metric" section); note that real LLM parsing, InSight's actual production data shape, multi-tenancy, multi-entity comparison charts, and deployment remain explicitly out of scope, unchanged from Phase 1.
 
 In this project's `CLAUDE.md`: update the feature list to include Phases 2–4 and the robustness fallback; note the fragmentation formula is ours, disclosed, not InSight's.
 
