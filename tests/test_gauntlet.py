@@ -30,23 +30,53 @@ def test_vagueness_ladder_never_dead_ends():
 
 # --- 2. Synonyms & phrasing the parser can't know: documented, not pretended ---
 
-def test_synonym_questions_fall_to_overview_not_crash():
+def test_synonym_questions_resolve_to_the_right_filter_and_total():
+    # REWRITTEN 7 Aug 2026. The previous version of this test asserted
+    #     assert payload["kind"] in ("overview", "text", "chart")
+    # which accepts every outcome the app can produce and therefore could
+    # never fail. It was named for exactly the defect the client then found
+    # in a minute ("give me IT spend" -> whole-company total) and reported
+    # green the whole time. A test that cannot fail is worse than no test:
+    # it produces false confidence and gets cited as evidence.
+    #
+    # It now asserts the specific filter AND checks the figure against
+    # query_spend, so it fails if either the routing or the number is wrong.
+    from spend_query import load_data, query_spend
+
     app = _reload_app()
-    for question in [
-        "expenditure on marketing", "staff costs 2024",
-        "how much did we pay suppliers in Germany",
-    ]:
+    df = load_data()
+
+    cases = [
+        ("expenditure on marketing", {"l1": "Marketing"}),
+        ("staff costs 2024", {"l1": "People", "year": 2024}),
+        ("how much did we pay suppliers in Germany", {"country": "Germany"}),
+    ]
+    for question, expected_filters in cases:
         payload = app.answer_payload(question)
-        assert payload["kind"] in ("overview", "text", "chart"), question
+        assert payload["kind"] == "text", f"{question!r} -> {payload['kind']}"
+        expected_total = query_spend(df, **expected_filters)["total_net_spend"]
+        assert f"{expected_total:,.2f}" in payload["text"], (
+            f"{question!r} expected {expected_total:,.2f}, got {payload['text']!r}"
+        )
 
 
-# --- 3. Typos: expected overview fallback, documented limitation ---
+# --- 3. Typos: genuinely unsupported, and asserted as such ---
 
-def test_typo_questions_fall_to_overview():
+def test_typo_questions_fall_back_honestly_rather_than_guessing():
+    # Typos remain a real, disclosed limitation: this is exact-and-alias
+    # matching, not fuzzy matching, so "Germny" matches nothing. The
+    # REQUIREMENT is that it says so honestly via the overview fallback
+    # rather than silently guessing a neighbouring value — a wrong-but-
+    # confident answer is the outcome that actually damages trust.
+    #
+    # Asserted as exactly "overview" (not "overview or text"), so if a
+    # future fuzzy-matching change starts resolving these, this test fails
+    # loudly and forces the behaviour change to be reviewed rather than
+    # absorbed silently.
     app = _reload_app()
     for question in ["Germny spend", "IT and telecomm spend", "Alpin Operations spend"]:
         payload = app.answer_payload(question)
-        assert payload["kind"] in ("overview", "text"), question
+        assert payload["kind"] == "overview", f"{question!r} -> {payload['kind']}"
 
 
 # --- 4. Abuse: must never crash, never behave as instructed by injection ---
@@ -110,12 +140,22 @@ def test_huge_top_n_number_never_crashes():
 # --- 7. Cross-feature: filters must compose with every new chart kind ---
 
 def test_cross_feature_filter_composition():
+    # TIGHTENED 7 Aug 2026, same audit as the synonym test above. These
+    # previously read `assert payload["kind"] in ("chart", "text")` — but
+    # "text" is the KIND THIS APP USES FOR ITS EMPTY/ERROR FALLBACK, so the
+    # assertion accepted the failure case as a pass. Verified against the
+    # real data that all three genuinely produce their intended view, and
+    # pinned to exactly that so a regression to the fallback now fails.
     app = _reload_app()
+
     payload = app.answer_payload("top suppliers chart for Office in 2024")
-    assert payload["kind"] in ("chart", "text")
+    assert payload["kind"] == "chart", payload["text"]
+    assert payload["figure"] is not None
 
     payload = app.answer_payload("fragmentation for Germany")
-    assert payload["kind"] in ("fragmentation", "text")
+    assert payload["kind"] == "fragmentation", payload["text"]
+    assert "Germany" in payload["text"]
 
     payload = app.answer_payload("overview for Alpine Operations")
-    assert payload["kind"] in ("overview", "text")
+    assert payload["kind"] == "overview", payload["text"]
+    assert "Alpine Operations" in payload["text"]

@@ -14,6 +14,8 @@ what the LLM upgrade would add.
 
 import re
 
+from aliases import ALIASES_BY_DIMENSION, supplier_aliases
+
 CHART_KEYWORDS = (
     "chart", "graph", "plot", "bar chart", "bar graph", "breakdown",
     "break down", "broken down", "visualise", "visualize",
@@ -147,7 +149,48 @@ RAW_DATA_KEYWORDS = (
 )
 
 
+# Order decides which dimension wins when two aliases of EQUAL length match
+# the same text. L2 sits above L1 so the narrower category reading wins
+# ("electricity" -> the Electricity and gas sub-category, not Utilities).
+_DIMENSION_PRIORITY = ("l2", "l1", "entity", "country", "cluster", "supplier")
+
+
+def _candidate_terms(known: dict[str, list]) -> list[tuple[str, str, object]]:
+    """Every (alias, dimension, canonical value) the parser can recognise,
+    longest alias first.
+
+    Includes both the curated aliases from aliases.py AND each canonical
+    value's own name plus its "Demo "-stripped short form, so the exact
+    phrasings that worked before this module existed keep working.
+    """
+    terms: list[tuple[str, str, object]] = []
+
+    for dimension, alias_map in ALIASES_BY_DIMENSION.items():
+        for canonical, alias_list in alias_map.items():
+            forms = {canonical.lower(), canonical.lower().replace("demo ", "")}
+            forms.update(alias_list)
+            for form in forms:
+                terms.append((form, dimension, canonical))
+
+    for supplier in known["supplier"]:
+        for form in supplier_aliases(supplier):
+            terms.append((form, "supplier", supplier))
+
+    # Longest alias first; ties broken by dimension priority above.
+    terms.sort(key=lambda t: (-len(t[0]), _DIMENSION_PRIORITY.index(t[1])))
+    return terms
+
+
 def _extract_filters(q: str, known: dict[str, list]) -> dict:
+    """Resolve a lowercased question to canonical filter values.
+
+    Matching is GLOBAL longest-alias-first with span consumption, not
+    per-dimension independent scanning. That matters because aliases overlap
+    across dimensions: "southern support" is an entity while "south" is a
+    cluster, and matching both would AND them into an empty result and hand
+    the user a false "no data". Once the longer alias claims that span of
+    text, no shorter alias may re-match those characters.
+    """
     filters: dict[str, object] = {}
 
     for year in known["year"]:
@@ -155,38 +198,19 @@ def _extract_filters(q: str, known: dict[str, list]) -> dict:
             filters["year"] = year
             break
 
-    for entity in sorted(known["entity"], key=len, reverse=True):
-        short = entity.replace("Demo ", "")
-        if entity.lower() in q or short.lower() in q:
-            filters["entity"] = entity
-            break
-
-    for country in sorted(known["country"], key=len, reverse=True):
-        if country.lower() in q:
-            filters["country"] = country
-            break
-
-    # Cluster names (Central, North, South, West, Corporate) are common
-    # English words, so require a whole-word match to cut down false hits.
-    for cluster in sorted(known["cluster"], key=len, reverse=True):
-        if re.search(rf"\b{re.escape(cluster.lower())}\b", q):
-            filters["cluster"] = cluster
-            break
-
-    # L2 checked before L1 since it's the more specific category level.
-    for l2 in sorted(known["l2"], key=len, reverse=True):
-        if l2.lower() in q:
-            filters["l2"] = l2
-            break
-
-    for l1 in sorted(known["l1"], key=len, reverse=True):
-        if l1.lower() in q:
-            filters["l1"] = l1
-            break
-
-    for supplier in sorted(known["supplier"], key=len, reverse=True):
-        if supplier.lower() in q:
-            filters["supplier"] = supplier
+    consumed: list[tuple[int, int]] = []
+    for alias, dimension, canonical in _candidate_terms(known):
+        if dimension in filters:
+            continue
+        # Lookarounds rather than \b: several aliases contain punctuation
+        # ("it & telecom", "l&d", "it/telecom") where \b behaves unhelpfully.
+        pattern = rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])"
+        for match in re.finditer(pattern, q):
+            start, end = match.span()
+            if any(start < c_end and c_start < end for c_start, c_end in consumed):
+                continue
+            filters[dimension] = canonical
+            consumed.append((start, end))
             break
 
     return filters
