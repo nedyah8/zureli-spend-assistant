@@ -17,12 +17,78 @@ from nl_parser import parse_question
 from overview_query import overview
 from spend_query import filter_df, known_values, load_data, query_spend
 
-st.set_page_config(page_title="Zureli spend assistant", layout="centered")
+st.set_page_config(page_title="Zureli spend assistant", layout="wide")
 
 BRAND = "#17343C"
 MUTED = "#8A8F94"
 BORDER = "#E8E9EA"
 AVATARS = {"user": ":material/person:", "assistant": ":material/insights:"}
+
+# Content-width cap for `layout="wide"`, via CSS max-width rather than the
+# st.columns([1, 14, 1]) trick _MEETING-READY-DESIGN.md Part E also names as
+# an option ("columns trick or CSS max-width"). Switched to CSS after the
+# columns trick broke chat rendering in real-browser verification: nesting
+# `with st.chat_message():` under a `page = st.columns(...)` column requires
+# every call inside that `with` block to route through Streamlit's
+# thread-local "current container" context stack, which ONLY the bare
+# `st.foo()` module functions consult — confirmed by reading Streamlit's own
+# DeltaGenerator.__enter__ source (it returns None; there is no container
+# object to capture from `with X.chat_message() as y:`). Rewriting the inner
+# calls as `page.markdown(...)` bypassed that context stack and wrote
+# directly into `page`'s own flow instead of the bubble (confirmed via DOM
+# inspection: stChatMessageContent's inner stVerticalBlock had 0 children,
+# 0px height, and the message text rendered as an unstyled orphan below an
+# avatar-only bubble). It also moved page.chat_input() to the top of the
+# conversation view instead of staying pinned to the bottom, because
+# chat_input's root-level auto-pin behaviour only applies at the true script
+# root, not inside a column. A CSS max-width on the block container avoids
+# both problems entirely: every render call below stays exactly as it was
+# (bare `st`), so `with st.chat_message():`'s context-stack routing and
+# st.chat_input()'s root-level bottom-pin both keep working unmodified.
+st.markdown(
+    """
+    <style>
+    [data-testid="stMainBlockContainer"],
+    [data-testid="stBottomBlockContainer"] {
+        /* max-width alone left the KPI row / charts barely wider than the
+           old centered cap: `layout="wide"` ships its own ~80px left/right
+           padding INSIDE the block container's box, so a max-width of 950px
+           was rendering only ~790px of actual usable content (confirmed via
+           getComputedStyle: mainPadding was "96px 80px 16px", i.e. 160px of
+           the 950px cap was going to padding, not content). Overriding
+           padding-left/right down to 24px on top of a 1000px cap gets the
+           rendered content column to ~950px, matching Part E's target and
+           close to the InSight demo's own ~1000px chart width — confirmed
+           via DOM measurement after the change, not assumed.
+           padding-top/padding-bottom are left untouched (only the two
+           longhand properties below are set, not the shorthand). */
+        max-width: 1000px;
+        padding-left: 24px;
+        padding-right: 24px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Task 13 Step 5 (ChatGPT-style right-aligned user bubble): attempted and
+# reverted. A stable selector DOES exist —
+# [data-testid="stChatMessageContent"][aria-label="Chat message from user"]
+# — both attributes are Streamlit's own accessibility/testing attributes,
+# confirmed via live DOM inspection against the installed 1.60.0, not a
+# generated st-emotion-cache-xxxxx class. But the grey message background is
+# painted on the parent stChatMessage ROW, not on stChatMessageContent —
+# right-aligning only the content (margin-left:auto; max-width:70%) left the
+# full-width grey row in place with the text shoved into its right corner,
+# not a clean right-aligned bubble. Screenshotted and confirmed visually
+# worse than the original left-aligned layout, not better. Getting a real
+# ChatGPT-style bubble would mean re-theming the row's own background/shape
+# too — more surface area than a scoped override, and touches the message
+# background Part E frames as already "settled". Per Part E's own instruction
+# ("if it looks fragile, drop it and record why... not load-bearing"),
+# dropped rather than pushed further.
 
 st.markdown(
     f"""
