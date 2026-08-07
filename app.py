@@ -203,7 +203,7 @@ def answer_payload(question: str) -> dict:
             f"({level_label} categories) — {chart_df['category'].nunique()} categories, "
             f"total {total}."
         )
-        return {"kind": "chart", "text": f"Total: {total}", "figure": fig, "caption": caption}
+        return {"kind": "chart", "text": f"Total: {total}", "figure": fig, "caption": caption, "show_chips": False}
 
     result = query_spend(df, **filters)
     total = format_currency(result["total_net_spend"])
