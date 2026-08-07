@@ -79,7 +79,14 @@ One code path for both entry routes — no duplicated handling.
 Chip labels are questions a client would actually type, title-cased
 sentence style, no trailing punctuation except "?". They are interface
 copy — global Rule 26 applies (no meta-descriptions like "Try a chart
-query").
+query"). Grounded against real UX guidance, not assumption (Rule 2):
+researched conversation-starter conventions across chatbot products before
+finalising this — the consistent finding is that a good starter shows a
+**specific, realistic** query rather than a generic one ("Ask me
+anything" is explicitly called out as an anti-pattern), because a concrete
+example teaches the user what a good question looks like by demonstration.
+The three chips already chosen (A3) already follow this; no change needed,
+just confirmed rather than assumed.
 
 ---
 
@@ -122,6 +129,33 @@ Caption pattern matches Phase 1: "Top 15 suppliers by net spend, 2024 vs
 2025 — total €X across both years." (or single-year wording when
 filtered).
 
+### B4. Supplier drill-down (added 7 Aug — live re-inspection)
+
+Re-verified the demo live before building rather than trusting the 4 Aug
+notes above (Rule 1). The Top suppliers tab has a second section below the
+ranking, "Supplier drill-down" — a dropdown to pick one supplier, then 4
+KPI cards (Spend in the focus year with a YoY delta arrow, Share of scope,
+Entities served, Categories) and two bar charts (spend by entity, spend by
+category for that one supplier). This has no equivalent in the current
+chat design and is a real gap, not a nice-to-have — a client's most natural
+single-supplier question ("how much did we spend with Demo Supplier 025?",
+"tell me about Demo Supplier 025") currently only gets a plain number.
+
+New intent: when a question names exactly one known supplier and no other
+chart keyword, return a **supplier drill-down answer** instead of the plain
+number. Computation (`chart_query.py`, new function)
+`supplier_drilldown(df, supplier, **filters) -> dict`: focus year Y =
+latest year in scope; spend in Y; YoY delta vs Y−1 when present (omit, not
+fake, per the existing D2 rule); share of scope = that supplier's spend ÷
+total spend in scope (must equal `query_spend`'s total for the same
+filters minus supplier — same never-diverge guarantee); entities served =
+distinct entity count for that supplier; categories = distinct L1 count.
+Two small horizontal bar charts (spend by entity, spend by category),
+reusing the existing tick/label helpers. Presentation: `st.metric` row in
+`st.columns(4)`, then two charts side by side (`st.columns(2)`) — mirrors
+the demo layout. Caption: "Demo Supplier 025 — €368k in 2025 (+22.4% vs
+2024), 5.0% of spend in scope."
+
 ---
 
 ## Part C — Phase 3: Fragmentation
@@ -133,24 +167,50 @@ supplier count" with a High/Medium/Concentrated legend.
 
 ### C1. The formula must be ours, defined, and disclosed
 
-InSight's exact fragmentation formula is not published anywhere we can
-read. We therefore define our own, principled and industry-standard, and
-**every fragmentation answer's caption states the rule used** — we never
-imply it is InSight's own formula:
+Re-verified live on 7 Aug, not just the 4 Aug notes (Rule 1) — and this
+changed C1 materially. The demo's Fragmentation tab has a data table this
+project hadn't inspected before: columns L1, Net spend, Suppliers,
+**Top supplier share %**, **Top 3 share %**, **Concentration index**,
+Profile (High/Medium/Concentrated fragmentation). "Top 3 share %" is
+exactly the CR3 metric already chosen below — that part of the original
+spec was already right. But cross-checking real rows against our
+Concentrated≥70/Medium 40–70/High<40 thresholds does NOT reproduce the
+demo's Profile column: e.g. "IT and telecom" has Top 3 share % = 40.5%
+(our rule would call that Medium) but the demo labels it **High
+fragmentation**. The Profile column tracks the Concentration index (an
+HHI-style score — sum of squared per-supplier share-of-category
+percentages) much more closely than it tracks Top 3 share % alone, but
+with only 8 category rows to observe, the exact cutoff InSight uses on
+that index isn't reliably recoverable — and reverse-fitting a threshold to
+8 data points to force a match is exactly the measurement-gaming Rule 24
+forbids, not genuine grounding.
+
+Resolution: keep our own CR3-based tiers exactly as already defined below
+(principled, disclosed, unchanged from the original spec) — but ALSO
+compute and disclose the real Concentration index (HHI: Σ(supplier's %
+share of category spend)², summed over suppliers in that category) as a
+second, separate number, since it's a standard, well-defined statistic,
+not a guess. Showing both side by side is more honest than picking one and
+is a closer match to what the demo actually displays (a 3-metric table),
+not a forced copy of its exact tier cutoffs:
 
 - Per L1 category (within active filters, focus year = latest year in
   scope unless the question names one, same defaulting rule as Phase 1):
   CR3 = share of the category's spend held by its top 3 suppliers.
+  Concentration index = Σ(each supplier's % share of that category)².
 - **Concentrated:** CR3 ≥ 70%. **Medium:** 40% ≤ CR3 < 70%.
-  **High fragmentation:** CR3 < 40%.
+  **High fragmentation:** CR3 < 40%. (Tier is set by OUR CR3 rule, not the
+  index — the index is shown as an additional disclosed number only.)
 - Fragmented spend % = spend in High categories ÷ total spend in scope.
 - Suppliers in scope = distinct suppliers after filters, focus year.
 
 At build time, compute the unfiltered 2025 readout with these thresholds
 and record the numbers next to the demo's (8 / 2 / 32.3% / 56) in the
-handoff. If ours land close, note it; if not, keep the principled
-thresholds and the honest caption — do NOT tune thresholds to reproduce
-the demo's numbers (that is measurement gaming, Rule 24).
+handoff, AND record the per-category table (our CR3/tier/index vs the
+demo's Top 3 share %/Profile/Concentration index) so any mismatch — like
+IT and telecom above — is on the record and explainable in the meeting,
+not silently different. Do NOT tune thresholds to reproduce the demo's
+Profile column (Rule 24).
 
 ### C2. Understanding
 
@@ -163,8 +223,26 @@ the demo's numbers (that is measurement gaming, Rule 24).
 KPI row via `st.metric` in `st.columns(4)` inside the chat message, then a
 Plotly scatter: x = supplier count, y = category spend (€, adaptive ticks
 reused), bubble size ∝ spend, colour by tier using three hues from the
-dataviz palette in its documented order, hover shows category name + CR3.
-Caption states the CR3 rule in one clause.
+dataviz palette in its documented order, hover shows category name + CR3 +
+the concentration index. Below the chart, a per-category detail table
+(matching the demo's own table shape): L1, Net spend, Suppliers, Top
+supplier share %, Top 3 share %, Concentration index, Tier — all values
+computed once and reused for both the bubble chart and the table, so they
+can never disagree with each other. Caption states the CR3 rule in one
+clause and names the index as a supplementary, standard statistic.
+
+### C4. Overall supplier concentration (added 7 Aug — live re-inspection)
+
+The Fragmentation tab also has a Pareto chart below the per-category
+table, scoped to ALL suppliers (not per-category): bars = each supplier's
+net spend, descending, plus a cumulative-share-of-total line on a second
+y-axis (0–100%). This is the natural chart for "how concentrated is our
+supplier base overall" / "pareto" / "80/20" style questions, distinct from
+the per-category bubble chart above. New presentation function reusing the
+existing bar/tick helpers plus a secondary-axis line trace; caption states
+the top-N-suppliers' share of total spend directly from the same numbers
+Phase 1's `query_spend` would return for those suppliers, so it can never
+diverge.
 
 ---
 
@@ -191,9 +269,13 @@ largest category by Y spend; fastest-growing category = max (Y − Y−1)/Y−1
 over categories with Y−1 spend > 0 (categories entering from zero are
 excluded from the growth ranking — noted in the caption if any were
 excluded); Top-10 concentration = top 10 suppliers' share of total spend
-in scope (directly comparable to the demo's stated metric). Every number
-must equal what `query_spend` returns for the equivalent filters — same
-never-diverge guarantee as Phase 1, test-enforced.
+in scope (directly comparable to the demo's stated metric), PLUS the
+single largest supplier's name (confirmed live 7 Aug: the demo's own
+"Supplier concentration" card carries a second line, "Largest supplier: 
+Demo Supplier 025", under the Top-10 percentage — missed in the 4 Aug
+notes, added here). Every number must equal what `query_spend` returns for
+the equivalent filters — same never-diverge guarantee as Phase 1,
+test-enforced.
 
 ### D3. Presentation
 
@@ -273,9 +355,26 @@ the human look catches what the review chain misses.
 
 Build order: A (robustness — highest value per Hayden's own words) → D
 (overview, because A's fallback depends on it — build D's computation
-first, then A consumes it) → B (top suppliers) → C (fragmentation) → E
-(interface) → F (gauntlet). A and D ship together as one coherent change;
-B, C, E are independent tasks; F gates the lot.
+first, then A consumes it) → B including B4 (top suppliers + drill-down)
+→ C including C4 (fragmentation + Pareto chart) → E (interface) → F
+(gauntlet). A and D ship together as one coherent change; B, C, E are
+independent tasks; F gates the lot.
+
+## Addendum — live re-verification, 7 Aug 2026
+
+Before build, the InSight demo was re-inspected live in the browser rather
+than trusting the 4 Aug notes above (Rule 1 — carried-over facts are
+claims, not ground truth). This found three real gaps, now folded into the
+sections above rather than left as a mismatch discovered mid-build: the
+Top suppliers tab's supplier drill-down sub-view (B4, new), the
+Fragmentation tab's actual metric table and Concentration index — which
+also revealed the original CR3-only tier assumption doesn't fully match
+the demo's Profile column, resolved by disclosing both metrics rather than
+reverse-fitting thresholds (C1 rewritten, C3 updated, C4 new for the
+Pareto chart), and the Overview tab's second "Largest supplier" line (D2
+addition). Also researched real chatbot starter-prompt conventions before
+finalising the suggestion-chip copy (A4) rather than guessing. Nothing in
+Parts A–E's original scope was removed; this only closes gaps.
 
 ## Explicitly out of scope (unchanged from Phase 1)
 
