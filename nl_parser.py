@@ -169,6 +169,12 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
     )
 
     if not is_chart:
+        DRILLDOWN_ALLOWED_EXTRA_FILTERS = {"year"}
+        if "supplier" in filters and (set(filters) - {"supplier"}) <= DRILLDOWN_ALLOWED_EXTRA_FILTERS:
+            return {
+                "intent": "supplier_drilldown", "chart_kind": None,
+                "breakdown": None, "category_level": None, **base,
+            }
         return {"intent": "number", "chart_kind": None, "breakdown": None, "category_level": None, **base}
 
     if any(kw in q for kw in CLUSTER_BREAKDOWN_KEYWORDS):

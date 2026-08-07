@@ -142,7 +142,14 @@ def test_show_me_by_supplier_name_does_not_trigger_chart_intent():
     # (breakdown only ever resolves to entity/country/cluster), so "by
     # supplier ..." must not trigger chart intent either.
     result = parse_question("show me the total spend by supplier Demo Supplier 001", KV)
-    assert result["intent"] == "number"
+    assert result["intent"] != "chart"
+    # Task 6: this question names exactly one supplier and no other
+    # narrowing filter besides an optional year, so per the drill-down
+    # intent's own spec it now correctly routes to "supplier_drilldown"
+    # rather than "number" — updated from the pre-Task-6 assertion, which
+    # predates the drill-down intent and asserted the only non-chart value
+    # that existed at the time.
+    assert result["intent"] == "supplier_drilldown"
 
 
 def test_minibar_does_not_trigger_chart_intent():
@@ -234,3 +241,29 @@ def test_top_n_suppliers_clamps_to_min():
 def test_biggest_suppliers_phrase_detected():
     result = parse_question("who are our biggest suppliers", KV)
     assert result["chart_kind"] == "top_suppliers"
+
+
+def test_supplier_alone_triggers_drilldown_intent():
+    result = parse_question("tell me about Demo Supplier 025", KV)
+    assert result["intent"] == "supplier_drilldown"
+    assert result["filters"]["supplier"] == "Demo Supplier 025"
+
+
+def test_supplier_with_year_still_triggers_drilldown():
+    result = parse_question("how much did we spend with Demo Supplier 025 in 2024?", KV)
+    assert result["intent"] == "supplier_drilldown"
+    assert result["filters"]["year"] == 2024
+
+
+def test_supplier_with_entity_and_category_does_not_trigger_drilldown():
+    # Regression guard: this exact question already has passing coverage in
+    # test_app_answer.py (test_negative_total_shows_minus_sign_before_euro_symbol)
+    # asserting a specific plain-number answer. Supplier + entity + category
+    # together is a precise "give me this one number" question, not a broad
+    # "tell me about this supplier" question — it must keep returning the
+    # existing "number" intent, not the new drill-down.
+    result = parse_question(
+        "What did supplier Demo Supplier 052 spend on Utilities for Demo Iberia Distribution?",
+        KV,
+    )
+    assert result["intent"] == "number"

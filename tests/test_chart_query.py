@@ -122,3 +122,32 @@ def test_top_suppliers_filters_apply():
     df = load_data()
     chart_df = top_suppliers(df, n=15, year=2024)
     assert set(chart_df["year"].unique()) == {2024}
+
+
+from chart_query import supplier_drilldown
+
+
+def test_supplier_drilldown_net_spend_matches_query_spend():
+    df = load_data()
+    result = supplier_drilldown(df, "Demo Supplier 025")
+    reference = query_spend(df, supplier="Demo Supplier 025", year=result["year"])
+    assert result["net_spend"] == reference["total_net_spend"]
+
+
+def test_supplier_drilldown_by_entity_sums_to_net_spend():
+    df = load_data()
+    result = supplier_drilldown(df, "Demo Supplier 025")
+    assert round(result["by_entity"]["net_spend"].sum(), 2) == result["net_spend"]
+
+
+def test_supplier_drilldown_by_category_sums_to_net_spend():
+    df = load_data()
+    result = supplier_drilldown(df, "Demo Supplier 025")
+    assert round(result["by_category"]["net_spend"].sum(), 2) == result["net_spend"]
+
+
+def test_supplier_drilldown_unknown_supplier_returns_none_year():
+    df = load_data()
+    result = supplier_drilldown(df, "Nonexistent Supplier")
+    assert result["year"] is None
+    assert result["by_entity"].empty

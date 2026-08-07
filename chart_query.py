@@ -82,3 +82,72 @@ def top_suppliers(df: pd.DataFrame, n: int = 15, **filters) -> pd.DataFrame:
     result["supplier"] = pd.Categorical(result["supplier"], categories=top_names, ordered=True)
     result = result.sort_values(["supplier", "year"]).reset_index(drop=True)
     return result
+
+
+def supplier_drilldown(df: pd.DataFrame, supplier: str, **filters) -> dict:
+    """Single-supplier KPIs + entity/category breakdowns — the InSight
+    demo's Supplier drill-down view. `filters` may carry a `year` (or other
+    dimensions, though the parser only ever routes plain supplier-or-
+    supplier+year questions here — see nl_parser.py's DRILLDOWN_ALLOWED_
+    EXTRA_FILTERS); a `supplier` key in `filters` is ignored in favour of
+    the explicit `supplier` argument, since the two would otherwise
+    disagree if a caller passed both.
+
+    Returns a dict:
+      - supplier: str, year, net_spend, prior_year, yoy_pct — same shape/
+        rules as overview_query.overview()
+      - share_of_scope_pct: this supplier's net_spend in `year` as a % of
+        total net spend in `year` across ALL suppliers in the same
+        `filters` scope (excluding the `supplier` filter itself)
+      - entity_count, category_count: distinct counts for this supplier in `year`
+      - by_entity, by_category: DataFrames [name, net_spend], descending
+    """
+    scoped_filters = {k: v for k, v in filters.items() if k != "supplier"}
+    scope_matched = filter_df(df, **scoped_filters)
+    supplier_matched = scope_matched[scope_matched["Supplier name"] == supplier]
+
+    if supplier_matched.empty:
+        empty_cols = pd.DataFrame(columns=["name", "net_spend"])
+        return {
+            "supplier": supplier, "year": None, "net_spend": 0.0,
+            "prior_year": None, "yoy_pct": None, "share_of_scope_pct": None,
+            "entity_count": 0, "category_count": 0,
+            "by_entity": empty_cols, "by_category": empty_cols,
+        }
+
+    year = int(supplier_matched["Year"].max())
+    year_rows = supplier_matched[supplier_matched["Year"] == year]
+    net_spend = round(float(year_rows["Net spend"].sum()), 2)
+
+    prior_year_candidate = year - 1
+    prior_rows = supplier_matched[supplier_matched["Year"] == prior_year_candidate]
+    if prior_rows.empty:
+        prior_year = None
+        yoy_pct = None
+    else:
+        prior_year = prior_year_candidate
+        prior_spend = float(prior_rows["Net spend"].sum())
+        yoy_pct = round((net_spend - prior_spend) / prior_spend * 100, 1) if prior_spend != 0 else None
+
+    scope_year_total = float(scope_matched[scope_matched["Year"] == year]["Net spend"].sum())
+    share_of_scope_pct = round(net_spend / scope_year_total * 100, 1) if scope_year_total != 0 else None
+
+    entity_count = int(year_rows["Entity"].nunique())
+    category_count = int(year_rows["L1"].nunique())
+
+    by_entity = (
+        year_rows.groupby("Entity")["Net spend"].sum().sort_values(ascending=False)
+        .reset_index().rename(columns={"Entity": "name", "Net spend": "net_spend"})
+    )
+    by_category = (
+        year_rows.groupby("L1")["Net spend"].sum().sort_values(ascending=False)
+        .reset_index().rename(columns={"L1": "name", "Net spend": "net_spend"})
+    )
+
+    return {
+        "supplier": supplier, "year": year, "net_spend": net_spend,
+        "prior_year": prior_year, "yoy_pct": yoy_pct,
+        "share_of_scope_pct": share_of_scope_pct,
+        "entity_count": entity_count, "category_count": category_count,
+        "by_entity": by_entity, "by_category": by_category,
+    }
