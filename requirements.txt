@@ -1,5 +1,14 @@
-streamlit
-pandas
-anthropic
-pytest==9.1.1
+# Runtime dependencies only — this file is what Streamlit Community Cloud
+# installs on deploy, so anything unnecessary here is just slower builds.
+#
+# Pinned to the exact versions the 231-test suite actually ran against
+# rather than loose ranges: a version mismatch that fails the build is
+# visible and fixable in minutes, whereas one that installs cleanly but
+# behaves differently is a silent wrong-number risk in front of a client.
+#
+# `anthropic` was removed 7 Aug 2026 — it was never imported by any module
+# (there is no API key and parsing is rule-based); it only slowed installs.
+# `pytest` moved to requirements-dev.txt for the same reason.
+streamlit==1.60.0
+pandas==3.0.5
 plotly==6.9.0
