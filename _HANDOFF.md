@@ -550,18 +550,83 @@ data shape (data-scientist meeting pending); multi-tenancy/auth; per-client
 data isolation; multi-entity comparison charts; deployment beyond
 localhost.
 
+## Final whole-branch review round (after Task 14, before declaring done)
+
+Task 14's own gate above ran per-task; a separate final pass then reviewed
+the entire branch at once (24 commits, base `726cd46` to `8b960be`), on
+Opus, specifically hunting for cross-cutting issues no single task's
+reviewer could see. It found 5 Important + 2 Minor, all genuinely new:
+
+1. `supplier_drilldown()`'s `entity_count`/`category_count` were computed
+   *before* the null-guard `fillna` further down — a sixth instance of the
+   null-guard bug class this project independently hit and fixed four
+   times already (Tasks 6, 8, 10, 11), producing a KPI number that could
+   contradict the chart drawn directly beneath it.
+2. The same bug, a seventh instance, in `app.py`'s fragmentation dispatch
+   ("Suppliers in scope" KPI).
+3. `format_filters()` only stripped the "Demo " prefix for `entity`, never
+   `supplier` — a real violation of this project's own stated rule
+   ("Entity/supplier names always display with the `Demo ` prefix
+   stripped"), reaching 9 call sites.
+4. The highest-risk finding: every chart dispatch defaulted an unfiltered
+   year question to the *dataset's global latest year* rather than the
+   latest year *within the filtered scope* — silently dead-ending 42 real
+   entity+supplier combinations that have 2024 data but no 2025 data,
+   directly contradicting this project's own headline "no question
+   dead-ends" goal.
+5. The top-suppliers "(clamped from N)" caption note fired whenever the
+   scope simply had fewer suppliers than the unrequested default of 15,
+   not only on a genuine clamp — a false claim in client-facing copy.
+
+All 7 fixed in one commit (`bfc8bd2`, 8 new regression tests, 161→169).
+A scoped re-review (also Opus) independently re-derived the mechanism
+behind Finding 4 from raw pandas rather than trusting the fix report, then
+ran an exhaustive sweep of all 661 scopes the parser can express: exactly
+42 resolve to a different year under the fix, and in every one of those
+42 the old global-year filter matched zero rows — a decisive result that
+the fix can only convert a prior dead-end into a real answer, never change
+an answer that was previously correct.
+
+Three trivial residuals surfaced in that re-review, adjudicated rather
+than looped again (per this project's own fix-loop rule: at most one fix
+wave for a whole-branch review pass): a pre-existing phantom-"2023" row in
+the category comparison table (the dataset only has 2024/2025; comparing
+a 2024-only scope against a nonexistent 2023 already happened before this
+round, the fix just makes it reachable more often — a UX polish item, not
+a defect, left as a follow-up); a code-style inconsistency between two new
+helper functions (zero functional risk); and one documentation overclaim
+in `_MEETING-READY-DESIGN.md`, fixed directly by the controller
+(`cd57299`) rather than looping another subagent round for one sentence.
+
+**Final state: 169/169 tests, HEAD `cd57299`.**
+
+## Personal controller screenshot pass (Task 14 Step 7 — done directly)
+
+Run separately from every automated/subagent check above, per this
+project's own rule that viewing the rendered output is the actual test,
+not a proxy for it. Started the app fresh, drove it with real browser
+clicks (not the debug-seed workaround), and personally confirmed against
+the live InSight demo: the top-suppliers ranking fix (order
+025/026/023/021/024/028/002/027/010/049 matches the real demo exactly);
+the supplier drill-down (all 5 numbers and the side-by-side chart layout
+match the real demo exactly for Demo Supplier 025); the fragmentation
+table's column order and every value (including the one disclosed,
+deliberate divergence on IT and telecom's tier) match the design spec and
+the live demo; and the category comparison table matches the live demo to
+the cent on every row. No visual defects, no build-narration, no leftover
+debug artifacts in any screenshot.
+
 ## Next steps
 - Show this build at/before the data scientist meeting as the complete
   meeting-ready demo (all 5 InSight tabs now have a chat equivalent, gated
-  by the adversarial/Codex/screenshot passes above).
-- After that meeting: revisit architecture decisions above against what's
-  actually confirmed about the real InSight data.
+  by the adversarial/Codex/final-whole-branch-review/screenshot passes
+  above).
+- Consider the phantom-"2023" comparison-table row noted above — a
+  one-line "no data before 2024" caption would close it; not blocking.
+- After the data scientist meeting: revisit architecture decisions above
+  against what's actually confirmed about the real InSight data.
 - Decide on the LLM upgrade once there's a reason to (API key + real
   questions to test against).
-- Step 7 of Task 14 (a second, independent controller screenshot pass
-  confirming the fragmentation table's column order and the drill-down's
-  side-by-side chart layout) is being done separately by the controller
-  session directly, not folded into this handoff.
 
 ## How to run it
 ```
