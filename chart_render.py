@@ -307,3 +307,48 @@ def build_top_suppliers_figure(chart_df) -> go.Figure:
         ticktext=ticktext,
     )
     return fig
+
+
+def _single_series_bar_figure(data, x_title: str) -> go.Figure:
+    """One horizontal bar per row in `data` ([name, net_spend]), already
+    sorted descending by the caller — the shared shape behind the supplier
+    drill-down's spend-by-entity and spend-by-category charts."""
+    names = [str(n).replace("Demo ", "") for n in data["name"]]
+    values = data["net_spend"].tolist()
+    min_value = min(0.0, min(values)) if values else 0.0
+    max_value = max(0.0, max(values)) if values else 0.0
+    tickvals, ticktext = _millions_ticks(min_value, max_value)
+
+    fig = go.Figure()
+    fig.add_trace(
+        go.Bar(
+            y=names,
+            x=values,
+            orientation="h",
+            marker_color=PALETTE[0],
+            text=[f"{v:,.0f}" for v in values],
+            textposition="outside",
+        )
+    )
+    fig.update_layout(
+        yaxis=dict(autorange="reversed"),
+        showlegend=False,
+        margin=dict(l=0, r=0, t=10, b=0),
+        height=60 + 30 * len(names),
+    )
+    fig.update_xaxes(
+        title_text=x_title,
+        tickmode="array",
+        tickvals=tickvals,
+        ticktext=ticktext,
+    )
+    return fig
+
+
+def build_supplier_drilldown_figures(drilldown: dict) -> tuple[go.Figure, go.Figure]:
+    """Two figures from chart_query.supplier_drilldown()'s output: spend by
+    entity, spend by category — matching the InSight demo's drill-down
+    layout (the two charts side by side)."""
+    entity_fig = _single_series_bar_figure(drilldown["by_entity"], "Net spend (€)")
+    category_fig = _single_series_bar_figure(drilldown["by_category"], "Net spend (€)")
+    return entity_fig, category_fig

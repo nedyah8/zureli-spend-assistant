@@ -331,3 +331,16 @@ def test_top_suppliers_figure_strips_demo_prefix():
     fig = build_top_suppliers_figure(chart_df)
     for name in fig.data[0].y:
         assert not str(name).startswith("Demo ")
+
+
+from chart_query import supplier_drilldown
+from chart_render import build_supplier_drilldown_figures
+
+
+def test_supplier_drilldown_figures_strip_demo_prefix():
+    df = load_data()
+    drilldown = supplier_drilldown(df, "Demo Supplier 025")
+    entity_fig, category_fig = build_supplier_drilldown_figures(drilldown)
+    for name in entity_fig.data[0].y:
+        assert not str(name).startswith("Demo ")
+    assert len(category_fig.data[0].y) == drilldown["by_category"]["name"].nunique()

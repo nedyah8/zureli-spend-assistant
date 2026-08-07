@@ -4,6 +4,8 @@ from chart_query import category_spend
 from chart_render import build_category_spend_figure
 from chart_query import top_suppliers
 from chart_render import build_top_suppliers_figure
+from chart_query import supplier_drilldown
+from chart_render import build_supplier_drilldown_figures
 from nl_parser import parse_question
 from overview_query import overview
 from spend_query import known_values, load_data, query_spend
@@ -147,6 +149,48 @@ def build_overview_payload(filters: dict, prefix: str = "") -> dict:
     }
 
 
+def build_supplier_drilldown_payload(filters: dict) -> dict:
+    supplier = filters["supplier"]
+    # chart_query.supplier_drilldown(df, supplier, **filters) documents that
+    # a "supplier" key inside `filters` is ignored in favour of the explicit
+    # `supplier` argument — but Python raises TypeError ("got multiple
+    # values for argument 'supplier'") before the function body ever runs if
+    # both are supplied at once, since filters here always carries the same
+    # "supplier" key parse_question() extracted. Strip it from the kwargs
+    # splat so only the explicit positional argument carries it, matching
+    # the documented behaviour Python itself can't reach otherwise.
+    scoped_filters = {k: v for k, v in filters.items() if k != "supplier"}
+    drilldown = supplier_drilldown(df, supplier, **scoped_filters)
+    display_name = supplier.replace("Demo ", "")
+
+    if drilldown["year"] is None:
+        return {
+            "kind": "text",
+            "text": f"I didn't find any spend for {display_name} matching that.",
+            "figure": None, "caption": None, "show_chips": False,
+        }
+
+    net_spend_str = format_currency(drilldown["net_spend"])
+    delta = f"{drilldown['yoy_pct']:+.1f}%" if drilldown["yoy_pct"] is not None else None
+    share_str = f"{drilldown['share_of_scope_pct']:.1f}%" if drilldown["share_of_scope_pct"] is not None else "n/a"
+    metrics = [
+        (f"Spend {drilldown['year']}", net_spend_str, delta),
+        ("Share of scope", share_str, None),
+        ("Entities served", str(drilldown["entity_count"]), None),
+        ("Categories", str(drilldown["category_count"]), None),
+    ]
+    entity_figure, category_figure = build_supplier_drilldown_figures(drilldown)
+
+    delta_text = f" ({delta} vs {drilldown['prior_year']})" if delta else ""
+    text = f"{display_name} — {net_spend_str} in {drilldown['year']}{delta_text}, {share_str} of spend in scope."
+
+    return {
+        "kind": "supplier_drilldown", "text": text, "metrics": metrics,
+        "entity_figure": entity_figure, "category_figure": category_figure,
+        "show_chips": False,
+    }
+
+
 def answer_payload(question: str) -> dict:
     parsed = parse_question(question, kv)
     filters = parsed["filters"]
@@ -156,6 +200,9 @@ def answer_payload(question: str) -> dict:
 
     if parsed["intent"] == "overview":
         return build_overview_payload(filters)
+
+    if parsed["intent"] == "supplier_drilldown":
+        return build_supplier_drilldown_payload(filters)
 
     if parsed["intent"] == "chart":
         chart_kind = parsed["chart_kind"]
@@ -262,6 +309,11 @@ def render_payload(container, payload: dict) -> None:
     elif payload["kind"] == "overview":
         render_kpi_row(container, payload["metrics"])
         render_callouts(container, payload["callouts"])
+    elif payload["kind"] == "supplier_drilldown":
+        render_kpi_row(container, payload["metrics"])
+        fig_cols = container.columns(2)
+        fig_cols[0].plotly_chart(payload["entity_figure"], use_container_width=True)
+        fig_cols[1].plotly_chart(payload["category_figure"], use_container_width=True)
 
 
 # render_payload must be defined above this point: Streamlit re-executes the

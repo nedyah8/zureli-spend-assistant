@@ -267,3 +267,24 @@ def test_top_n_suppliers_question_respects_n():
     app = _reload_app()
     payload = app.answer_payload("top 5 suppliers")
     assert "Top 5" in payload["text"]
+
+
+def test_supplier_question_returns_drilldown_payload():
+    app = _reload_app()
+    payload = app.answer_payload("tell me about Demo Supplier 025")
+    assert payload["kind"] == "supplier_drilldown"
+    assert len(payload["metrics"]) == 4
+    assert "entity_figure" in payload
+    assert "category_figure" in payload
+
+
+def test_supplier_with_entity_and_category_still_returns_plain_number():
+    # Regression guard mirroring test_nl_parser.py's equivalent test —
+    # confirms app.py's dispatch preserves the existing passing behaviour
+    # for this exact question (test_negative_total_shows_minus_sign_before_euro_symbol).
+    app = _reload_app()
+    payload = app.answer_payload(
+        "What did supplier Demo Supplier 052 spend on Utilities for Demo Iberia Distribution?"
+    )
+    assert payload["kind"] == "text"
+    assert "-€7,637.65" in payload["text"]
