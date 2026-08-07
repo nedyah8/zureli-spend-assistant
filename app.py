@@ -3,6 +3,7 @@ import streamlit as st
 from chart_query import category_spend
 from chart_render import build_category_spend_figure
 from nl_parser import parse_question
+from overview_query import overview
 from spend_query import known_values, load_data, query_spend
 
 st.set_page_config(page_title="Zureli spend assistant", layout="centered")
@@ -68,9 +69,91 @@ def format_currency(value: float) -> str:
     return f"-€{magnitude}" if value < 0 else f"€{magnitude}"
 
 
+def render_kpi_row(container, metrics: list[tuple[str, str, str | None]]) -> None:
+    """metrics: list of (label, value, delta) tuples; delta may be None."""
+    cols = container.columns(len(metrics))
+    for col, (label, value, delta) in zip(cols, metrics):
+        col.metric(label, value, delta=delta)
+
+
+def render_callouts(container, callouts: list[dict]) -> None:
+    """callouts: list of {label, value, detail} dicts, one bordered card each."""
+    cols = container.columns(len(callouts))
+    for col, callout in zip(cols, callouts):
+        box = col.container(border=True)
+        box.caption(callout["label"])
+        box.markdown(f"**{callout['value']}**")
+        box.caption(callout["detail"])
+
+
+HELP_TEXT = (
+    "I can answer questions about spend by entity, category, country, cluster, "
+    "year or supplier — as a number, a category chart, top suppliers, "
+    "fragmentation, or an overall overview.\n\nTry one of these, or ask your own:"
+)
+
+
+def build_help_payload() -> dict:
+    return {"kind": "text", "text": HELP_TEXT, "figure": None, "caption": None, "show_chips": True}
+
+
+def build_overview_payload(filters: dict, prefix: str = "") -> dict:
+    stats = overview(df, **filters)
+    if stats["year"] is None:
+        filter_text = format_filters(filters) if filters else "the data"
+        return {
+            "kind": "text",
+            "text": f"I didn't find anything matching that for an overview — {filter_text} returned no rows.",
+            "figure": None, "caption": None, "show_chips": True,
+        }
+
+    net_spend_str = format_currency(stats["net_spend"])
+    delta = f"{stats['yoy_pct']:+.1f}% vs {stats['prior_year']}" if stats["yoy_pct"] is not None else None
+    metrics = [
+        (f"Net spend {stats['year']}", net_spend_str, delta),
+        ("Entities", str(stats["entity_count"]), None),
+        ("Suppliers", str(stats["supplier_count"]), None),
+        ("Spend rows", str(stats["row_count"]), None),
+    ]
+
+    callouts = []
+    if stats["largest_category"]:
+        callouts.append({
+            "label": "Largest category",
+            "value": stats["largest_category"]["name"],
+            "detail": f"{format_currency(stats['largest_category']['net_spend'])} in {stats['year']}",
+        })
+    if stats["fastest_growing_category"]:
+        callouts.append({
+            "label": "Fastest category growth",
+            "value": stats["fastest_growing_category"]["name"],
+            "detail": f"{stats['fastest_growing_category']['growth_pct']:+.1f}% vs {stats['prior_year']}",
+        })
+    if stats["top10_concentration_pct"] is not None:
+        largest_supplier_name = stats["largest_supplier"]["name"].replace("Demo ", "")
+        callouts.append({
+            "label": "Supplier concentration",
+            "value": f"Top 10 = {stats['top10_concentration_pct']:.1f}%",
+            "detail": f"Largest supplier: {largest_supplier_name}",
+        })
+
+    filter_text = format_filters(filters) if filters else "all data"
+    text = f"{prefix}Overview for {filter_text}, {stats['year']}."
+    return {
+        "kind": "overview", "text": text, "metrics": metrics, "callouts": callouts,
+        "show_chips": True,
+    }
+
+
 def answer_payload(question: str) -> dict:
     parsed = parse_question(question, kv)
     filters = parsed["filters"]
+
+    if parsed["intent"] == "help":
+        return build_help_payload()
+
+    if parsed["intent"] == "overview":
+        return build_overview_payload(filters)
 
     if parsed["intent"] == "chart":
         # Default an unfiltered chart question to the latest year present in
@@ -99,6 +182,7 @@ def answer_payload(question: str) -> dict:
                 ),
                 "figure": None,
                 "caption": None,
+                "show_chips": False,
             }
         # chart_filters always carries a year now (either the one the user
         # named, or the latest-year default above), so this label is true by
@@ -125,22 +209,20 @@ def answer_payload(question: str) -> dict:
     total = format_currency(result["total_net_spend"])
 
     if not filters:
-        sample_entities = ", ".join(e.replace("Demo ", "") for e in kv["entity"][:3])
-        sample_categories = ", ".join(kv["l1"][:4])
-        text = (
-            f"I didn't recognise a specific entity, country, category, or year in that "
-            f"question, so I can't narrow it down — the total across all "
-            f"{result['row_count']} rows is **{total}**.\n\n"
-            f"Try mentioning something like an entity ({sample_entities}, ...), "
-            f"a category ({sample_categories}, ...), or a year (2024 or 2025)."
+        return build_overview_payload(
+            {},
+            prefix=(
+                "Here's the overall picture — ask about any entity, category, "
+                "country or year to go deeper.\n\n"
+            ),
         )
-    else:
-        row_word = "row" if result["row_count"] == 1 else "rows"
-        text = (
-            f"Matched on {format_filters(filters)} — **{total}** "
-            f"across {result['row_count']} spend {row_word}."
-        )
-    return {"kind": "text", "text": text, "figure": None, "caption": None}
+
+    row_word = "row" if result["row_count"] == 1 else "rows"
+    text = (
+        f"Matched on {format_filters(filters)} — **{total}** "
+        f"across {result['row_count']} spend {row_word}."
+    )
+    return {"kind": "text", "text": text, "figure": None, "caption": None, "show_chips": False}
 
 
 def answer(question: str) -> str:
@@ -152,6 +234,9 @@ def render_payload(container, payload: dict) -> None:
     if payload["kind"] == "chart":
         container.plotly_chart(payload["figure"], use_container_width=True)
         container.caption(payload["caption"])
+    elif payload["kind"] == "overview":
+        render_kpi_row(container, payload["metrics"])
+        render_callouts(container, payload["callouts"])
 
 
 # render_payload must be defined above this point: Streamlit re-executes the

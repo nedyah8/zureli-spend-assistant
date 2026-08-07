@@ -32,9 +32,12 @@ def test_number_answer_unchanged_for_known_question():
 
 
 def test_no_match_question_gives_honest_caveat():
+    # A1 (meeting-ready design, Part A1): a zero-filter number question now
+    # returns the Overview answer instead of the old apology-paragraph — a
+    # deliberate behaviour change, not a regression. See _MEETING-READY-DESIGN.md.
     app = _reload_app()
     result = app.answer("how much did we spend on Car Fuel")
-    assert "I didn't recognise" in result
+    assert "overall picture" in result.lower()
 
 
 def test_chart_question_returns_chart_payload():
@@ -105,14 +108,15 @@ def test_chart_question_with_zero_matches_falls_back_to_text():
     assert "nothing" in payload["text"].lower() or "didn't" in payload["text"].lower()
 
 
-def test_nonsense_question_still_gets_honest_caveat():
+def test_nonsense_question_still_gets_honest_overview():
+    # A1: gibberish also lands on the Overview fallback, deliberately —
+    # distinguishing gibberish from genuine vagueness needs the LLM upgrade
+    # this project doesn't have yet, and an overview is a strictly better
+    # dead-end than an apology either way.
     app = _reload_app()
     payload = app.answer_payload("asdkjfh qwoeiruqwoe")
-    assert payload["kind"] == "text"
-    assert "I didn't recognise" in payload["text"]
-    # Final whole-branch review Fix 1: the no-filters number-answer branch's
-    # total must also carry a € — it previously showed a bare number.
-    assert "€" in payload["text"]
+    assert payload["kind"] == "overview"
+    assert "€" in payload["metrics"][0][1]
 
 
 def test_chart_breakdown_by_cluster():
@@ -186,3 +190,36 @@ def test_format_currency_helper_puts_minus_before_euro():
     assert app.format_currency(-7637.65) == "-€7,637.65"
     assert app.format_currency(7637.65) == "€7,637.65"
     assert app.format_currency(0) == "€0.00"
+
+
+def test_overview_intent_returns_overview_payload():
+    app = _reload_app()
+    payload = app.answer_payload("give me an overview")
+    assert payload["kind"] == "overview"
+    assert len(payload["metrics"]) == 4
+    assert payload["show_chips"] is True
+
+
+def test_overview_net_spend_matches_query_spend():
+    from spend_query import query_spend
+
+    app = _reload_app()
+    payload = app.answer_payload("give me an overview")
+    reference = query_spend(app.df, year=2025)
+    net_spend_metric = payload["metrics"][0]
+    assert reference["total_net_spend"] > 0
+    assert f"{reference['total_net_spend']:,.2f}" in net_spend_metric[1]
+
+
+def test_vague_question_falls_back_to_overview_not_caveat():
+    app = _reload_app()
+    payload = app.answer_payload("how much did we spend on Car Fuel")
+    assert payload["kind"] == "overview"
+    assert "overall picture" in payload["text"].lower()
+
+
+def test_help_intent_returns_text_with_chips():
+    app = _reload_app()
+    payload = app.answer_payload("what can you do")
+    assert payload["kind"] == "text"
+    assert payload["show_chips"] is True
