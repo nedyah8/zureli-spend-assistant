@@ -266,7 +266,7 @@ def answer_payload(question: str) -> dict:
             )
             return {
                 "kind": "fragmentation",
-                "text": f"Fragmentation for {format_filters(chart_filters)}, {chart_filters['year']}.",
+                "text": f"Fragmentation for {format_filters(chart_filters)}.",
                 "metrics": metrics, "figure": fig, "table": table, "caption": caption,
                 "show_chips": False,
             }

@@ -298,3 +298,10 @@ def test_fragmentation_question_returns_fragmentation_payload():
     assert "figure" in payload
     assert "table" in payload
     assert "Top-3" in payload["caption"] or "Top 3" in payload["caption"]
+
+
+def test_fragmentation_text_does_not_duplicate_year():
+    app = _reload_app()
+    payload = app.answer_payload("show me fragmentation")
+    year_str = str(max(app.kv["year"]))
+    assert payload["text"].count(year_str) == 1
