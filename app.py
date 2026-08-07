@@ -10,6 +10,8 @@ from chart_query import fragmentation
 from chart_render import build_fragmentation_figure
 from chart_query import overall_concentration
 from chart_render import build_concentration_figure
+from chart_query import category_comparison, entity_category_intensity
+from chart_render import build_intensity_heatmap
 from nl_parser import parse_question
 from overview_query import overview
 from spend_query import filter_df, known_values, load_data, query_spend
@@ -298,6 +300,50 @@ def answer_payload(question: str) -> dict:
                 "figure": fig, "caption": caption, "show_chips": False,
             }
 
+        if chart_kind == "category_comparison":
+            if "year" in filters:
+                chart_filters = dict(filters)
+            else:
+                chart_filters = {"year": max(kv["year"]), **filters}
+            comparison_df = category_comparison(df, level=parsed["category_level"], **chart_filters)
+            if comparison_df.empty:
+                return {
+                    "kind": "text",
+                    "text": f"I didn't find any categories matching that — {format_filters(chart_filters)} returned no rows.",
+                    "figure": None, "caption": None, "show_chips": False,
+                }
+            prior_year = chart_filters["year"] - 1
+            level_col = "L1" if parsed["category_level"] == "l1" else "L2"
+            table = comparison_df.rename(columns={
+                "category": level_col,
+                "spend_current": f"Spend {chart_filters['year']} (€)",
+                "spend_prior": f"Spend {prior_year} (€)",
+                "change": "Change (€)", "change_pct": "Change %", "share_pct": "Share %",
+            })
+            total_current = format_currency(round(comparison_df["spend_current"].sum(), 2))
+            text = f"Category spend comparison, {prior_year} vs {chart_filters['year']} — total {total_current} in {chart_filters['year']}."
+            return {"kind": "category_comparison", "text": text, "table": table, "show_chips": False}
+
+        if chart_kind == "intensity":
+            if "year" in filters:
+                chart_filters = dict(filters)
+            else:
+                chart_filters = {"year": max(kv["year"]), **filters}
+            intensity_df = entity_category_intensity(df, level=parsed["category_level"], **chart_filters)
+            if intensity_df.empty:
+                return {
+                    "kind": "text",
+                    "text": f"I didn't find any spend matching that — {format_filters(chart_filters)} returned no rows.",
+                    "figure": None, "caption": None, "show_chips": False,
+                }
+            fig = build_intensity_heatmap(intensity_df)
+            total = format_currency(round(intensity_df["net_spend"].sum(), 2))
+            caption = f"Spend intensity by entity and category, {chart_filters['year']} — total {total}."
+            return {
+                "kind": "chart", "text": "Entity / category spend intensity",
+                "figure": fig, "caption": caption, "show_chips": False,
+            }
+
         # Default an unfiltered chart question to the latest year present in
         # the data, applied as a REAL filter passed into category_spend() —
         # not just a display label. This restores _CHART-CHAT-DESIGN.md's
@@ -389,6 +435,8 @@ def render_payload(container, payload: dict) -> None:
         container.plotly_chart(payload["figure"], use_container_width=True)
         container.dataframe(payload["table"], hide_index=True, use_container_width=True)
         container.caption(payload["caption"])
+    elif payload["kind"] == "category_comparison":
+        container.dataframe(payload["table"], hide_index=True, use_container_width=True)
 
 
 # render_payload must be defined above this point: Streamlit re-executes the

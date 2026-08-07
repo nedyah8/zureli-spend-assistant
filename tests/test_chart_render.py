@@ -376,3 +376,16 @@ def test_concentration_figure_has_bar_and_line_trace():
     assert len(fig.data) == 2
     assert fig.data[0].type == "bar"
     assert fig.data[1].type == "scatter"
+
+
+from chart_query import entity_category_intensity
+from chart_render import build_intensity_heatmap
+
+
+def test_intensity_heatmap_shape_matches_data():
+    df = load_data()
+    intensity_df = entity_category_intensity(df, level="l1", year=2025)
+    fig = build_intensity_heatmap(intensity_df)
+    assert fig.data[0].type == "heatmap"
+    assert len(fig.data[0].y) == intensity_df["entity"].nunique()
+    assert len(fig.data[0].x) == intensity_df["category"].nunique()

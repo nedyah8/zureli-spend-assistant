@@ -303,3 +303,96 @@ def test_overall_concentration_null_supplier_name_is_not_dropped():
     reference = query_spend(df)
     assert round(conc_df["net_spend"].sum(), 2) == reference["total_net_spend"]
     assert "(unspecified)" in [str(s) for s in conc_df["supplier"]]
+
+
+from chart_query import category_comparison, entity_category_intensity
+
+
+def test_category_comparison_matches_query_spend():
+    df = load_data()
+    comparison_df = category_comparison(df, level="l1", year=2025)
+    for _, row in comparison_df.iterrows():
+        reference = query_spend(df, l1=str(row["category"]), year=2025)
+        assert row["spend_current"] == reference["total_net_spend"], row["category"]
+
+
+def test_category_comparison_change_pct_none_when_no_prior_spend():
+    df = pd.DataFrame({
+        "L1": ["NewCat"], "Entity": ["Demo X"], "Year": [2025], "Net spend": [100.0],
+    })
+    comparison_df = category_comparison(df, level="l1", year=2025)
+    row = comparison_df.iloc[0]
+    assert row["spend_prior"] == 0.0
+    assert row["change_pct"] is None
+
+
+def test_category_comparison_share_pct_sums_to_100():
+    df = load_data()
+    comparison_df = category_comparison(df, level="l1", year=2025)
+    assert round(comparison_df["share_pct"].sum(), 0) == 100
+
+
+def test_category_comparison_null_category_not_dropped():
+    df = pd.DataFrame({
+        "L1": ["Cat", None], "Entity": ["Demo X", "Demo Y"],
+        "Year": [2025, 2025], "Net spend": [100.0, 50.0],
+    })
+    comparison_df = category_comparison(df, level="l1", year=2025)
+    assert round(comparison_df["spend_current"].sum(), 2) == 150.0
+    assert "(unspecified)" in [str(c) for c in comparison_df["category"]]
+
+
+def test_entity_category_intensity_matches_query_spend():
+    df = load_data()
+    intensity_df = entity_category_intensity(df, level="l1", year=2025)
+    sample = intensity_df.iloc[0]
+    reference = query_spend(df, entity=str(sample["entity"]), l1=str(sample["category"]), year=2025)
+    assert sample["net_spend"] == reference["total_net_spend"]
+
+
+def test_entity_category_intensity_null_category_not_dropped():
+    df = pd.DataFrame({
+        "L1": ["Cat", None], "Entity": ["Demo X", "Demo X"],
+        "Year": [2025, 2025], "Net spend": [100.0, 50.0],
+    })
+    intensity_df = entity_category_intensity(df, level="l1", year=2025)
+    assert round(intensity_df["net_spend"].sum(), 2) == 150.0
+
+
+def test_entity_category_intensity_null_entity_not_dropped():
+    # Own-review finding (Task 11): entity_category_intensity() groups by
+    # BOTH "Entity" and the category column, but the brief's verbatim code
+    # only null-guarded the category column — the exact class of bug this
+    # codebase has already independently hit and fixed three times
+    # (supplier_drilldown Task 6, fragmentation Task 8, overall_concentration
+    # Task 10): a null value in ANY groupby key column, not just the one the
+    # guard happens to target, gets silently dropped by groupby's default
+    # dropna=True.
+    df = pd.DataFrame({
+        "L1": ["Cat", "Cat"], "Entity": ["Demo X", None],
+        "Year": [2025, 2025], "Net spend": [100.0, 50.0],
+    })
+    intensity_df = entity_category_intensity(df, level="l1", year=2025)
+    assert round(intensity_df["net_spend"].sum(), 2) == 150.0
+    assert "(unspecified)" in [str(e) for e in intensity_df["entity"]]
+
+
+def test_category_comparison_no_current_year_rows_returns_empty_not_crash():
+    # Own-review finding (Task 11): a real, reachable filter combo — rows
+    # exist in scope for SOME year but none in the current (default-latest)
+    # year, e.g. a real entity+supplier pair in sample_spend_data.csv with
+    # spend only in 2024 (confirmed live via app.answer_payload("compare
+    # category spend for Demo Alpine Operations and Demo Supplier 019"),
+    # which defaults to year=2025) — left `rows` empty, and the brief's
+    # verbatim `pd.DataFrame(rows).sort_values("spend_current", ...)` raised
+    # KeyError: 'spend_current' on a bare 0-column empty frame instead of
+    # returning the empty-with-correct-columns frame app.py's
+    # `if comparison_df.empty:` branch is built to handle.
+    df = pd.DataFrame({
+        "L1": ["Cat"], "Entity": ["Demo X"], "Year": [2024], "Net spend": [100.0],
+    })
+    comparison_df = category_comparison(df, level="l1", year=2025)
+    assert comparison_df.empty
+    assert list(comparison_df.columns) == [
+        "category", "spend_current", "spend_prior", "change", "change_pct", "share_pct",
+    ]

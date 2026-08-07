@@ -99,6 +99,17 @@ CONCENTRATION_KEYWORDS = (
     "overall supplier concentration", "overall concentration",
 )
 
+CATEGORY_COMPARISON_KEYWORDS = (
+    "category comparison", "compare categories", "category spend comparison",
+    "compare category spend", "year over year by category", "yoy by category",
+    "spend profile",
+)
+
+INTENSITY_KEYWORDS = (
+    "intensity", "heatmap", "heat map", "entity category breakdown",
+    "which entities spend most",
+)
+
 
 def _extract_filters(q: str, known: dict[str, list]) -> dict:
     filters: dict[str, object] = {}
@@ -182,6 +193,22 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
         category_level = "l2" if any(kw in q for kw in LEVEL_2_KEYWORDS) else "l1"
         return {
             "intent": "chart", "chart_kind": "fragmentation",
+            "breakdown": None, "category_level": category_level,
+            "top_n": None, "filters": filters,
+        }
+
+    if any(kw in q for kw in CATEGORY_COMPARISON_KEYWORDS) or ("compare" in q and "categor" in q):
+        category_level = "l2" if any(kw in q for kw in LEVEL_2_KEYWORDS) else "l1"
+        return {
+            "intent": "chart", "chart_kind": "category_comparison",
+            "breakdown": None, "category_level": category_level,
+            "top_n": None, "filters": filters,
+        }
+
+    if any(kw in q for kw in INTENSITY_KEYWORDS):
+        category_level = "l2" if any(kw in q for kw in LEVEL_2_KEYWORDS) else "l1"
+        return {
+            "intent": "chart", "chart_kind": "intensity",
             "breakdown": None, "category_level": category_level,
             "top_n": None, "filters": filters,
         }

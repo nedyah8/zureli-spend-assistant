@@ -250,3 +250,96 @@ def overall_concentration(df: pd.DataFrame, **filters) -> pd.DataFrame:
     else:
         by_supplier["cumulative_share_pct"] = 0.0
     return by_supplier
+
+
+def category_comparison(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFrame:
+    """Year-over-year spend comparison per category — the InSight demo's
+    "Category comparison table" (Category spend tab). `filters` must
+    include `year` (the "current" year) — app.py resolves an unfiltered
+    question's year to the latest year present in scope before calling
+    this, same pattern as every other chart_kind. `prior` is `year - 1`; a
+    category with no prior-year rows in scope gets spend_prior=0.0 and
+    change_pct=None (never a fabricated percentage from a zero/absent
+    base, same rule as overview_query.overview()'s yoy_pct).
+
+    Returns [category, spend_current, spend_prior, change, change_pct,
+    share_pct], sorted descending by spend_current.
+    """
+    if level not in CATEGORY_COLUMNS:
+        raise ValueError(f"level must be one of {list(CATEGORY_COLUMNS)}, got {level!r}")
+    category_col = CATEGORY_COLUMNS[level]
+
+    current_year = filters["year"]
+    prior_year = current_year - 1
+    non_year_filters = {k: v for k, v in filters.items() if k != "year"}
+    scoped = filter_df(df, **non_year_filters).copy()
+
+    current_rows = scoped[scoped["Year"] == current_year].copy()
+    prior_rows = scoped[scoped["Year"] == prior_year].copy()
+    current_rows[category_col] = current_rows[category_col].fillna("(unspecified)")
+    prior_rows[category_col] = prior_rows[category_col].fillna("(unspecified)")
+
+    current_by_cat = current_rows.groupby(category_col)["Net spend"].sum()
+    prior_by_cat = prior_rows.groupby(category_col)["Net spend"].sum()
+    total_current = float(current_by_cat.sum())
+
+    rows = []
+    for category, spend_current in current_by_cat.items():
+        spend_prior = float(prior_by_cat.get(category, 0.0))
+        change = round(float(spend_current) - spend_prior, 2)
+        change_pct = (
+            round((float(spend_current) - spend_prior) / spend_prior * 100, 1)
+            if spend_prior > 0 else None
+        )
+        share_pct = round(float(spend_current) / total_current * 100, 1) if total_current != 0 else None
+        rows.append({
+            "category": category, "spend_current": round(float(spend_current), 2),
+            "spend_prior": round(spend_prior, 2), "change": change,
+            "change_pct": change_pct, "share_pct": share_pct,
+        })
+    # Explicit columns (not just pd.DataFrame(rows)) so an empty `rows` list
+    # — a real, reachable case: any filter combo with rows in scope for some
+    # year but none in the current year, e.g. entity="Demo Alpine
+    # Operations" + supplier="Demo Supplier 019" (data only in 2024, chart
+    # defaults to 2025) — still produces the [category, spend_current, ...]
+    # schema instead of a bare 0-column frame. Without this, sort_values
+    # below raised KeyError: 'spend_current' instead of returning the empty
+    # frame app.py's `if comparison_df.empty:` branch is built to handle;
+    # confirmed via a real answer_payload() call with the filter combo above
+    # (Task 11 own-review finding, not from the brief).
+    columns = ["category", "spend_current", "spend_prior", "change", "change_pct", "share_pct"]
+    return pd.DataFrame(rows, columns=columns).sort_values("spend_current", ascending=False).reset_index(drop=True)
+
+
+def entity_category_intensity(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFrame:
+    """Net spend by entity x category — the InSight demo's "Entity/category
+    intensity" heatmap (Category spend tab). Null category values are
+    filled with "(unspecified)" before grouping, same null-guard rule as
+    category_spend()/supplier_drilldown() in this file.
+
+    Returns [entity, category, net_spend], one row per entity x category
+    combination present in the filtered scope.
+    """
+    if level not in CATEGORY_COLUMNS:
+        raise ValueError(f"level must be one of {list(CATEGORY_COLUMNS)}, got {level!r}")
+    category_col = CATEGORY_COLUMNS[level]
+
+    matched = filter_df(df, **filters).copy()
+    matched[category_col] = matched[category_col].fillna("(unspecified)")
+    # Entity is the OTHER groupby dimension below, alongside category_col —
+    # a null Entity value would otherwise be silently dropped by groupby's
+    # default dropna=True, same class of bug already fixed three times in
+    # this file (supplier_drilldown's by_entity/by_category, fragmentation's
+    # by_supplier, overall_concentration's by_supplier): a null in ANY
+    # groupby key column drops the row, not just a null in the column the
+    # guard happens to target. Guarding category_col alone here would leave
+    # this function's total silently disagreeing with query_spend() the
+    # moment a row has a null Entity but a non-null category.
+    matched["Entity"] = matched["Entity"].fillna("(unspecified)")
+
+    return (
+        matched.groupby(["Entity", category_col])["Net spend"]
+        .sum()
+        .reset_index()
+        .rename(columns={"Entity": "entity", category_col: "category", "Net spend": "net_spend"})
+    )

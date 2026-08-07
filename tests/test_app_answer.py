@@ -312,3 +312,17 @@ def test_pareto_question_returns_chart_payload():
     payload = app.answer_payload("show me the pareto chart")
     assert payload["kind"] == "chart"
     assert "€" in payload["caption"]
+
+
+def test_category_comparison_question_returns_table_payload():
+    app = _reload_app()
+    payload = app.answer_payload("compare category spend")
+    assert payload["kind"] == "category_comparison"
+    assert "table" in payload
+
+
+def test_intensity_question_returns_chart_payload():
+    app = _reload_app()
+    payload = app.answer_payload("show me spend intensity by entity and category")
+    assert payload["kind"] == "chart"
+    assert "€" in payload["caption"]

@@ -430,3 +430,26 @@ def build_concentration_figure(concentration_df) -> go.Figure:
         yaxis2=dict(title="Cumulative share (%)", overlaying="y", side="right", range=[0, 100]),
     )
     return fig
+
+
+def build_intensity_heatmap(intensity_df) -> go.Figure:
+    """Heatmap: entities (rows) x categories (columns), coloured by net
+    spend — matching the InSight demo's "Entity/category intensity" view.
+    """
+    pivot = intensity_df.pivot(index="entity", columns="category", values="net_spend").fillna(0)
+    entities = [str(e).replace("Demo ", "") for e in pivot.index]
+    categories = list(pivot.columns)
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=pivot.values,
+            x=categories,
+            y=entities,
+            colorscale=[[0, "#eaf2f8"], [1, PALETTE[0]]],
+            colorbar=dict(title="Net spend (€)"),
+            hovertemplate="%{y} / %{x}<br>€%{z:,.0f}<extra></extra>",
+        )
+    )
+    fig.update_layout(margin=dict(l=0, r=0, t=10, b=0), height=80 + 30 * len(entities))
+    fig.update_xaxes(tickangle=-45)
+    return fig

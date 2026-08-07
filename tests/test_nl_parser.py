@@ -294,3 +294,30 @@ def test_pareto_keyword_triggers_overall_concentration():
 def test_overall_supplier_concentration_phrase_detected():
     result = parse_question("how concentrated is our supplier base", KV)
     assert result["chart_kind"] == "overall_concentration"
+
+
+def test_category_comparison_keyword_triggers_chart_intent():
+    result = parse_question("show me the category comparison", KV)
+    assert result["intent"] == "chart"
+    assert result["chart_kind"] == "category_comparison"
+
+
+def test_compare_categories_phrase_detected():
+    result = parse_question("compare categories for 2024 and 2025", KV)
+    assert result["chart_kind"] == "category_comparison"
+
+
+def test_spend_profile_phrase_detected():
+    result = parse_question("show me the spend profile", KV)
+    assert result["chart_kind"] == "category_comparison"
+
+
+def test_intensity_keyword_triggers_chart_intent():
+    result = parse_question("show me spend intensity by entity and category", KV)
+    assert result["intent"] == "chart"
+    assert result["chart_kind"] == "intensity"
+
+
+def test_heatmap_keyword_detected():
+    result = parse_question("heatmap of spend", KV)
+    assert result["chart_kind"] == "intensity"
