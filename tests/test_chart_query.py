@@ -87,3 +87,38 @@ def test_null_category_and_breakdown_values_are_not_dropped():
     # (b) the null row appears under the "(unspecified)" category rather
     # than vanishing.
     assert "(unspecified)" in [str(c) for c in chart_df["category"]]
+
+
+from chart_query import top_suppliers
+
+
+def test_top_suppliers_totals_match_query_spend():
+    df = load_data()
+    chart_df = top_suppliers(df, n=15)
+    for supplier in chart_df["supplier"].unique():
+        for year in chart_df.loc[chart_df["supplier"] == supplier, "year"].unique():
+            chart_total = chart_df.loc[
+                (chart_df["supplier"] == supplier) & (chart_df["year"] == year), "net_spend"
+            ].sum()
+            reference = query_spend(df, supplier=str(supplier), year=int(year))
+            assert round(chart_total, 2) == reference["total_net_spend"], (supplier, year)
+
+
+def test_top_suppliers_respects_n():
+    df = load_data()
+    chart_df = top_suppliers(df, n=5)
+    assert chart_df["supplier"].nunique() == 5
+
+
+def test_top_suppliers_sorted_descending_by_total():
+    df = load_data()
+    chart_df = top_suppliers(df, n=10)
+    totals_in_order = chart_df.groupby("supplier", observed=True, sort=False)["net_spend"].sum()
+    values = totals_in_order.tolist()
+    assert values == sorted(values, reverse=True)
+
+
+def test_top_suppliers_filters_apply():
+    df = load_data()
+    chart_df = top_suppliers(df, n=15, year=2024)
+    assert set(chart_df["year"].unique()) == {2024}

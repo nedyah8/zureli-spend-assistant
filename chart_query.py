@@ -54,3 +54,31 @@ def category_spend(
     # app.py's total caption), matching query_spend()'s sum-then-round-once
     # pattern so the two can never diverge on rounding order alone.
     return grouped
+
+
+def top_suppliers(df: pd.DataFrame, n: int = 15, **filters) -> pd.DataFrame:
+    """Top N suppliers by total net spend across the years in scope.
+
+    Returns a tidy dataframe [supplier, year, net_spend], one row per
+    supplier x year present in the filtered data, restricted to the top N
+    suppliers ranked by their total spend summed across all years in
+    scope. `supplier` is an ordered Categorical, sorted descending by each
+    supplier's total — matching the InSight demo's bar order. Unlike
+    category_spend(), there is no year default here: the demo's own Top
+    suppliers view shows every year in scope side by side (the year-on-year
+    comparison IS the view's value) — a year filter, if the caller passes
+    one, naturally restricts to a single series.
+    """
+    matched = filter_df(df, **filters).copy()
+    grouped = (
+        matched.groupby(["Supplier name", "Year"])["Net spend"]
+        .sum()
+        .reset_index()
+        .rename(columns={"Supplier name": "supplier", "Year": "year", "Net spend": "net_spend"})
+    )
+    totals = grouped.groupby("supplier")["net_spend"].sum().sort_values(ascending=False)
+    top_names = totals.head(n).index.tolist()
+    result = grouped[grouped["supplier"].isin(top_names)].copy()
+    result["supplier"] = pd.Categorical(result["supplier"], categories=top_names, ordered=True)
+    result = result.sort_values(["supplier", "year"]).reset_index(drop=True)
+    return result

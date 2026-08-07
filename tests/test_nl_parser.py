@@ -206,3 +206,31 @@ def test_every_parse_result_has_top_n_key():
     result = parse_question("What was our IT and telecom spend for Alpine Operations in 2024?", KV)
     assert "top_n" in result
     assert result["top_n"] is None
+
+
+def test_top_suppliers_keyword_triggers_chart_intent():
+    result = parse_question("who are our top suppliers?", KV)
+    assert result["intent"] == "chart"
+    assert result["chart_kind"] == "top_suppliers"
+    assert result["top_n"] == 15
+
+
+def test_top_n_suppliers_sets_n():
+    result = parse_question("top 5 suppliers", KV)
+    assert result["chart_kind"] == "top_suppliers"
+    assert result["top_n"] == 5
+
+
+def test_top_n_suppliers_clamps_to_max():
+    result = parse_question("top 200 suppliers", KV)
+    assert result["top_n"] == 56
+
+
+def test_top_n_suppliers_clamps_to_min():
+    result = parse_question("top 1 suppliers", KV)
+    assert result["top_n"] == 3
+
+
+def test_biggest_suppliers_phrase_detected():
+    result = parse_question("who are our biggest suppliers", KV)
+    assert result["chart_kind"] == "top_suppliers"

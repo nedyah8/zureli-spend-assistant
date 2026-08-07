@@ -80,6 +80,15 @@ OVERVIEW_KEYWORDS = (
     "how are we doing", "state of spend",
 )
 
+TOP_SUPPLIERS_KEYWORDS = (
+    "top suppliers", "top supplier", "biggest suppliers", "largest suppliers",
+    "top vendors", "supplier ranking", "who do we spend the most with",
+)
+TOP_N_PATTERN = re.compile(r"\btop\s+(\d+)\b")
+MIN_TOP_SUPPLIERS_N = 3
+MAX_TOP_SUPPLIERS_N = 56
+DEFAULT_TOP_SUPPLIERS_N = 15
+
 
 def _extract_filters(q: str, known: dict[str, list]) -> dict:
     filters: dict[str, object] = {}
@@ -136,6 +145,21 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
 
     if any(kw in q for kw in OVERVIEW_KEYWORDS):
         return {"intent": "overview", "chart_kind": None, "breakdown": None, "category_level": None, **base}
+
+    top_n_match = TOP_N_PATTERN.search(q)
+    is_top_suppliers = any(kw in q for kw in TOP_SUPPLIERS_KEYWORDS) or (
+        top_n_match is not None and "supplier" in q
+    )
+    if is_top_suppliers:
+        if top_n_match:
+            n = max(MIN_TOP_SUPPLIERS_N, min(MAX_TOP_SUPPLIERS_N, int(top_n_match.group(1))))
+        else:
+            n = DEFAULT_TOP_SUPPLIERS_N
+        return {
+            "intent": "chart", "chart_kind": "top_suppliers",
+            "breakdown": None, "category_level": None,
+            "top_n": n, "filters": filters,
+        }
 
     is_chart = (
         any(keyword in q for keyword in CHART_KEYWORDS)
