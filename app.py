@@ -175,7 +175,7 @@ def answer_payload(question: str) -> dict:
             year_text = " vs ".join(str(y) for y in years_in_scope) if len(years_in_scope) > 1 else str(years_in_scope[0])
             total = format_currency(round(chart_df["net_spend"].sum(), 2))
             clamp_note = f" (clamped from {requested_n})" if actual_n != requested_n else ""
-            caption = f"Top {actual_n} suppliers{clamp_note} by net spend, {year_text} — total {total}."
+            caption = f"Top {actual_n} suppliers{clamp_note} by net spend, {year_text} — these {actual_n} account for {total} of the period's spend."
             return {
                 "kind": "chart", "text": f"Top {actual_n} suppliers",
                 "figure": fig, "caption": caption, "show_chips": False,
