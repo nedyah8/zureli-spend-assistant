@@ -6,9 +6,11 @@ from chart_query import top_suppliers
 from chart_render import build_top_suppliers_figure
 from chart_query import supplier_drilldown
 from chart_render import build_supplier_drilldown_figures
+from chart_query import fragmentation
+from chart_render import build_fragmentation_figure
 from nl_parser import parse_question
 from overview_query import overview
-from spend_query import known_values, load_data, query_spend
+from spend_query import filter_df, known_values, load_data, query_spend
 
 st.set_page_config(page_title="Zureli spend assistant", layout="centered")
 
@@ -228,6 +230,47 @@ def answer_payload(question: str) -> dict:
                 "figure": fig, "caption": caption, "show_chips": False,
             }
 
+        if chart_kind == "fragmentation":
+            if "year" in filters:
+                chart_filters = dict(filters)
+            else:
+                chart_filters = {"year": max(kv["year"]), **filters}
+            frag_df = fragmentation(df, level=parsed["category_level"], **chart_filters)
+            if frag_df.empty:
+                return {
+                    "kind": "text",
+                    "text": f"I didn't find any categories matching that — {format_filters(chart_filters)} returned no rows.",
+                    "figure": None, "caption": None, "show_chips": False,
+                }
+            fig = build_fragmentation_figure(frag_df)
+            high_count = int((frag_df["tier"] == "High fragmentation").sum())
+            total_spend = float(frag_df["net_spend"].sum())
+            high_spend = float(frag_df.loc[frag_df["tier"] == "High fragmentation", "net_spend"].sum())
+            fragmented_pct = round(high_spend / total_spend * 100, 1) if total_spend else 0.0
+            supplier_count = int(filter_df(df, **chart_filters)["Supplier name"].nunique())
+            metrics = [
+                ("Categories assessed", str(len(frag_df)), None),
+                ("Highly fragmented", str(high_count), None),
+                ("Fragmented spend", f"{fragmented_pct:.1f}%", None),
+                ("Suppliers in scope", str(supplier_count), None),
+            ]
+            table = frag_df.rename(columns={
+                "category": "Category", "net_spend": "Net spend (€)", "supplier_count": "Suppliers",
+                "top_supplier_share_pct": "Top supplier share %", "cr3_pct": "Top 3 share %",
+                "concentration_index": "Concentration index", "tier": "Tier",
+            })
+            caption = (
+                "Tier is set by our own Top-3-supplier-share rule (Concentrated "
+                "≥ 70%, Medium 40-70%, High < 40%); Concentration index is a "
+                "standard statistic shown alongside it, not used to set the tier."
+            )
+            return {
+                "kind": "fragmentation",
+                "text": f"Fragmentation for {format_filters(chart_filters)}, {chart_filters['year']}.",
+                "metrics": metrics, "figure": fig, "table": table, "caption": caption,
+                "show_chips": False,
+            }
+
         # Default an unfiltered chart question to the latest year present in
         # the data, applied as a REAL filter passed into category_spend() —
         # not just a display label. This restores _CHART-CHAT-DESIGN.md's
@@ -314,6 +357,11 @@ def render_payload(container, payload: dict) -> None:
         fig_cols = container.columns(2)
         fig_cols[0].plotly_chart(payload["entity_figure"], use_container_width=True)
         fig_cols[1].plotly_chart(payload["category_figure"], use_container_width=True)
+    elif payload["kind"] == "fragmentation":
+        render_kpi_row(container, payload["metrics"])
+        container.plotly_chart(payload["figure"], use_container_width=True)
+        container.dataframe(payload["table"], hide_index=True, use_container_width=True)
+        container.caption(payload["caption"])
 
 
 # render_payload must be defined above this point: Streamlit re-executes the

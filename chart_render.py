@@ -352,3 +352,53 @@ def build_supplier_drilldown_figures(drilldown: dict) -> tuple[go.Figure, go.Fig
     entity_fig = _single_series_bar_figure(drilldown["by_entity"], "Net spend (€)")
     category_fig = _single_series_bar_figure(drilldown["by_category"], "Net spend (€)")
     return entity_fig, category_fig
+
+
+# Fixed, semantic colour-to-tier mapping (not a cycled palette slot) — the
+# InSight demo's own Fragmentation legend uses red/amber/green for
+# High/Medium/Concentrated, so these three PALETTE entries are picked by
+# meaning, not by cycling position like the multi-series charts above.
+TIER_COLORS = {
+    "High fragmentation": PALETTE[7],    # red
+    "Medium fragmentation": PALETTE[3],  # amber/yellow
+    "Concentrated": PALETTE[2],          # aqua/green
+}
+
+
+def build_fragmentation_figure(fragmentation_df) -> go.Figure:
+    """Bubble chart: x = supplier count, y = category net spend, bubble
+    size ~ spend, coloured by tier — matching the InSight demo's
+    'Category spend vs supplier count' view.
+    """
+    fig = go.Figure()
+    max_spend = float(fragmentation_df["net_spend"].max()) if not fragmentation_df.empty else 0.0
+
+    for tier, group in fragmentation_df.groupby("tier"):
+        sizes = [20 + 40 * (v / max_spend) if max_spend > 0 else 20 for v in group["net_spend"]]
+        fig.add_trace(
+            go.Scatter(
+                x=group["supplier_count"],
+                y=group["net_spend"],
+                mode="markers",
+                name=tier,
+                marker=dict(size=sizes, color=TIER_COLORS.get(tier, PALETTE[0])),
+                text=group["category"],
+                customdata=group["cr3_pct"],
+                hovertemplate="%{text}<br>Top 3 share: %{customdata:.1f}%<extra></extra>",
+            )
+        )
+
+    tickvals, ticktext = _millions_ticks(0.0, max(0.0, max_spend))
+    fig.update_layout(
+        legend_title_text="",
+        margin=dict(l=0, r=0, t=10, b=0),
+        height=420,
+    )
+    fig.update_xaxes(title_text="Distinct suppliers")
+    fig.update_yaxes(
+        title_text="Net spend (€)",
+        tickmode="array",
+        tickvals=tickvals,
+        ticktext=ticktext,
+    )
+    return fig

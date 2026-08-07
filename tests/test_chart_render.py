@@ -344,3 +344,22 @@ def test_supplier_drilldown_figures_strip_demo_prefix():
     for name in entity_fig.data[0].y:
         assert not str(name).startswith("Demo ")
     assert len(category_fig.data[0].y) == drilldown["by_category"]["name"].nunique()
+
+
+from chart_query import fragmentation
+from chart_render import build_fragmentation_figure
+
+
+def test_fragmentation_figure_has_one_trace_per_tier_present():
+    df = load_data()
+    frag_df = fragmentation(df, level="l1", year=2025)
+    fig = build_fragmentation_figure(frag_df)
+    assert len(fig.data) == frag_df["tier"].nunique()
+
+
+def test_fragmentation_figure_bubble_count_matches_categories():
+    df = load_data()
+    frag_df = fragmentation(df, level="l1", year=2025)
+    fig = build_fragmentation_figure(frag_df)
+    total_points = sum(len(trace.x) for trace in fig.data)
+    assert total_points == len(frag_df)

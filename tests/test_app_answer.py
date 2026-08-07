@@ -288,3 +288,13 @@ def test_supplier_with_entity_and_category_still_returns_plain_number():
     )
     assert payload["kind"] == "text"
     assert "-€7,637.65" in payload["text"]
+
+
+def test_fragmentation_question_returns_fragmentation_payload():
+    app = _reload_app()
+    payload = app.answer_payload("show me fragmentation")
+    assert payload["kind"] == "fragmentation"
+    assert len(payload["metrics"]) == 4
+    assert "figure" in payload
+    assert "table" in payload
+    assert "Top-3" in payload["caption"] or "Top 3" in payload["caption"]
