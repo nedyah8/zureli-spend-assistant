@@ -14,7 +14,13 @@ what the LLM upgrade would add.
 
 import re
 
-from aliases import ALIASES_BY_DIMENSION, supplier_aliases
+from aliases import (
+    ALIAS_BLOCKING_PHRASES,
+    ALIASES_BY_DIMENSION,
+    SPEND_SIGNAL_WORDS,
+    WEAK_ALIASES,
+    supplier_aliases,
+)
 
 CHART_KEYWORDS = (
     "chart", "graph", "plot", "bar chart", "bar graph", "breakdown",
@@ -198,10 +204,24 @@ def _extract_filters(q: str, known: dict[str, list]) -> dict:
             filters["year"] = year
             break
 
+    # Weak aliases are ordinary English words too ("legal", "training",
+    # "security"), so they only count when the question is clearly about
+    # money. Without this, "what are the legal implications" returns the
+    # Legal and audit total — a confidently wrong number, which is worse
+    # than the honest "didn't understand" fallback. See aliases.py.
+    has_spend_signal = any(word in q for word in SPEND_SIGNAL_WORDS)
+
     consumed: list[tuple[int, int]] = []
     for alias, dimension, canonical in _candidate_terms(known):
         if dimension in filters:
             continue
+        if alias in WEAK_ALIASES:
+            if not has_spend_signal:
+                continue
+            # A spend word in the sentence is not enough on its own: "audit
+            # trail spend" contains one and still isn't about audit fees.
+            if any(phrase in q for phrase in ALIAS_BLOCKING_PHRASES.get(alias, ())):
+                continue
         # Lookarounds rather than \b: several aliases contain punctuation
         # ("it & telecom", "l&d", "it/telecom") where \b behaves unhelpfully.
         pattern = rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])"

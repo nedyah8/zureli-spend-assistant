@@ -152,6 +152,66 @@ def test_ordinary_questions_produce_no_spurious_filters(question):
     assert filters_for(question) == {}, f"{question!r} -> {filters_for(question)}"
 
 
+# Every case below was raised by the Codex cross-family review of the first
+# version of this alias work, which correctly judged my own false-positive
+# coverage "far too narrow" — it tested only the pronoun "it" and five safe
+# phrases, and none of the dangerous aliases the change actually introduced.
+# Each of these DID produce a confidently wrong number at that point.
+#
+# The lower group is the sharp one: each contains a spend word, so the
+# spend-signal guard alone lets it through. They are stopped by the
+# per-alias blocking phrases in aliases.py.
+@pytest.mark.parametrize(
+    "question",
+    [
+        # No spend signal — stopped by the weak-alias guard.
+        "what is our buying power",
+        "do you have a mobile app",
+        "can I get this on my phone",
+        "security of my data",
+        "what training do i need to use this",
+        "is there an audit trail",
+        "what are the legal implications",
+        "what tech do you use",
+        "how do i do maintenance on this",
+        "what did it cost",
+        # WITH a spend signal — these defeat the guard and are stopped only
+        # by the blocking phrases. Codex's exact regression list.
+        "phone me the spend",
+        "tech debt spend",
+        "audit trail spend",
+        "legal entity spend",
+        "training data spend",
+        "maintenance mode spend",
+        "security policy spend",
+    ],
+)
+def test_everyday_english_never_invents_a_category_filter(question):
+    resolved = filters_for(question)
+    assert resolved == {}, f"{question!r} wrongly resolved to {resolved}"
+
+
+# The mirror image: the aliases above are only worth keeping if the genuine
+# procurement phrasings still work. A guard that silences real queries too
+# would be its own defect.
+@pytest.mark.parametrize(
+    ("question", "dimension", "expected"),
+    [
+        ("legal spend", "l2", "Legal and audit"),
+        ("audit fees", "l2", "Legal and audit"),
+        ("training costs", "l2", "Training"),
+        ("security spend", "l2", "Cleaning and security"),
+        ("maintenance spend", "l2", "Building maintenance"),
+        ("technology spend", "l1", "IT and telecom"),
+        ("phone bill", "l2", "Telecommunications"),
+        ("hq spend", "entity", "Demo Group Headquarters"),
+    ],
+)
+def test_genuine_procurement_phrasings_still_resolve(question, dimension, expected):
+    resolved = filters_for(question)
+    assert resolved.get(dimension) == expected, f"{question!r} -> {resolved}"
+
+
 # --- 5. Overlapping aliases resolve to the longer, more specific match ----
 # These are the pairs that would otherwise AND themselves into an empty
 # result and hand the user a false "no data found".

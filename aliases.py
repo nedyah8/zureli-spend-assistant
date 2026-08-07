@@ -49,9 +49,15 @@ L1_ALIASES = {
     "IT and telecom": [
         # Multi-word only — see design rule 2 above.
         "it and telecom", "it and telecoms", "it & telecom", "it & telecoms",
-        "it/telecom", "it spend", "it costs", "it cost", "it budget",
+        # "it cost"/"it costs" deliberately absent (Codex review, 7 Aug):
+        # "what did it cost" is an ordinary pronoun sentence and would have
+        # resolved to the IT category. "it spend"/"it budget" have no such
+        # everyday reading.
+        "it/telecom", "it spend", "it budget",
         "it expenditure", "it category", "spend on it", "spent on it",
-        "information technology", "tech", "technology", "telecom", "telecoms",
+        # "tech" removed: "tech debt", "tech stack", "tech team", "tech
+        # support" are all common and none are about IT spend.
+        "information technology", "technology", "telecom", "telecoms",
     ],
     "Logistics": [
         "logistics", "transport", "transportation", "haulage", "warehousing",
@@ -80,17 +86,24 @@ L2_ALIASES = {
     "Building maintenance": ["building maintenance", "maintenance", "repairs"],
     "Cleaning and security": ["cleaning", "security", "janitorial"],
     "Consulting": ["consulting", "consultants", "consultancy"],
-    "Electricity and gas": ["electricity", "gas", "power"],
+    # "power" removed (Codex review): "buying power", "market power",
+    # "power users" are all ordinary business English.
+    "Electricity and gas": ["electricity", "gas"],
     "Freight and courier": ["freight", "courier", "couriers", "shipping"],
     "Hardware": ["hardware", "laptops", "devices"],
     "Legal and audit": ["legal", "audit", "lawyers", "auditors", "legal fees"],
-    "Office supplies": ["office supplies", "stationery", "supplies"],
+    # bare "supplies" removed (Codex review): cleaning/catering/medical
+    # supplies all wrongly mapped here, and "office supplies" already covers it.
+    "Office supplies": ["office supplies", "stationery"],
     "Recruitment": ["recruitment", "recruiting", "hiring", "talent acquisition"],
     "Software licensing": [
         "software", "software licensing", "licences", "licenses", "licensing",
         "saas", "subscriptions",
     ],
-    "Telecommunications": ["telecommunications", "telephony", "mobile", "phone"],
+    # "mobile" and "phone" removed (Codex review): "mobile app",
+    # "mobile workforce", "phone me the spend" are ordinary English and the
+    # spend-signal guard does not save them.
+    "Telecommunications": ["telecommunications", "telephony", "mobile spend", "phone bill"],
     "Temporary labour": [
         "temporary labour", "temp labour", "temps", "contractors", "agency staff",
     ],
@@ -144,6 +157,63 @@ ALIASES_BY_DIMENSION = {
     "country": COUNTRY_ALIASES,
     "cluster": CLUSTER_ALIASES,
 }
+
+# Aliases that are ALSO ordinary English words with a strong everyday
+# meaning, so they only count when the question is clearly about spend.
+#
+# Found by adversarially testing plausible questions a user would ask ABOUT
+# THE TOOL rather than about spend. Each of these produced a confidently
+# wrong number before the guard existed:
+#
+#   "security of my data"            -> Cleaning and security
+#   "do you have a mobile app"       -> Telecommunications
+#   "what training do i need"        -> Training
+#   "is there an audit trail"        -> Legal and audit
+#   "what are the legal implications"-> Legal and audit
+#   "what tech do you use"           -> IT and telecom
+#   "can you give me more power"     -> Electricity and gas
+#
+# A wrong number is worse than no answer, because the honest fallback tells
+# the user it didn't understand while a spurious filter looks authoritative.
+# Gating on a spend signal keeps every genuine query working ("legal spend",
+# "training costs", "mobile spend") while removing the meta-question misfire.
+#
+# Deliberately NOT weak: "gas", "freight", "hardware", "recruitment" and
+# similar — they carry no competing everyday meaning in a procurement tool,
+# so "give me the gas figures" correctly resolves to Electricity and gas.
+WEAK_ALIASES = frozenset({
+    "audit", "hq", "legal", "maintenance", "security", "technology", "training",
+})
+
+# Some weak aliases survive because they name a genuine, commonly-queried
+# spend category ("legal spend", "training costs", "audit fees") — but each
+# has a fixed set of everyday phrases where it plainly means something else.
+# The spend-signal guard alone does NOT catch these, because the phrase
+# usually sits in a sentence that also mentions spend: Codex's example
+# "audit trail spend" passes the signal check and would still have returned
+# the Legal and audit total.
+#
+# If any blocking phrase for an alias appears in the question, that alias
+# does not match. Deliberately a short, literal list rather than a clever
+# rule — every entry is a real phrase, so it stays auditable.
+ALIAS_BLOCKING_PHRASES = {
+    "audit": ("audit trail", "audit log", "auditable"),
+    "legal": ("legal entity", "legal entities", "legal implication", "legally"),
+    "training": ("training data", "training set", "training the model"),
+    "maintenance": ("maintenance mode", "maintenance window"),
+    "security": ("security policy", "data security", "security of", "secure"),
+    "technology": ("technology stack", "technology debt"),
+    "hq": ("hq asked", "hq wants", "hq requested"),
+}
+
+# A question mentioning any of these is asking about money, so a weak alias
+# inside it is being used in its procurement sense.
+SPEND_SIGNAL_WORDS = (
+    "spend", "spent", "spending", "cost", "costs", "budget", "expenditure",
+    "how much", "total", "invoice", "invoiced", "paid", "pay", "supplier",
+    "suppliers", "€", "eur", "value", "figures", "fees", "fee", "bill",
+    "bills", "outlay",
+)
 
 
 def supplier_aliases(supplier: str) -> list[str]:
