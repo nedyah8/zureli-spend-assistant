@@ -180,3 +180,46 @@ def test_supplier_drilldown_null_entity_and_category_values_are_not_dropped():
     # than vanishing.
     assert "(unspecified)" in [str(n) for n in result["by_entity"]["name"]]
     assert "(unspecified)" in [str(n) for n in result["by_category"]["name"]]
+
+
+from chart_query import fragmentation
+
+
+def test_fragmentation_net_spend_matches_query_spend():
+    df = load_data()
+    frag_df = fragmentation(df, level="l1", year=2025)
+    for _, row in frag_df.iterrows():
+        reference = query_spend(df, l1=str(row["category"]), year=2025)
+        assert row["net_spend"] == reference["total_net_spend"], row["category"]
+
+
+def test_fragmentation_cr3_between_0_and_100():
+    df = load_data()
+    frag_df = fragmentation(df, level="l1", year=2025)
+    assert (frag_df["cr3_pct"] >= 0).all()
+    assert (frag_df["cr3_pct"] <= 100).all()
+
+
+def test_fragmentation_tier_matches_cr3_thresholds():
+    df = load_data()
+    frag_df = fragmentation(df, level="l1", year=2025)
+    for _, row in frag_df.iterrows():
+        if row["cr3_pct"] >= 70:
+            assert row["tier"] == "Concentrated"
+        elif row["cr3_pct"] >= 40:
+            assert row["tier"] == "Medium fragmentation"
+        else:
+            assert row["tier"] == "High fragmentation"
+
+
+def test_fragmentation_concentration_index_is_hhi_style():
+    df = load_data()
+    frag_df = fragmentation(df, level="l1", year=2025)
+    year_rows = df[df["Year"] == 2025]
+    sample_category = frag_df.iloc[0]["category"]
+    cat_rows = year_rows[year_rows["L1"] == sample_category]
+    by_supplier = cat_rows.groupby("Supplier name")["Net spend"].sum()
+    shares_pct = by_supplier / by_supplier.sum() * 100
+    expected_index = round(float((shares_pct ** 2).sum()), 0)
+    actual_index = frag_df.loc[frag_df["category"] == sample_category, "concentration_index"].iloc[0]
+    assert actual_index == expected_index

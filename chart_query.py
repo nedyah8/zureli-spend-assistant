@@ -159,3 +159,62 @@ def supplier_drilldown(df: pd.DataFrame, supplier: str, **filters) -> dict:
         "entity_count": entity_count, "category_count": category_count,
         "by_entity": by_entity, "by_category": by_category,
     }
+
+
+# Our own CR3-based tiers, disclosed in every fragmentation answer's
+# caption. NOT reverse-fitted to the InSight demo's own Profile column —
+# see _MEETING-READY-DESIGN.md Part C1: cross-checking real InSight rows
+# showed the demo's Profile likely tracks its Concentration index, not CR3
+# alone, but with only 8 category rows to observe, the exact cutoff isn't
+# reliably recoverable — and tuning ours to force a match would be
+# measurement gaming (CLAUDE.md rule 24), not grounding. Concentration
+# index is still computed and disclosed alongside CR3 (a standard,
+# well-defined HHI-style statistic) but does not set the tier here.
+CONCENTRATED_THRESHOLD = 70.0
+MEDIUM_THRESHOLD = 40.0
+
+
+def fragmentation(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFrame:
+    """Per-category supplier concentration: CR3 (top-3-supplier share) and
+    an HHI-style concentration index (sum of squared per-supplier
+    percentage shares of that category's spend), tiered by CR3 against
+    CONCENTRATED_THRESHOLD/MEDIUM_THRESHOLD above.
+
+    Returns a tidy dataframe: [category, net_spend, supplier_count,
+    top_supplier_share_pct, cr3_pct, concentration_index, tier].
+    """
+    if level not in CATEGORY_COLUMNS:
+        raise ValueError(f"level must be one of {list(CATEGORY_COLUMNS)}, got {level!r}")
+    category_col = CATEGORY_COLUMNS[level]
+
+    matched = filter_df(df, **filters).copy()
+    matched[category_col] = matched[category_col].fillna("(unspecified)")
+
+    rows = []
+    for category, cat_df in matched.groupby(category_col, observed=True):
+        net_spend = float(cat_df["Net spend"].sum())
+        by_supplier = cat_df.groupby("Supplier name")["Net spend"].sum().sort_values(ascending=False)
+        supplier_count = int(len(by_supplier))
+
+        if net_spend <= 0 or by_supplier.empty:
+            top_share, cr3, index = 0.0, 0.0, 0.0
+        else:
+            shares_pct = by_supplier / net_spend * 100
+            top_share = round(float(shares_pct.iloc[0]), 1)
+            cr3 = round(float(shares_pct.head(3).sum()), 1)
+            index = round(float((shares_pct ** 2).sum()), 0)
+
+        if cr3 >= CONCENTRATED_THRESHOLD:
+            tier = "Concentrated"
+        elif cr3 >= MEDIUM_THRESHOLD:
+            tier = "Medium fragmentation"
+        else:
+            tier = "High fragmentation"
+
+        rows.append({
+            "category": category, "net_spend": round(net_spend, 2),
+            "supplier_count": supplier_count, "top_supplier_share_pct": top_share,
+            "cr3_pct": cr3, "concentration_index": index, "tier": tier,
+        })
+
+    return pd.DataFrame(rows).sort_values("net_spend", ascending=False).reset_index(drop=True)

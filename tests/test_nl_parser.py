@@ -267,3 +267,19 @@ def test_supplier_with_entity_and_category_does_not_trigger_drilldown():
         KV,
     )
     assert result["intent"] == "number"
+
+
+def test_fragmentation_keyword_triggers_chart_intent():
+    result = parse_question("show me fragmentation", KV)
+    assert result["intent"] == "chart"
+    assert result["chart_kind"] == "fragmentation"
+
+
+def test_supplier_concentration_phrase_detected():
+    result = parse_question("what's our supplier concentration", KV)
+    assert result["chart_kind"] == "fragmentation"
+
+
+def test_fragmentation_respects_level_2_keyword():
+    result = parse_question("fragmentation at level 2", KV)
+    assert result["category_level"] == "l2"

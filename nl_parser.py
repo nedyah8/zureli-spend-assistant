@@ -89,6 +89,11 @@ MIN_TOP_SUPPLIERS_N = 3
 MAX_TOP_SUPPLIERS_N = 56
 DEFAULT_TOP_SUPPLIERS_N = 15
 
+FRAGMENTATION_KEYWORDS = (
+    "fragmentation", "fragmented", "supplier concentration", "how spread out",
+    "how many suppliers per category", "tail spend",
+)
+
 
 def _extract_filters(q: str, known: dict[str, list]) -> dict:
     filters: dict[str, object] = {}
@@ -159,6 +164,14 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
             "intent": "chart", "chart_kind": "top_suppliers",
             "breakdown": None, "category_level": None,
             "top_n": n, "filters": filters,
+        }
+
+    if any(kw in q for kw in FRAGMENTATION_KEYWORDS):
+        category_level = "l2" if any(kw in q for kw in LEVEL_2_KEYWORDS) else "l1"
+        return {
+            "intent": "chart", "chart_kind": "fragmentation",
+            "breakdown": None, "category_level": category_level,
+            "top_n": None, "filters": filters,
         }
 
     is_chart = (
