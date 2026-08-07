@@ -71,6 +71,15 @@ COUNTRY_BREAKDOWN_KEYWORDS = ("by country", "per country", "country breakdown", 
 CLUSTER_BREAKDOWN_KEYWORDS = ("by cluster", "per cluster", "cluster breakdown", "each cluster")
 LEVEL_2_KEYWORDS = ("level 2", "sub-category", "subcategory", "sub category")
 
+HELP_KEYWORDS = (
+    "help", "what can you do", "what can i ask", "how does this work", "examples",
+)
+
+OVERVIEW_KEYWORDS = (
+    "overview", "summary", "summarise", "summarize", "headline", "big picture",
+    "how are we doing", "state of spend",
+)
+
 
 def _extract_filters(q: str, known: dict[str, list]) -> dict:
     filters: dict[str, object] = {}
@@ -120,6 +129,13 @@ def _extract_filters(q: str, known: dict[str, list]) -> dict:
 def parse_question(question: str, known: dict[str, list]) -> dict:
     q = question.lower()
     filters = _extract_filters(q, known)
+    base = {"top_n": None, "filters": filters}
+
+    if any(kw in q for kw in HELP_KEYWORDS):
+        return {"intent": "help", "chart_kind": None, "breakdown": None, "category_level": None, **base}
+
+    if any(kw in q for kw in OVERVIEW_KEYWORDS):
+        return {"intent": "overview", "chart_kind": None, "breakdown": None, "category_level": None, **base}
 
     is_chart = (
         any(keyword in q for keyword in CHART_KEYWORDS)
@@ -129,13 +145,7 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
     )
 
     if not is_chart:
-        return {
-            "intent": "number",
-            "chart_kind": None,
-            "breakdown": None,
-            "category_level": None,
-            "filters": filters,
-        }
+        return {"intent": "number", "chart_kind": None, "breakdown": None, "category_level": None, **base}
 
     if any(kw in q for kw in CLUSTER_BREAKDOWN_KEYWORDS):
         breakdown = "cluster"
@@ -151,5 +161,5 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
         "chart_kind": "category_spend",
         "breakdown": breakdown,
         "category_level": category_level,
-        "filters": filters,
+        **base,
     }

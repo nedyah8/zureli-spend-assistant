@@ -184,3 +184,25 @@ def test_compare_alone_does_not_trigger_chart_intent():
     # to the number-intent path instead of falsely promising a comparison.
     result = parse_question("compare Alpine Operations and UK Operations in 2024", KV)
     assert result["intent"] == "number"
+
+
+def test_help_keyword_triggers_help_intent():
+    result = parse_question("what can you do", KV)
+    assert result["intent"] == "help"
+
+
+def test_overview_keyword_triggers_overview_intent():
+    result = parse_question("give me an overview", KV)
+    assert result["intent"] == "overview"
+
+
+def test_overview_intent_carries_filters():
+    result = parse_question("give me an overview for Alpine Operations", KV)
+    assert result["intent"] == "overview"
+    assert result["filters"]["entity"] == "Demo Alpine Operations"
+
+
+def test_every_parse_result_has_top_n_key():
+    result = parse_question("What was our IT and telecom spend for Alpine Operations in 2024?", KV)
+    assert "top_n" in result
+    assert result["top_n"] is None
