@@ -253,3 +253,17 @@ def test_clicking_a_chip_submits_it_as_a_question():
     assert not at.exception
     assert len(at.session_state.messages) == 2
     assert at.session_state.messages[0]["content"] == "Give me an overview"
+
+
+def test_top_suppliers_question_returns_chart_payload():
+    app = _reload_app()
+    payload = app.answer_payload("who are our top suppliers?")
+    assert payload["kind"] == "chart"
+    assert "Top 15 suppliers" in payload["text"]
+    assert "€" in payload["caption"]
+
+
+def test_top_n_suppliers_question_respects_n():
+    app = _reload_app()
+    payload = app.answer_payload("top 5 suppliers")
+    assert "Top 5" in payload["text"]

@@ -2,6 +2,8 @@ import streamlit as st
 
 from chart_query import category_spend
 from chart_render import build_category_spend_figure
+from chart_query import top_suppliers
+from chart_render import build_top_suppliers_figure
 from nl_parser import parse_question
 from overview_query import overview
 from spend_query import known_values, load_data, query_spend
@@ -156,6 +158,29 @@ def answer_payload(question: str) -> dict:
         return build_overview_payload(filters)
 
     if parsed["intent"] == "chart":
+        chart_kind = parsed["chart_kind"]
+
+        if chart_kind == "top_suppliers":
+            requested_n = parsed["top_n"]
+            chart_df = top_suppliers(df, n=requested_n, **filters)
+            if chart_df.empty:
+                return {
+                    "kind": "text",
+                    "text": f"I didn't find any suppliers matching that — {format_filters(filters)} returned no rows.",
+                    "figure": None, "caption": None, "show_chips": False,
+                }
+            fig = build_top_suppliers_figure(chart_df)
+            actual_n = chart_df["supplier"].nunique()
+            years_in_scope = sorted(chart_df["year"].unique())
+            year_text = " vs ".join(str(y) for y in years_in_scope) if len(years_in_scope) > 1 else str(years_in_scope[0])
+            total = format_currency(round(chart_df["net_spend"].sum(), 2))
+            clamp_note = f" (clamped from {requested_n})" if actual_n != requested_n else ""
+            caption = f"Top {actual_n} suppliers{clamp_note} by net spend, {year_text} — total {total}."
+            return {
+                "kind": "chart", "text": f"Top {actual_n} suppliers",
+                "figure": fig, "caption": caption, "show_chips": False,
+            }
+
         # Default an unfiltered chart question to the latest year present in
         # the data, applied as a REAL filter passed into category_spend() —
         # not just a display label. This restores _CHART-CHAT-DESIGN.md's

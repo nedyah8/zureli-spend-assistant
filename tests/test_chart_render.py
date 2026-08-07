@@ -311,3 +311,23 @@ def test_negative_segment_label_shown_when_material_suppressed_when_narrow():
 
     assert big_trace.text[cat_a_idx] == "-300,000"
     assert narrow_trace.text[cat_b_idx] == ""
+
+
+from chart_query import top_suppliers
+from chart_render import build_top_suppliers_figure
+
+
+def test_top_suppliers_figure_has_one_trace_per_year():
+    df = load_data()
+    chart_df = top_suppliers(df, n=10)
+    fig = build_top_suppliers_figure(chart_df)
+    assert len(fig.data) == chart_df["year"].nunique()
+    assert fig.layout.barmode == "group"
+
+
+def test_top_suppliers_figure_strips_demo_prefix():
+    df = load_data()
+    chart_df = top_suppliers(df, n=5)
+    fig = build_top_suppliers_figure(chart_df)
+    for name in fig.data[0].y:
+        assert not str(name).startswith("Demo ")

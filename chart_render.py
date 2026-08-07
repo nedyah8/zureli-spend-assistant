@@ -254,3 +254,56 @@ def build_category_spend_figure(chart_df, year_label: int | str) -> go.Figure:
         ticktext=ticktext,
     )
     return fig
+
+
+def build_top_suppliers_figure(chart_df) -> go.Figure:
+    """Build the top-suppliers chart: one horizontal grouped bar per year in
+    scope, suppliers sorted descending by total spend across those years —
+    matching the InSight demo's Top suppliers view. Grouped (not stacked)
+    bars have a free end, so labels sit "outside" rather than "inside"
+    (unlike build_category_spend_figure's stacked segments).
+    """
+    suppliers = list(chart_df["supplier"].cat.categories)
+    years = sorted(chart_df["year"].unique())
+
+    series = {
+        year: chart_df[chart_df["year"] == year]
+        .set_index("supplier")["net_spend"]
+        .reindex(suppliers, fill_value=0)
+        for year in years
+    }
+    all_values = pd.concat(series.values()) if series else pd.Series(dtype=float)
+    min_value = min(0.0, float(all_values.min())) if not all_values.empty else 0.0
+    max_value = max(0.0, float(all_values.max())) if not all_values.empty else 0.0
+
+    display_names = [str(s).replace("Demo ", "") for s in suppliers]
+
+    fig = go.Figure()
+    for i, year in enumerate(years):
+        fig.add_trace(
+            go.Bar(
+                y=display_names,
+                x=series[year],
+                name=str(year),
+                orientation="h",
+                marker_color=PALETTE[i % len(PALETTE)],
+                text=[f"{v:,.0f}" if v != 0 else "" for v in series[year]],
+                textposition="outside",
+            )
+        )
+
+    tickvals, ticktext = _millions_ticks(min_value, max_value)
+    fig.update_layout(
+        barmode="group",
+        yaxis=dict(autorange="reversed"),
+        legend_title_text="",
+        margin=dict(l=0, r=0, t=10, b=0),
+        height=80 + 40 * len(suppliers),
+    )
+    fig.update_xaxes(
+        title_text="Net spend (€)",
+        tickmode="array",
+        tickvals=tickvals,
+        ticktext=ticktext,
+    )
+    return fig
