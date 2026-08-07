@@ -757,7 +757,7 @@ module rather than `app.py`, reboot the app from Manage app and re-check a
 known question on the live URL. Treat "Updated app!" in the deploy log as a
 git-pull receipt, not as proof the new code is serving traffic.**
 
-### LIVE VERIFICATION — passed (7 Aug 2026, 23:45–23:55 BST)
+### LIVE VERIFICATION — passed (7 Aug 2026, 23:36–23:44 BST)
 
 Run against `https://zureli-spend-assistant.streamlit.app/~/+/` in a browser
 after the reboot. Every answer below was read off the live page and matches
@@ -797,6 +797,53 @@ Adversarial pass (trying to break it, not confirm it) — all as expected live:
 
 Chart render and the supplier drill-down were viewed as screenshots, not just
 read as text (Rule 24: for anything a human looks at, viewing it IS the test).
+
+### Codex review round 2 — 14 real defects in the SHIPPING code (7 Aug 2026)
+
+The earlier Codex pass reviewed the code BEFORE the final hardening commit,
+so by Rule 3 it was stale as final evidence. Re-ran it against `f88ef68` —
+the exact code that was live. 16 findings; **all 14 concrete ones reproduced
+exactly as described**, including the euro figures. Fixed in `4b0134a`,
+tests 700 → 847.
+
+Wrong-number bugs (the dangerous class — user sees an authoritative figure):
+
+| Input | Was answered | Fix |
+|---|---|---|
+| `office software spend` | "€0.00 across 0 spend rows" (l2 Software licensing AND l1 Office) | `known_values()` now derives an L2→L1 parent map from the data; a contradictory L1 is dropped in favour of the narrower L2. Enumerated over every L1×L2 pair. |
+| `security software spend` | Cleaning and security, €684,341.95 | Two-pass matching: non-weak aliases resolve first, weak ordinary-English ones only fill what is still empty. Fixes the class. |
+| `maintenance software spend` | Building maintenance, €1,278,651.64 | same |
+| `how many people work here` | People, €2,019,149.48 | `people`/`staff`/`personnel`/`workforce`/`office` are now WEAK (need a spend signal) |
+| `what is our brand value` | Marketing, €698,076.54 | `brand` WEAK **plus** a blocking phrase — "value" is itself a spend-signal word, so the gate alone let it through |
+| `is this available in German?` | Germany, €1,801,388.73 | country ADJECTIVES now WEAK; the noun forms stay ungated |
+| `IT spend in 20245` | year = 2024 | year match is digit-bounded, not a substring |
+
+Missed phrasings added: `license`/`licence` singular, `phone bills`,
+`contractor`/`contract labour`/`contract staff`, `learning & development`/
+`l and d`, `gb`/`british`, `northern`.
+
+**Deliberately rejected — finding 14, "Western spend" should resolve to Demo
+Western Services.** It is genuinely ambiguous between the West cluster and
+that entity (as "Southern" is between South and Demo Southern Support), and
+guessing produces a confidently wrong number where the overview-plus-chips
+fallback is honest. A test pins the fallback so adding a guess later has to
+be a deliberate change, not a drift.
+
+**The new tests were checked against the pre-fix source: 133 of them fail
+there.** That check is now mandatory for this project — the original defect
+survived a 14-task build precisely because its test could not fail, so a new
+regression test is not trusted until it has been seen to go red.
+
+### STATE AS OF 7 Aug 2026, 23:45 BST — what is and is not live
+
+- **Live now** (`f88ef68`, verified above): the alias fix. Hayden's four
+  questions and Jayesh's exact question all correct.
+- **NOT live** (`9967508` + `4b0134a`, committed locally, **not pushed**):
+  the round-2 fixes above and this documentation.
+- To ship them: push, then **reboot from Manage app** — a push alone will
+  not take effect, because all three changed files (`aliases.py`,
+  `nl_parser.py`, `spend_query.py`) are imported modules rather than
+  `app.py`. Then re-verify on the live URL, quoting the answers.
 
 The architecture question is answered in `_LLM-UPGRADE-RESEARCH.md`
 (7 Aug 2026): recommendation is to wire Claude Sonnet 5 via an Anthropic API
