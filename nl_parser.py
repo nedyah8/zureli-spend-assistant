@@ -94,6 +94,11 @@ FRAGMENTATION_KEYWORDS = (
     "how many suppliers per category", "tail spend",
 )
 
+CONCENTRATION_KEYWORDS = (
+    "pareto", "80/20", "how concentrated is our supplier base",
+    "overall supplier concentration", "overall concentration",
+)
+
 
 def _extract_filters(q: str, known: dict[str, list]) -> dict:
     filters: dict[str, object] = {}
@@ -164,6 +169,13 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
             "intent": "chart", "chart_kind": "top_suppliers",
             "breakdown": None, "category_level": None,
             "top_n": n, "filters": filters,
+        }
+
+    if any(kw in q for kw in CONCENTRATION_KEYWORDS):
+        return {
+            "intent": "chart", "chart_kind": "overall_concentration",
+            "breakdown": None, "category_level": None,
+            "top_n": None, "filters": filters,
         }
 
     if any(kw in q for kw in FRAGMENTATION_KEYWORDS):

@@ -305,3 +305,10 @@ def test_fragmentation_text_does_not_duplicate_year():
     payload = app.answer_payload("show me fragmentation")
     year_str = str(max(app.kv["year"]))
     assert payload["text"].count(year_str) == 1
+
+
+def test_pareto_question_returns_chart_payload():
+    app = _reload_app()
+    payload = app.answer_payload("show me the pareto chart")
+    assert payload["kind"] == "chart"
+    assert "€" in payload["caption"]

@@ -402,3 +402,31 @@ def build_fragmentation_figure(fragmentation_df) -> go.Figure:
         ticktext=ticktext,
     )
     return fig
+
+
+def build_concentration_figure(concentration_df) -> go.Figure:
+    """Pareto chart: supplier spend bars (descending) + cumulative share
+    line on a secondary axis — the InSight demo's 'Overall supplier
+    concentration' view.
+    """
+    names = [str(s).replace("Demo ", "") for s in concentration_df["supplier"]]
+    values = concentration_df["net_spend"].tolist()
+    tickvals, ticktext = _millions_ticks(0.0, max(values) if values else 0.0)
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=names, y=values, name="Net spend", marker_color=PALETTE[2], yaxis="y"))
+    fig.add_trace(
+        go.Scatter(
+            x=names, y=concentration_df["cumulative_share_pct"], name="Cumulative share",
+            mode="lines+markers", marker_color=PALETTE[6], yaxis="y2",
+        )
+    )
+    fig.update_layout(
+        legend_title_text="",
+        margin=dict(l=0, r=0, t=10, b=60),
+        height=420,
+        xaxis=dict(tickangle=-45),
+        yaxis=dict(title="Net spend (€)", tickmode="array", tickvals=tickvals, ticktext=ticktext),
+        yaxis2=dict(title="Cumulative share (%)", overlaying="y", side="right", range=[0, 100]),
+    )
+    return fig

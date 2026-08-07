@@ -8,6 +8,8 @@ from chart_query import supplier_drilldown
 from chart_render import build_supplier_drilldown_figures
 from chart_query import fragmentation
 from chart_render import build_fragmentation_figure
+from chart_query import overall_concentration
+from chart_render import build_concentration_figure
 from nl_parser import parse_question
 from overview_query import overview
 from spend_query import filter_df, known_values, load_data, query_spend
@@ -269,6 +271,31 @@ def answer_payload(question: str) -> dict:
                 "text": f"Fragmentation for {format_filters(chart_filters)}.",
                 "metrics": metrics, "figure": fig, "table": table, "caption": caption,
                 "show_chips": False,
+            }
+
+        if chart_kind == "overall_concentration":
+            if "year" in filters:
+                chart_filters = dict(filters)
+            else:
+                chart_filters = {"year": max(kv["year"]), **filters}
+            conc_df = overall_concentration(df, **chart_filters)
+            if conc_df.empty:
+                return {
+                    "kind": "text",
+                    "text": f"I didn't find any suppliers matching that — {format_filters(chart_filters)} returned no rows.",
+                    "figure": None, "caption": None, "show_chips": False,
+                }
+            fig = build_concentration_figure(conc_df)
+            top10_index = min(9, len(conc_df) - 1)
+            top10_pct = float(conc_df["cumulative_share_pct"].iloc[top10_index])
+            total = format_currency(round(conc_df["net_spend"].sum(), 2))
+            caption = (
+                f"{len(conc_df)} suppliers, {chart_filters['year']} — top 10 hold "
+                f"{top10_pct:.1f}% of {total}."
+            )
+            return {
+                "kind": "chart", "text": "Overall supplier concentration",
+                "figure": fig, "caption": caption, "show_chips": False,
             }
 
         # Default an unfiltered chart question to the latest year present in

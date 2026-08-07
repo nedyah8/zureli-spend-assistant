@@ -220,3 +220,33 @@ def fragmentation(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFram
         })
 
     return pd.DataFrame(rows).sort_values("net_spend", ascending=False).reset_index(drop=True)
+
+
+def overall_concentration(df: pd.DataFrame, **filters) -> pd.DataFrame:
+    """Every supplier's net spend in scope, descending, plus each one's
+    cumulative share of the total — the InSight demo's 'Overall supplier
+    concentration' Pareto view.
+
+    Returns [supplier, net_spend, cumulative_share_pct], sorted descending
+    by net_spend.
+    """
+    matched = filter_df(df, **filters).copy()
+    # A null Supplier name would otherwise be silently dropped by groupby's
+    # default dropna=True, while query_spend() counts every matched row
+    # regardless — same guard as supplier_drilldown()'s by_entity/by_category
+    # and fragmentation()'s per-category by_supplier groupbys above (Task 6
+    # and Task 8 review findings), so this chart's total can never disagree
+    # with query_spend() purely because of a missing supplier name.
+    matched["Supplier name"] = matched["Supplier name"].fillna("(unspecified)")
+    by_supplier = (
+        matched.groupby("Supplier name")["Net spend"].sum()
+        .sort_values(ascending=False)
+        .reset_index()
+        .rename(columns={"Supplier name": "supplier", "Net spend": "net_spend"})
+    )
+    total = float(by_supplier["net_spend"].sum())
+    if total != 0:
+        by_supplier["cumulative_share_pct"] = (by_supplier["net_spend"].cumsum() / total * 100).round(1)
+    else:
+        by_supplier["cumulative_share_pct"] = 0.0
+    return by_supplier

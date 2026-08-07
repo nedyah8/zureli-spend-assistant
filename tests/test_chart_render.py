@@ -363,3 +363,16 @@ def test_fragmentation_figure_bubble_count_matches_categories():
     fig = build_fragmentation_figure(frag_df)
     total_points = sum(len(trace.x) for trace in fig.data)
     assert total_points == len(frag_df)
+
+
+from chart_query import overall_concentration
+from chart_render import build_concentration_figure
+
+
+def test_concentration_figure_has_bar_and_line_trace():
+    df = load_data()
+    conc_df = overall_concentration(df, year=2025)
+    fig = build_concentration_figure(conc_df)
+    assert len(fig.data) == 2
+    assert fig.data[0].type == "bar"
+    assert fig.data[1].type == "scatter"

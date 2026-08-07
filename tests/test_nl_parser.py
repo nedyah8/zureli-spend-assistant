@@ -283,3 +283,14 @@ def test_supplier_concentration_phrase_detected():
 def test_fragmentation_respects_level_2_keyword():
     result = parse_question("fragmentation at level 2", KV)
     assert result["category_level"] == "l2"
+
+
+def test_pareto_keyword_triggers_overall_concentration():
+    result = parse_question("show me the pareto chart", KV)
+    assert result["intent"] == "chart"
+    assert result["chart_kind"] == "overall_concentration"
+
+
+def test_overall_supplier_concentration_phrase_detected():
+    result = parse_question("how concentrated is our supplier base", KV)
+    assert result["chart_kind"] == "overall_concentration"

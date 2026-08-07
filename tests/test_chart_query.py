@@ -260,3 +260,46 @@ def test_fragmentation_null_supplier_name_is_not_dropped():
     shares_pct = by_supplier / by_supplier.sum() * 100
     expected_index = round(float((shares_pct ** 2).sum()), 0)
     assert row["concentration_index"] == expected_index
+
+
+from chart_query import overall_concentration
+
+
+def test_overall_concentration_totals_match_query_spend():
+    df = load_data()
+    conc_df = overall_concentration(df, year=2025)
+    reference = query_spend(df, year=2025)
+    assert round(conc_df["net_spend"].sum(), 2) == reference["total_net_spend"]
+
+
+def test_overall_concentration_sorted_descending():
+    df = load_data()
+    conc_df = overall_concentration(df, year=2025)
+    values = conc_df["net_spend"].tolist()
+    assert values == sorted(values, reverse=True)
+
+
+def test_overall_concentration_cumulative_share_reaches_100():
+    df = load_data()
+    conc_df = overall_concentration(df, year=2025)
+    assert round(conc_df["cumulative_share_pct"].iloc[-1], 0) == 100
+
+
+def test_overall_concentration_null_supplier_name_is_not_dropped():
+    # Same bug class as Task 6/8's supplier_drilldown()/fragmentation() fixes
+    # (test_supplier_drilldown_null_entity_and_category_values_are_not_dropped,
+    # test_fragmentation_null_supplier_name_is_not_dropped): groupby's default
+    # dropna=True would silently exclude a null Supplier name row, while
+    # query_spend() counts every matched row regardless — the chart's total
+    # must never disagree with query_spend() purely because of a missing
+    # supplier name.
+    df = pd.DataFrame(
+        {
+            "Supplier name": ["Demo Supplier A", "Demo Supplier B", None],
+            "Net spend": [100.0, 50.0, 25.0],
+        }
+    )
+    conc_df = overall_concentration(df)
+    reference = query_spend(df)
+    assert round(conc_df["net_spend"].sum(), 2) == reference["total_net_spend"]
+    assert "(unspecified)" in [str(s) for s in conc_df["supplier"]]
