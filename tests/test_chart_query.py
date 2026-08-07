@@ -110,18 +110,78 @@ def test_top_suppliers_respects_n():
     assert chart_df["supplier"].nunique() == 5
 
 
-def test_top_suppliers_sorted_descending_by_total():
+def test_top_suppliers_sorted_descending_by_rank_year():
+    # Ranking is by the LATEST year present in scope (the "rank year"), not
+    # by each supplier's total across every year in scope — see
+    # test_top_suppliers_ranks_by_latest_year_not_two_year_total below for
+    # why (Task 14 live-InSight-parity finding). Sorting by the rank-year
+    # value only, not the summed total, is therefore the correct assertion
+    # here.
     df = load_data()
     chart_df = top_suppliers(df, n=10)
-    totals_in_order = chart_df.groupby("supplier", observed=True, sort=False)["net_spend"].sum()
-    values = totals_in_order.tolist()
-    assert values == sorted(values, reverse=True)
+    rank_year = int(chart_df["year"].max())
+    rank_values_in_order = (
+        chart_df[chart_df["year"] == rank_year]
+        .groupby("supplier", observed=True, sort=False)["net_spend"]
+        .sum()
+        .tolist()
+    )
+    assert rank_values_in_order == sorted(rank_values_in_order, reverse=True)
 
 
 def test_top_suppliers_filters_apply():
     df = load_data()
     chart_df = top_suppliers(df, n=15, year=2024)
     assert set(chart_df["year"].unique()) == {2024}
+
+
+def test_top_suppliers_ranks_by_latest_year_not_two_year_total():
+    # Task 14 (InSight parity checklist, Step 1a) live re-verification found
+    # a real defect: an earlier version of this function ranked suppliers by
+    # their TOTAL spend summed across every year in scope (matching the
+    # design spec's B2 text, itself based on a visual read of the demo's
+    # grouped-bar chart that never confirmed the actual ranking rule). Live
+    # inspection of https://zureli-insight-demo.streamlit.app/'s "Top
+    # suppliers" tab on 7 Aug 2026 showed its top-15 selection and order is
+    # driven by the single "Focus year" (2025) value alone — confirmed by
+    # matching, to the cent, its displayed 2025 column for the first 10
+    # suppliers (Demo Supplier 025: 368010.23, 026: 356342.24, 023:
+    # 326776.95, 021: 323865.03, 024: 286852.80, 028: 269263.33, 002:
+    # 226360.52, 027: 217059.04, 010: 216882.98, 049: 215020.37) — an order
+    # that a total-across-both-years ranking cannot reproduce (e.g. supplier
+    # 023's two-year total exceeds 025's, yet 025 ranks first).
+    df = load_data()
+    chart_df = top_suppliers(df, n=10)
+    ranked_supplier_order = list(dict.fromkeys(chart_df["supplier"].tolist()))
+    assert ranked_supplier_order == [
+        "Demo Supplier 025", "Demo Supplier 026", "Demo Supplier 023",
+        "Demo Supplier 021", "Demo Supplier 024", "Demo Supplier 028",
+        "Demo Supplier 002", "Demo Supplier 027", "Demo Supplier 010",
+        "Demo Supplier 049",
+    ]
+    live_2025_values = {
+        "Demo Supplier 025": 368010.23, "Demo Supplier 026": 356342.24,
+        "Demo Supplier 023": 326776.95, "Demo Supplier 021": 323865.03,
+        "Demo Supplier 024": 286852.80, "Demo Supplier 028": 269263.33,
+        "Demo Supplier 002": 226360.52, "Demo Supplier 027": 217059.04,
+        "Demo Supplier 010": 216882.98, "Demo Supplier 049": 215020.37,
+    }
+    for supplier, expected in live_2025_values.items():
+        actual = chart_df.loc[
+            (chart_df["supplier"] == supplier) & (chart_df["year"] == 2025), "net_spend"
+        ].sum()
+        assert round(actual, 2) == expected, supplier
+
+
+def test_top_suppliers_still_shows_both_years_for_ranked_suppliers():
+    # The ranking rule change above must not regress B3's grouped-bar
+    # presentation, which needs both years' data per suppler when both are
+    # present in scope (Task 14 own-review finding, guarding the fix
+    # itself).
+    df = load_data()
+    chart_df = top_suppliers(df, n=15)
+    years_for_025 = set(chart_df.loc[chart_df["supplier"] == "Demo Supplier 025", "year"])
+    assert years_for_025 == {2024, 2025}
 
 
 from chart_query import supplier_drilldown

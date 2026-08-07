@@ -57,17 +57,35 @@ def category_spend(
 
 
 def top_suppliers(df: pd.DataFrame, n: int = 15, **filters) -> pd.DataFrame:
-    """Top N suppliers by total net spend across the years in scope.
+    """Top N suppliers, ranked and selected by their spend in a single
+    "rank year", with every year present in scope still returned per
+    selected supplier for the grouped-bar presentation.
 
     Returns a tidy dataframe [supplier, year, net_spend], one row per
     supplier x year present in the filtered data, restricted to the top N
-    suppliers ranked by their total spend summed across all years in
-    scope. `supplier` is an ordered Categorical, sorted descending by each
-    supplier's total — matching the InSight demo's bar order. Unlike
-    category_spend(), there is no year default here: the demo's own Top
-    suppliers view shows every year in scope side by side (the year-on-year
-    comparison IS the view's value) — a year filter, if the caller passes
-    one, naturally restricts to a single series.
+    suppliers by the rank year above. `supplier` is an ordered Categorical,
+    sorted descending by each supplier's rank-year value — matching the
+    InSight demo's bar order.
+
+    Rank year: `filters["year"]` when the caller passes one (the result
+    then naturally contains only that single year, as before); otherwise
+    the LATEST year present in the filtered scope, matching every other
+    chart kind's default-to-latest-year rule.
+
+    CORRECTED (Task 14, InSight parity checklist, 7 Aug 2026): this
+    previously ranked by each supplier's TOTAL spend summed across every
+    year in scope, per the original design spec's read of the demo's
+    grouped-bar chart. Live re-verification against
+    https://zureli-insight-demo.streamlit.app/'s actual "Top suppliers" tab
+    found that reading was wrong on the ranking question specifically — the
+    demo selects and orders its top 15 by the sidebar's single "Focus year"
+    value alone (confirmed by matching, to the cent, 10 suppliers' 2025
+    figures and their displayed order — see
+    test_top_suppliers_ranks_by_latest_year_not_two_year_total in
+    tests/test_chart_query.py for the exact values) even though both years'
+    bars are plotted for the suppliers that ranking selects. The two years
+    ARE still both shown for each selected supplier — only the SELECTION/
+    ORDER criterion changes here.
     """
     matched = filter_df(df, **filters).copy()
     grouped = (
@@ -76,7 +94,17 @@ def top_suppliers(df: pd.DataFrame, n: int = 15, **filters) -> pd.DataFrame:
         .reset_index()
         .rename(columns={"Supplier name": "supplier", "Year": "year", "Net spend": "net_spend"})
     )
-    totals = grouped.groupby("supplier")["net_spend"].sum().sort_values(ascending=False)
+    if grouped.empty:
+        return grouped
+
+    filter_year = filters.get("year")
+    rank_year = filter_year if filter_year is not None else int(grouped["year"].max())
+    totals = (
+        grouped[grouped["year"] == rank_year]
+        .groupby("supplier")["net_spend"]
+        .sum()
+        .sort_values(ascending=False)
+    )
     top_names = totals.head(n).index.tolist()
     result = grouped[grouped["supplier"].isin(top_names)].copy()
     result["supplier"] = pd.Categorical(result["supplier"], categories=top_names, ordered=True)
@@ -219,7 +247,21 @@ def fragmentation(df: pd.DataFrame, level: str = "l1", **filters) -> pd.DataFram
             "cr3_pct": cr3, "concentration_index": index, "tier": tier,
         })
 
-    return pd.DataFrame(rows).sort_values("net_spend", ascending=False).reset_index(drop=True)
+    # Explicit columns (not just pd.DataFrame(rows)) so an empty `rows` list
+    # — a real, reachable case: any filter combo with zero matched rows,
+    # e.g. entity="Demo Baltic Logistics" + country="Germany" (Task 14
+    # gauntlet finding, tests/test_gauntlet.py::
+    # test_zero_row_result_per_chart_kind_has_honest_empty_answer) — still
+    # produces the [category, net_spend, ...] schema instead of a bare
+    # 0-column frame. Without this, sort_values below raised KeyError:
+    # 'net_spend' instead of returning the empty frame app.py's
+    # `if frag_df.empty:` branch is built to handle — same class of bug,
+    # and same fix, as category_comparison()'s own-review finding above.
+    columns = [
+        "category", "net_spend", "supplier_count", "top_supplier_share_pct",
+        "cr3_pct", "concentration_index", "tier",
+    ]
+    return pd.DataFrame(rows, columns=columns).sort_values("net_spend", ascending=False).reset_index(drop=True)
 
 
 def overall_concentration(df: pd.DataFrame, **filters) -> pd.DataFrame:

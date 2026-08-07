@@ -118,6 +118,21 @@ demo's own Top-suppliers view shows both years side by side, and the
 year-on-year comparison IS the view's value. A year filter in the
 question restricts to that year (single series).
 
+**CORRECTED (Task 14, 7 Aug 2026 — InSight parity checklist, Step 1a):**
+the "rank by total spend across the years in scope" line above was wrong,
+caught by live re-verification against the actual demo rather than a
+visual read of its chart. The demo's top-15 SELECTION and ORDER is driven
+by the sidebar's single "Focus year" (2025) value alone, confirmed by
+matching 10 suppliers' 2025 figures and displayed order to the cent
+(Demo Supplier 025 first at €368,010.23, then 026, 023, 021, 024, 028,
+002, 027, 010, 049 — a total-across-both-years ranking puts 023 first
+instead, which the demo does not). Both years' bars are still plotted per
+selected supplier — only the selection/order criterion changes. Fixed in
+`chart_query.top_suppliers()`: rank year = the caller's `year` filter if
+given, else the latest year present in scope (same default-to-latest-year
+rule every other chart kind already follows). Full detail: this file's
+`_HANDOFF.md`-referenced Task 14 report.
+
 ### B3. Presentation (`chart_render.py`, new function)
 
 Horizontal grouped bars (`barmode="group"`), one trace per year in scope,
