@@ -3,6 +3,35 @@
 Supplements Hayden's global CLAUDE.md. These are the hard rules specific to
 this project — check them before making changes here.
 
+## Current feature set (7 Aug 2026 — meeting-ready build, Task 14 final gate passed)
+
+Every chart/table/figure across all 5 InSight demo tabs (Overview, Category
+spend, Top suppliers, Fragmentation, More) now has a chat equivalent, gated
+by an adversarial test suite (`tests/test_gauntlet.py`), a Codex
+cross-family review, and an `interface-polish` screenshot pass — see
+`_HANDOFF.md`'s "Phases 2–4" section for the full record, including the
+live InSight parity checklist with every number checked against the real
+demo. Overview KPIs/callouts + vague-question fallback + suggestion chips;
+category spend chart, comparison table, and entity/category intensity
+heatmap; top suppliers ranked chart + single-supplier drill-down;
+fragmentation KPIs/bubble chart/detail table + overall supplier
+concentration (Pareto); raw filtered-data view with CSV download. 161
+tests passing (`pytest tests/ -q`).
+
+## Fragmentation formula — ours, not InSight's
+
+The fragmentation tier (Concentrated/Medium/High) is set by our OWN
+CR3-based rule (top-3-supplier share ≥70%/40–70%/<40%), disclosed in every
+fragmentation answer's caption — never tuned to reproduce InSight's own
+undisclosed Profile-column logic (`_MEETING-READY-DESIGN.md` Part C1;
+global Rule 24). The Concentration index (an HHI-style statistic) is
+computed and shown alongside CR3 as a second, standard, well-defined number
+— not used to set the tier. Every numeric column (CR3, Concentration
+index, Net spend, Suppliers) matches the live demo exactly for the
+unfiltered 2025 view; only the Tier/Profile label itself diverges, for 2 of
+8 categories, and that divergence is disclosed and explained, not hidden
+(`_HANDOFF.md`'s fragmentation formula comparison table).
+
 1. **Synthetic data only, right now.** `sample_spend_data.csv` is a demo
    file Jayesh forwarded from the data scientist on 29 Jul 2026 — it is not
    real client data. Never present numbers from this file as if they came

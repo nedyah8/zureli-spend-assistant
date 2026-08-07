@@ -271,15 +271,297 @@ bubble chart), and Phase 4 (Overview KPI cards) — in that order, each to go
 through its own design-and-build pass after this one, not folded into this
 handoff.
 
+## Phases 2–4: robustness, Top suppliers, Fragmentation, Overview (7 Aug 2026)
+
+Built and verified complete: the full `_MEETING-READY-DESIGN.md` scope
+(Parts A–H) — vague-question/overview fallback, suggestion chips, Top
+suppliers + supplier drill-down, Fragmentation + overall supplier
+concentration (Pareto), Overview KPIs/callouts, category comparison table +
+intensity heatmap, the "More" tab's raw-data view, and the answered-state
+interface pass (`layout="wide"`, chip styling). Task 14 (this section) is
+the final gate: the InSight demo parity checklist, the adversarial gauntlet,
+a full regression run, a Codex cross-family review, and the
+`interface-polish` screenshot gate.
+
+**Test count: 161 passing** (`pytest tests/ -q`), up from 145 at the end of
+Task 13 — 8 new gauntlet tests (`tests/test_gauntlet.py`) plus 8 further
+regression tests added during this task's own fix rounds (below).
+
+### InSight demo parity checklist (Task 14 Step 1a)
+
+Every row below was checked by hand against the live demo
+(https://zureli-insight-demo.streamlit.app/), re-inspected live on 7 Aug
+2026 rather than trusted from earlier notes (Rule 1). Numeric checks used
+either the running local app's chat (`streamlit run app.py`) or direct
+`answer_payload()`/query-function calls against the same data — the brief's
+own sanctioned "whichever gets you a trustworthy comparison fastest."
+
+| InSight tab | Element | Result |
+|---|---|---|
+| Overview | KPI row | **PASS.** Net spend 2025 €7,384,113.73 (demo: €7.4m) +9.1% vs 2024 (both); Entities 8 (both); Suppliers 56 (both). 4th KPI: ours "Spend rows" = 401 vs demo's "Supplier-year lines" = 401 — see "One unresolved Overview metric" below, now resolved. |
+| Overview | 3 callouts | **PASS.** Largest category: Professional services, €1,587,499.21 (demo: €1.6m) both. Fastest growth: Professional services +15.4% both. Supplier concentration: Top 10 = 38.0% both, largest supplier "Supplier 025" both. |
+| Category spend | Stacked bar chart | **PASS.** Chart total €7,384,113.73 = `query_spend(df, year=2025)` exactly. |
+| Category spend | Comparison table | **PASS**, exact match to the unit on all 8 rows (e.g. Professional services €1,587,499/€1,375,210/+€212,289/+15.4%/21.5% share, both sides). |
+| Category spend | Intensity heatmap | **PASS.** Max/min cell (440,739.35 / 7,882.46) match the demo's legend (441k/8k) exactly; 3 spot-checked cells match `query_spend()` exactly (internal never-diverge check). |
+| Top suppliers | Ranked bar chart | **FAILED, then fixed** — see "Real defect found" below. After the fix: all 15 suppliers' ranking, order, and 2024/2025 values match the demo exactly (cross-verified two ways: the demo's own Top-suppliers table for suppliers 1–10, and its Fragmentation tab's Pareto chart x-axis order for suppliers 11–15). |
+| Top suppliers | Supplier drill-down (Demo Supplier 025) | **PASS.** €368,010.23 in 2025 (demo: €368k), +22.4% both, 5.0% share both, 8 entities both, 1 category both. |
+| Fragmentation | KPI row | **PASS on Categories assessed (8=8) and Suppliers in scope (56=56). Disclosed divergence on Highly fragmented (ours 0 vs demo 2) and Fragmented spend % (ours 0.0% vs demo 32.3%)** — both are downstream of the CR3-vs-Profile tier difference Part C1 already anticipated, not a new gap. |
+| Fragmentation | Per-category table | **PASS on every numeric column** (Net spend, Suppliers, Top supplier share %, Top 3 share % / CR3, Concentration index) for all 8 categories, exact match to the demo. **Tier vs Profile diverges for 2 of 8 categories** (IT and telecom: ours Medium vs demo High; People: ours Medium vs demo High) — the exact case Part C1 documented in advance from the 7 Aug live re-verification, not discovered fresh here. Full comparison table below. |
+| Fragmentation | Overall concentration Pareto | **PASS.** Top 10 suppliers = 38.0% of €7,384,113.73, matching both the demo's own Pareto view and its Overview "Top 10 = 38.0%" callout. |
+| More | Filtered raw rows (Germany, 2024) | **PASS.** Column schema matches exactly (`Spend line id`, `Source row count`, `Entity`, `Cluster`, `Country`, `Year`, `L1`, `L2`, `Supplier name`, `Net spend` — these columns already exist verbatim in `sample_spend_data.csv`, not synthesised by this app). First rows byte-identical to the demo's own table for the same scope. Local total: 52 rows. The live demo's exact total count for this specific scope could not be independently re-confirmed through its own UI this session — its Country filter is a BaseWeb multiselect that did not respond reliably to this session's browser-automation clicks (a tool limitation, same class as the `st.chat_input` issue logged in Task 8's section above, not an app bug) — but the row-content match plus an internal `query_spend()` cross-check give high confidence; flagged here rather than silently assumed complete (Rule 24). |
+
+**Real defect found and fixed:** `chart_query.top_suppliers()` ranked
+suppliers by their TOTAL spend summed across both years in scope, per the
+original design spec's read of the demo's grouped-bar chart. Live
+re-verification showed the demo actually selects and orders its top 15 by
+the single "Focus year" (2025) value alone — confirmed by matching 15
+suppliers' 2025 figures and their exact displayed order to the cent. Fixed
+in `chart_query.py`: rank year = the caller's `year` filter if given, else
+the latest year in scope (matching every other chart kind's own
+default-to-latest-year rule), while every year present is still returned so
+the grouped-bar presentation is unaffected. TDD: failing tests written
+first (`tests/test_chart_query.py::test_top_suppliers_ranks_by_latest_year_not_two_year_total`
+and `::test_top_suppliers_sorted_descending_by_rank_year`), confirmed
+failing against the pre-fix code, then the fix applied and re-verified
+both by pytest and by re-screenshotting the running app.
+
+### Fragmentation formula comparison — unfiltered 2025 view (Part C1's "record the per-category table" instruction)
+
+| L1 | Our CR3 % | Our Tier | Our Concentration index | Demo Top 3 share % | Demo Profile | Demo Concentration index |
+|---|---|---|---|---|---|---|
+| Professional services | 62.6 | Medium fragmentation | 1664 | 62.6 | Medium fragmentation | 1664 |
+| IT and telecom | 40.5 | Medium fragmentation | 1016 | 40.5 | **High fragmentation** | 1016 |
+| Logistics | 83.4 | Concentrated | 2601 | 83.4 | Concentrated | 2601 |
+| Facilities | 50.1 | Medium fragmentation | 1391 | 50.1 | Medium fragmentation | 1391 |
+| People | 48.6 | Medium fragmentation | 1159 | 48.6 | **High fragmentation** | 1159 |
+| Utilities | 79.1 | Concentrated | 2533 | 79.1 | Concentrated | 2533 |
+| Marketing | 76.5 | Concentrated | 2505 | 76.5 | Concentrated | 2505 |
+| Office | 80.0 | Concentrated | 2545 | 80.0 | Concentrated | 2545 |
+
+Every numeric column (CR3/Top 3 share %, Concentration index) matches
+exactly. Only the Tier/Profile label diverges, and only for the two
+categories Part C1 already flagged from the 7 Aug live re-verification
+(IT and telecom, People) — both sit close to but below our 40% Medium/High
+CR3 boundary while the demo's Profile calls them High, evidence that its
+Profile likely tracks the Concentration index more than CR3 alone, which
+with only 8 rows to observe isn't reliably reverse-engineerable without
+reverse-fitting a threshold to force a match — exactly what Rule 24
+forbids. Left as a disclosed, principled difference, not tuned.
+
+### One unresolved Overview metric — now resolved as a genuine match
+
+`_MEETING-READY-DESIGN.md`'s "One unresolved Overview metric" section
+disclosed that the demo's "Supplier-year lines: 401" KPI couldn't be
+reverse-engineered from `sample_spend_data.csv` by re-aggregating it
+(supplier×year, supplier×year×entity, etc. all produced counts other than
+401), so this app's own 4th KPI was kept as "Spend rows" — a different,
+honestly-labelled statistic (the real row count in scope), not a relabelled
+guess. Task 14's parity check found this was never actually a mismatch:
+`sample_spend_data.csv` already carries `Spend line id` and
+`Source row count` columns (missed in earlier inspection) — each CSV row
+IS already one aggregated "spend line," at exactly the grain the demo's own
+metric counts. `len(year_rows)` for the unfiltered 2025 scope is exactly
+401, matching the demo exactly, with no reaggregation and no tuning — the
+row count was the right answer the whole time. "Spend rows" is kept as the
+label (Rule 26 — it's still the more honestly self-descriptive name for
+what the number is), but it is confirmed to equal the demo's own metric for
+every scope, not just coincidentally for the unfiltered view (both are
+literally `len()` of the same rows).
+
+### Adversarial gauntlet (Task 14 Steps 1–2)
+
+`tests/test_gauntlet.py`, the full battery from `_MEETING-READY-DESIGN.md`
+Part F: vagueness ladder (6 questions), synonyms/phrasing gaps (documented,
+not pretended), typos (documented overview fallback), abuse inputs (empty,
+1000-char, emoji, numbers-only, prompt-injection phrasing, SQL-injection-
+shaped string, HTML/script tag), the injection-specific "must not bypass
+normal filtering" check, a real negative-total case
+(`-€7,637.65` for Demo Supplier 052/Utilities/Demo Iberia Distribution),
+zero-row results per chart kind (category_spend, top_suppliers,
+fragmentation), and cross-feature filter composition. All 8 tests pass —
+one genuine crash was found and fixed first (`fragmentation()` raised
+`KeyError: 'net_spend'` on any zero-row filter combination, because
+`pd.DataFrame(rows)` on an empty list drops all columns before
+`sort_values()` runs — the same class of bug `category_comparison()` had
+already been fixed for in Task 11; same fix applied here).
+
+### Manual UI-abuse pass (Task 14 Step 3 — runtime-only, not expressible as a pytest assertion)
+
+All three checked directly in the running local app via the real browser:
+
+- **Chip double-click** (rapid double-click on "Give me an overview"):
+  exactly one exchange was added to the conversation, not two — no
+  duplicate message, no crash, no infinite rerun loop. The chip's own
+  radio-button semantics (a second click on an already-selected option is a
+  no-op) plus the existing `del st.session_state[...]` widget-reset logic
+  (already documented in `app.py`'s `render_chips()`) together make this
+  safe.
+- **Chart question immediately followed by another chart question, before
+  the first fully renders**: fired "show me a bar chart of category spend"
+  then immediately "show me fragmentation" with no wait between the two.
+  Both exchanges landed correctly and in order in the conversation history;
+  neither answer's numbers were corrupted (re-verified via
+  `get_page_text()` against the rendered page — the category chart's total
+  and the fragmentation table were both exactly the values independently
+  computed via the query functions). Streamlit's own synchronous
+  script-rerun model means there is no real overlap window locally, but the
+  composition itself — two real chart answers back to back — was proven,
+  not assumed.
+- **Browser refresh mid-conversation**: after 3 real exchanges, a hard page
+  reload (not a soft navigation) returned the app to the exact clean empty
+  state — greeting, input, chips — with no error banner and no stale
+  content. This is standard Streamlit session-state behaviour (a fresh page
+  load gets a fresh server-side session), not app-specific logic, but it
+  was verified directly rather than assumed.
+
+### Codex cross-family review (Task 14 Step 5) and full triage
+
+Run via `codex exec` against the diff `b8611b3..HEAD` (the entire
+meeting-ready build) after committing the gauntlet + top_suppliers-ranking
+fix, so the review covered what was actually shipping (Rule 3), not a stale
+snapshot. Findings and triage:
+
+- **HIGH — fixed.** `top_suppliers()` did not null-guard `"Supplier name"`
+  before its groupby, unlike every sibling function in `chart_query.py`
+  (`overall_concentration`, `fragmentation`, `supplier_drilldown`,
+  `category_spend`, `entity_category_intensity` all already guard this).
+  Not reachable with the real CSV (0 nulls anywhere, verified), but fixed
+  to match this file's own established defensive pattern rather than left
+  as the one inconsistent function. TDD: `test_top_suppliers_null_supplier_name_is_not_dropped`.
+- **HIGH — fixed.** `overview_query.py`'s `by_category`/`by_supplier`
+  groupbys and `entity_count`/`supplier_count` had no equivalent null-guard
+  (this file predates the pattern being established in `chart_query.py`).
+  Worse: if every row's L1 AND Supplier name were null, every callout would
+  resolve to `None`, leaving `app.py`'s `callouts` list empty and crashing
+  `render_callouts()`'s `container.columns(len(callouts))` as
+  `st.columns(0)` — confirmed directly, raises
+  `StreamlitInvalidColumnSpecError`. Fixed with the same fillna guard; the
+  crash path is now structurally unreachable whenever there is real spend
+  in scope (at least one callout always resolves once nulls are guarded).
+  TDD: `test_null_entity_l1_supplier_values_are_not_dropped_from_callouts`.
+- **MEDIUM — fixed.** `nl_parser.py`'s `TOP_N_PATTERN` was an unbounded
+  `\d+`, so a huge digit string in a "top N suppliers" question (e.g. 5000
+  nines) reached Python's own `int()` conversion and crashed with
+  `ValueError: Exceeds the limit (4300 digits) for integer string
+  conversion` before this file's own N-clamping ever ran — a real,
+  reproducible crash, confirmed directly. Capped the pattern at 10 digits
+  (comfortably above any real "top N" request, far below the 4300-digit
+  limit). Folded into the permanent gauntlet:
+  `test_gauntlet.py::test_huge_top_n_number_never_crashes`.
+- **MEDIUM — fixed.** `fragmentation()`'s CR3/top-share/concentration-index
+  math divided by `net_spend`, which a real, reachable filter combination —
+  not contrived, found by scanning every real entity/country/cluster×year
+  combination — could push over 100%: "fragmentation for Demo Western
+  Services in 2024" put Utilities at `cr3_pct = 102.3%` before the fix, a
+  number with no sensible reading in a client-facing table. Root cause: a
+  category can have a real supplier with negative net spend (a
+  credit/refund — confirmed real elsewhere in this data), pulling the
+  category's own net total below what the top positive suppliers alone
+  spent. Fixed: shares are now computed against gross POSITIVE supplier
+  spend rather than net_spend, which provably keeps every share within
+  [0, 100], and is numerically IDENTICAL to the previous figure for every
+  category with no negative supplier subtotal — confirmed the already
+  InSight-parity-checked unfiltered 2025 table (above) has zero such
+  categories, so none of those verified numbers changed. TDD:
+  `test_fragmentation_shares_never_exceed_100_with_negative_supplier_spend`
+  plus a full real-data sweep,
+  `test_fragmentation_cr3_between_0_and_100_across_every_real_filter_scope`.
+- **No issue found (confirmed, not just accepted).** Supplier drill-down's
+  intent-routing regression guard is correct — a supplier+entity+category
+  question still returns the plain number, not drill-down, both by parser
+  logic and app-level test coverage. Fragmentation's tier thresholds are
+  confirmed not tuned to InSight's undisclosed Profile logic — own CR3
+  rule, disclosed in the caption, Concentration index shown alongside but
+  not used to set the tier.
+
+**Two further real bugs found by this task's own screenshot-gate pass, not
+by Codex** (see next section) — both fixed in the same commit as the Codex
+findings.
+
+### `interface-polish` screenshot gate (Task 14 Step 6)
+
+Skill invoked explicitly. Screenshotted at 1280px width (≥1200px target):
+the empty state (with chips), and one full exchange of every answer kind —
+plain number, category chart, category comparison table, intensity
+heatmap, top-suppliers chart, supplier drill-down, fragmentation, overall
+concentration (Pareto), raw-data view, overview, and help. Observed, per
+kind:
+
+- **Empty state, plain number, category chart, comparison table, intensity
+  heatmap, fragmentation, overall concentration, raw data, overview,
+  help**: all clean at 1280px — consistent message-bubble spacing carried
+  over unchanged from Task 13's established rhythm (32px header padding,
+  the 4/8/12/16/20/24/32/40 scale), no element touching a container edge,
+  no empty/stray containers, KPI rows and callout cards breathing the same
+  as the existing Overview cards.
+- **Top suppliers chart and supplier drill-down (2 real defects found and
+  fixed)**: both charts use `textposition="outside"` bar value labels with
+  `margin=dict(r=0, ...)` and no explicit x-axis range padding. Screenshot
+  evidence: the widest bar's own label was clipped at the plot's right
+  edge in EVERY render — "368,010" rendered as "368,01" cut off mid-digit,
+  confirmed in the full-width Top suppliers chart, not just a narrow
+  column. The drill-down's category chart (often 1–2 bars, e.g. a
+  single-category supplier) additionally had its x-axis tick labels
+  visually colliding with the "Net spend (€)" axis title at very short
+  chart heights. Fixed in `chart_render.py`: a shared
+  `_range_with_label_headroom()` helper extends the x-axis range 15% past
+  the data's own max so outside labels have room (added to both
+  `build_top_suppliers_figure` and `_single_series_bar_figure`), and
+  `_single_series_bar_figure` now has a 180px height floor so short charts
+  keep the tick row and axis title visually separated. Re-screenshotted
+  after the fix: both defects confirmed gone — "368,010" renders in full
+  with clear headroom to the axis edge, and the drill-down's two charts
+  (spend by entity, spend by category) render side by side with no
+  overlapping text, matching Step 7's fidelity requirement.
+- Pattern named: every chart/table matches the in-app pattern already
+  established by Phase 1's category-spend chart (same tick/label helpers,
+  same palette, same caption style) — no forced Apple-reference analogy
+  needed for this data-table/chart-heavy surface.
+- Accessibility and control-wiring handed to `web-design-guidelines` /
+  code review, not covered by this pass (per the skill's own scope).
+
+**Recommendation: ship** — both real defects found during this pass are
+fixed and re-verified; nothing else observed needs revision.
+
+### `layout="wide"` vs `"centered"` decision (Task 13, recorded here per Step 8)
+
+`layout="wide"` was kept, with a CSS `max-width: 1000px` cap on the content
+column rather than Streamlit's `st.columns([1, 14, 1])` trick that
+`_MEETING-READY-DESIGN.md` Part E also named as an option. The columns
+trick was tried first and broke chat rendering in real-browser
+verification: nesting `with st.chat_message():` under a `page =
+st.columns(...)` column requires every call inside that block to route
+through Streamlit's thread-local "current container" stack, which only the
+bare `st.foo()` module-level functions consult (confirmed by reading
+Streamlit's own `DeltaGenerator.__enter__` source — `with X.chat_message()
+as y:` returns no capturable container object). Rewriting the inner calls
+as `page.foo(...)` bypassed that stack entirely, breaking chat bubble
+rendering (confirmed via DOM inspection: the message content div had 0
+children) and also broke `st.chat_input()`'s root-level bottom-pin
+behaviour. The CSS max-width approach avoids both problems because every
+render call stays exactly `st.foo()`, unmodified. Full reasoning and DOM
+evidence: `app.py`'s own inline comment block above the CSS block (lines
+~27–47).
+
+### Explicitly out of scope (unchanged from Phase 1)
+
+Real LLM parsing (API-key decision pending); InSight's actual production
+data shape (data-scientist meeting pending); multi-tenancy/auth; per-client
+data isolation; multi-entity comparison charts; deployment beyond
+localhost.
+
 ## Next steps
-- Show this prototype at/before the data scientist meeting as a concrete
-  demo rather than a blank question list.
+- Show this build at/before the data scientist meeting as the complete
+  meeting-ready demo (all 5 InSight tabs now have a chat equivalent, gated
+  by the adversarial/Codex/screenshot passes above).
 - After that meeting: revisit architecture decisions above against what's
   actually confirmed about the real InSight data.
 - Decide on the LLM upgrade once there's a reason to (API key + real
   questions to test against).
-- Phases 2–4 (Top suppliers, Fragmentation, Overview KPIs) once Phase 1 has
-  been shown and Hayden confirms the next priority.
+- Step 7 of Task 14 (a second, independent controller screenshot pass
+  confirming the fragmentation table's column order and the drill-down's
+  side-by-side chart layout) is being done separately by the controller
+  session directly, not folded into this handoff.
 
 ## How to run it
 ```
