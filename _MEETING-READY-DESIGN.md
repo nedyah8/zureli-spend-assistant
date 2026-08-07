@@ -424,9 +424,12 @@ line," at exactly the grain the demo's own metric counts —
 `overview(df)["row_count"]` for the unfiltered 2025 scope is exactly 401,
 matching the demo exactly, with no reaggregation and no tuning. Our own
 fourth KPI keeps the "Spend rows" label (Rule 26 — it's still the more
-honestly self-descriptive name for what the number is), but it is confirmed
-to equal the demo's own metric for every scope, not just coincidentally for
-the unfiltered view (both are literally `len()` of the same rows).
+honestly self-descriptive name for what the number is). Both are literally
+`len()` of the same rows, so the two are structurally the same statistic —
+but this was only actually checked against the live demo for the
+unfiltered 2025 scope; no other scope's value was compared side by side
+with the demo, so "matches for every scope" is an inference from the
+shared definition, not something observed, and is stated that way here.
 
 ## Addendum — live re-verification, 7 Aug 2026
 
