@@ -72,6 +72,10 @@ L1_ALIASES = {
         "people", "hr", "human resources", "staff", "staffing", "personnel",
         "staff costs", "employee costs", "workforce", "headcount costs",
     ],
+    # NOTE: "people", "staff", "personnel", "workforce" and "office" are all
+    # WEAK (see WEAK_ALIASES) — they are ordinary English before they are
+    # spend categories. "How many people work here" is a headcount question,
+    # not a €2m spend answer.
     "Professional services": [
         "professional services", "professional", "prof services", "advisory",
     ],
@@ -98,16 +102,28 @@ L2_ALIASES = {
     "Recruitment": ["recruitment", "recruiting", "hiring", "talent acquisition"],
     "Software licensing": [
         "software", "software licensing", "licences", "licenses", "licensing",
+        # Singular forms added 7 Aug 2026 (Codex round 2): "license spend" and
+        # "licence spend" are at least as common as the plurals and both
+        # returned the overview.
+        "licence", "license",
         "saas", "subscriptions",
     ],
     # "mobile" and "phone" removed (Codex review): "mobile app",
     # "mobile workforce", "phone me the spend" are ordinary English and the
     # spend-signal guard does not save them.
-    "Telecommunications": ["telecommunications", "telephony", "mobile spend", "phone bill"],
+    "Telecommunications": [
+        "telecommunications", "telephony", "mobile spend", "phone bill",
+        "phone bills",
+    ],
     "Temporary labour": [
         "temporary labour", "temp labour", "temps", "contractors", "agency staff",
+        # Singular + the phrasing UK procurement actually uses.
+        "contractor", "contract labour", "contract staff",
     ],
-    "Training": ["training", "learning and development", "l&d"],
+    "Training": [
+        "training", "learning and development", "l&d",
+        "learning & development", "l and d",
+    ],
 }
 
 # Entities. The distinctive token is what people actually say ("Alpine",
@@ -134,8 +150,17 @@ COUNTRY_ALIASES = {
     "Poland": ["poland", "polish"],
     "Portugal": ["portugal", "portuguese"],
     "Spain": ["spain", "spanish"],
-    "United Kingdom": ["united kingdom", "uk", "britain", "great britain", "england"],
+    "United Kingdom": [
+        "united kingdom", "uk", "britain", "great britain", "england",
+        "gb", "british",
+    ],
 }
+
+# Country ADJECTIVES are ordinary English in questions that have nothing to do
+# with spend — "is this available in German?", "the Polish translation",
+# "furniture polish". They stay as aliases (a real buyer does type "German
+# spend") but are WEAK, so they only count when the question is about money.
+# The NOUN forms ("Germany", "Poland") are unambiguous and stay ungated.
 
 # Clusters are ordinary English words, so they carry only their own name
 # plus the obvious directional adjective. "southern" is omitted from South
@@ -145,10 +170,19 @@ COUNTRY_ALIASES = {
 CLUSTER_ALIASES = {
     "Central": ["central", "central cluster"],
     "Corporate": ["corporate", "corporate cluster"],
-    "North": ["north", "northern cluster", "north cluster"],
+    "North": ["north", "northern", "northern cluster", "north cluster"],
     "South": ["south", "south cluster"],
-    "West": ["west", "western cluster", "west cluster"],
+    "West": ["west", "west cluster", "western cluster"],
 }
+# "northern" IS an alias for the North cluster because no entity name starts
+# with it. "southern" and "western" are deliberately NOT aliases, because each
+# is genuinely ambiguous between a cluster and an entity — "Southern spend"
+# could mean the South cluster or Demo Southern Support, and "Western spend"
+# the West cluster or Demo Western Services. Codex (round 2) argued "Western
+# spend" should resolve to the entity; that is a guess, and a guess here
+# produces a confidently wrong number. The honest overview-plus-suggestions
+# fallback is the better answer until the LLM layer can simply ask which one
+# was meant.
 
 ALIASES_BY_DIMENSION = {
     "l2": L2_ALIASES,
@@ -183,6 +217,19 @@ ALIASES_BY_DIMENSION = {
 # so "give me the gas figures" correctly resolves to Electricity and gas.
 WEAK_ALIASES = frozenset({
     "audit", "hq", "legal", "maintenance", "security", "technology", "training",
+    # Added 7 Aug 2026 after the second Codex review found each of these
+    # answering an ordinary English question with a confident spend figure:
+    #   "how many people work here"     -> People, €2,019,149.48
+    #   "what is our brand value"       -> Marketing, €698,076.54
+    #   "is this available in German?"  -> Germany, €1,801,388.73
+    # Every one of those reproduced exactly as reported. The people/staff
+    # group and the country adjectives are ordinary English first and spend
+    # vocabulary second, so they now need a spend signal like every other
+    # weak alias. Genuine queries are unaffected: "staff costs", "German
+    # spend" and "brand spend" all carry a signal word.
+    "people", "staff", "personnel", "workforce", "office",
+    "brand", "branding",
+    "british", "dutch", "french", "german", "polish", "portuguese", "spanish",
 })
 
 # Some weak aliases survive because they name a genuine, commonly-queried
@@ -204,6 +251,11 @@ ALIAS_BLOCKING_PHRASES = {
     "security": ("security policy", "data security", "security of", "secure"),
     "technology": ("technology stack", "technology debt"),
     "hq": ("hq asked", "hq wants", "hq requested"),
+    # "brand value" carries "value", which IS a spend signal word, so the
+    # signal gate alone lets it through — exactly the failure mode
+    # "audit trail spend" has. Needs a literal block.
+    "brand": ("brand value", "brand equity", "brand awareness", "brand guidelines"),
+    "office": ("office hours", "back office", "front office", "box office"),
 }
 
 # A question mentioning any of these is asking about money, so a weak alias

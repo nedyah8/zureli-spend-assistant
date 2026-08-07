@@ -6,10 +6,17 @@ against the typed question instead of calling a language model. This is a
 deliberate, disclosed substitute, not a silent downgrade — see _HANDOFF.md
 for the tradeoff and the upgrade path once an API key is available.
 
-Known limitation: it only recognises exact category names and their "Demo "-
-stripped short forms (e.g. "Alpine" for "Demo Alpine Operations"). It does
-not understand synonyms, abbreviations, or paraphrasing — that is exactly
-what the LLM upgrade would add.
+Since 7 Aug 2026 it also recognises a CURATED alias vocabulary (aliases.py):
+"IT spend", "staff costs", "supplier 25", "Holland" and so on all resolve to
+the canonical value. That was added because a client typed "give me IT spend"
+and got the whole-company total.
+
+Known limitation, and the reason the LLM upgrade still matters: the alias list
+is finite and hand-written. It recognises the phrasings someone thought of.
+It does not genuinely understand paraphrasing, so "what's eating our budget?",
+"which category grew the most?" and "why did IT go up?" all still fall back to
+the overview. Extending the list is whack-a-mole; an LLM understanding layer
+is the structural fix — see _LLM-UPGRADE-RESEARCH.md.
 """
 
 import re
@@ -199,8 +206,11 @@ def _extract_filters(q: str, known: dict[str, list]) -> dict:
     """
     filters: dict[str, object] = {}
 
+    # Digit-boundary match, not a plain substring: `"2024" in "20245"` is true,
+    # so "IT spend in 20245" silently answered for 2024 (Codex round 2). A
+    # typo'd year must fall through, not quietly become a real one.
     for year in known["year"]:
-        if str(year) in q:
+        if re.search(rf"(?<!\d){year}(?!\d)", q):
             filters["year"] = year
             break
 
@@ -212,16 +222,8 @@ def _extract_filters(q: str, known: dict[str, list]) -> dict:
     has_spend_signal = any(word in q for word in SPEND_SIGNAL_WORDS)
 
     consumed: list[tuple[int, int]] = []
-    for alias, dimension, canonical in _candidate_terms(known):
-        if dimension in filters:
-            continue
-        if alias in WEAK_ALIASES:
-            if not has_spend_signal:
-                continue
-            # A spend word in the sentence is not enough on its own: "audit
-            # trail spend" contains one and still isn't about audit fees.
-            if any(phrase in q for phrase in ALIAS_BLOCKING_PHRASES.get(alias, ())):
-                continue
+
+    def claim(alias: str, dimension: str, canonical: object) -> None:
         # Lookarounds rather than \b: several aliases contain punctuation
         # ("it & telecom", "l&d", "it/telecom") where \b behaves unhelpfully.
         pattern = rf"(?<![a-z0-9]){re.escape(alias)}(?![a-z0-9])"
@@ -231,7 +233,42 @@ def _extract_filters(q: str, known: dict[str, list]) -> dict:
                 continue
             filters[dimension] = canonical
             consumed.append((start, end))
-            break
+            return
+
+    # TWO PASSES, strong aliases first. A weak alias must never beat a
+    # non-weak one competing for the same dimension, however the lengths fall.
+    # Found by Codex round 2: "security software spend" answered with the
+    # Cleaning and security total (€684,341.95) because "security" and
+    # "software" are the same length and Cleaning sorts first, and
+    # "maintenance software spend" answered with Building maintenance because
+    # "maintenance" is simply the longer word. In both the user plainly meant
+    # software. Running every unambiguous alias to completion first, and only
+    # then letting ordinary-English ones fill what is still empty, resolves
+    # the whole class rather than these two instances.
+    terms = _candidate_terms(known)
+    for weak_pass in (False, True):
+        for alias, dimension, canonical in terms:
+            if (alias in WEAK_ALIASES) != weak_pass:
+                continue
+            if dimension in filters:
+                continue
+            if weak_pass:
+                if not has_spend_signal:
+                    continue
+                # A spend word in the sentence is not enough on its own: "audit
+                # trail spend" contains one and still isn't about audit fees.
+                if any(phrase in q for phrase in ALIAS_BLOCKING_PHRASES.get(alias, ())):
+                    continue
+            claim(alias, dimension, canonical)
+
+    # An L2 and an L1 that are not parent and child cannot both be true, and
+    # AND-ing them yields "€0.00 across 0 spend rows" — a false "no data" that
+    # reads as an authoritative answer. "office software spend" did exactly
+    # this. The L2 is the more specific reading, so it wins and the
+    # contradicted L1 is dropped rather than the query being emptied.
+    l2, l1 = filters.get("l2"), filters.get("l1")
+    if l2 is not None and l1 is not None and known.get("l2_parent", {}).get(l2) != l1:
+        del filters["l1"]
 
     return filters
 

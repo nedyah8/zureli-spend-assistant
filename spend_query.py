@@ -32,6 +32,15 @@ def known_values(df: pd.DataFrame) -> dict[str, list]:
     (to match words in a question) and by the UI (to show what's queryable)."""
     values = {key: sorted(df[col].unique().tolist()) for key, col in FILTER_COLUMNS.items()}
     values["year"] = sorted(int(y) for y in values["year"])
+    # Which L1 each L2 belongs to, derived from the data rather than hardcoded
+    # so it cannot drift from the CSV. The parser uses it to reject an
+    # impossible category pair: "office software spend" matched both
+    # l2="Software licensing" (which lives under IT and telecom) and
+    # l1="Office", and the two AND-ed together produced a confident
+    # "€0.00 across 0 spend rows" — a false "no data" rather than an answer.
+    values["l2_parent"] = (
+        df.groupby(FILTER_COLUMNS["l2"])[FILTER_COLUMNS["l1"]].first().to_dict()
+    )
     return values
 
 
