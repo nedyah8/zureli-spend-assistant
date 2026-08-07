@@ -676,11 +676,136 @@ a clean virtualenv installing only `requirements.txt` boots the app with no
 errors and answers questions correctly — i.e. a real simulation of what
 Streamlit Community Cloud does on deploy.
 
-Remaining step is Hayden's, because it needs a sign-in: at
-share.streamlit.io, sign in with GitHub, "Create app" → pick the
-`zureli-spend-assistant` repo, branch `main`, main file `app.py`, deploy.
-A private repo needs Streamlit granted repo access during sign-in; flipping
-the repo to public removes that step if the extra permission is unwanted.
+DEPLOYED (7 Aug 2026, later the same day): the repo was flipped to
+**public** (Hayden's explicit decision — Streamlit's OAuth-app connection
+could not see a private repo created after authorization) and the app is
+live at **https://zureli-spend-assistant.streamlit.app** with main file
+`app.py`. Pushing to `main` auto-redeploys. Jayesh has the link. Before any
+real client data ever goes near this: repo back to private + auth, or a
+proper host — see `_LLM-UPGRADE-RESEARCH.md` §4.
+
+## Jayesh feedback round — alias vocabulary (7 Aug 2026)
+
+Jayesh's email: "give me IT spend" returned the whole-company total, and he
+asked whether this is a lookup tool vs AI with personality/reasoning.
+
+The symptom fix shipped the same day: `aliases.py` (curated per-value alias
+vocabulary with WEAK_ALIASES spend-signal gating and ALIAS_BLOCKING_PHRASES),
+a rewritten `_extract_filters` in `nl_parser.py` (global longest-alias-first
+matching with span consumption, dimension priority tiebreak), and
+`tests/test_alias_coverage.py` (~475 enumerated params). Root cause of the
+defect surviving the original build: gauntlet tests whose assertions accepted
+every outcome (`kind in ("overview","text","chart")`) — those were rewritten
+to assert exact kinds and exact totals vs `query_spend`. Codex cross-family
+review (17 findings) drove the hardening; its regression examples are
+permanent tests. 700/700 passing (re-run 7 Aug 23:28 BST, green). Commits
+`40dcd07` + `f88ef68`, both on `origin/main` and on GitHub
+(`raw.githubusercontent.com/.../main/aliases.py` returns 200 with the new
+file).
+
+### CORRECTION — stale deploy, found and RESOLVED (7 Aug 2026, 23:30–23:55 BST)
+
+Two separate failures, recorded because both are process defects, not
+one-off slips. Both are now closed; the operational lesson in **3** is the
+one that must not be lost.
+
+**1. The deployed app was running pre-fix code.** Hayden tested
+zureli-spend-assistant.streamlit.app after the push and got the
+whole-company overview for "telecom spend", "it spend", "give just the it
+spend" and "what are supplier 051's numbers? in detail?". Reproduced
+directly on the deployed URL at 23:25 BST: "it spend" → overview, but the
+verbatim "IT and telecom spend" → the correct €2,630,963.38. Verbatim-only
+matching IS the pre-alias behaviour. The same four questions all return
+correct answers from local HEAD (`f88ef68`), so the code is right and the
+DEPLOY was stale. Hayden rebooted the app from Manage app → Reboot, which
+fixed it; see **3** for what the logs then revealed about why.
+
+**2. The "verified live" claim in the previous version of this section was
+false.** The post-fix browser check at 21:35 UTC was run against
+`http://localhost:8501`, not the deployed URL — confirmed by grepping the
+session transcript: there was NO browser interaction with
+`zureli-spend-assistant.streamlit.app` between the fix commits (21:29 UTC)
+and the claim (21:50 UTC); the last one before tonight was 12:33 UTC, hours
+before the fix existed. A local run was written up as a live one. This is
+the Rule 24 failure exactly: a cheaper adjacent check substituted for the
+artefact the claim was about. **Standing rule for this project: "live" means
+the check was performed against the deployed `*.streamlit.app` URL in a
+browser, in the same session as the claim, with the answer text quoted. A
+localhost run is never evidence about the deployment, and a push is never
+evidence of a deploy.**
+
+**3. WHY the deploy was stale — "Updated app!" does NOT mean the new code is
+running.** Hayden's Manage-app log showed Streamlit DID pick up the push:
+
+```
+[21:35:52] Pulling code changes from Github...
+[21:35:53] Processing dependencies...
+[21:35:54] Updated app!            <- 22:35:54 BST, ~1 min after f88ef68
+```
+
+Yet at 23:25 BST the live app still behaved exactly like pre-alias code, and
+a manual **Reboot** fixed it immediately. Best explanation consistent with
+that evidence (stated as inference, not a verified internal mechanism):
+Streamlit Community Cloud's hot-update reruns the entry script but the
+already-running Python process keeps previously-imported modules in
+`sys.modules`, so a change confined to imported modules — here `aliases.py`
+(brand new) and `nl_parser.py` — is pulled to disk without being re-imported.
+`app.py` itself was untouched in both commits, which fits precisely.
+
+**Operational rule for this project: after any push that changes an imported
+module rather than `app.py`, reboot the app from Manage app and re-check a
+known question on the live URL. Treat "Updated app!" in the deploy log as a
+git-pull receipt, not as proof the new code is serving traffic.**
+
+### LIVE VERIFICATION — passed (7 Aug 2026, 23:45–23:55 BST)
+
+Run against `https://zureli-spend-assistant.streamlit.app/~/+/` in a browser
+after the reboot. Every answer below was read off the live page and matches
+the value `app.answer_payload` produces locally at `f88ef68` (computed first,
+as an external anchor, so the live output was compared against ground truth
+rather than merely judged plausible).
+
+Hayden's four failing questions, all now correct:
+
+| Live question | Live answer |
+|---|---|
+| `it spend` | category = IT and telecom — €2,630,963.38, 173 rows |
+| `telecom spend` | category = IT and telecom — €2,630,963.38, 173 rows |
+| `give just the it spend` | category = IT and telecom — €2,630,963.38, 173 rows |
+| `what are supplier 051's numbers? in detail?` | Supplier 051 — €183,513.99 in 2025, −4.2% vs 2024, 2.5% of scope, + drill-down charts |
+
+Jayesh's verbatim question, screenshotted on a fresh session:
+`give me IT spend` → "Matched on category = IT and telecom — **€2,630,963.38**
+across 173 spend rows."
+
+Adversarial pass (trying to break it, not confirm it) — all as expected live:
+
+| Live question | Expected | Live result |
+|---|---|---|
+| `IT spend for Alpine in 2024` | 3 filters compose | year 2024 + IT and telecom + Alpine Operations — €192,988.04, 11 rows |
+| `hq spend` | entity alias | Group Headquarters — €1,479,898.95, 95 rows |
+| `staff costs` | L1 alias | People — €2,019,149.48, 163 rows |
+| `legal spend` | L2 beats L1 | Legal and audit — €759,323.62, 52 rows |
+| `supplier 25` | un-padded supplier alias | Supplier 025 — €368,010.23, +22.4%, 5.0% |
+| `holland spend` | country alias | Netherlands — €1,913,627.62, 105 rows |
+| `what is it` | pronoun guard holds | overview, no IT filter |
+| `what did it cost` | pronoun + spend signal | overview, no IT filter |
+| `audit trail spend` | blocking phrase holds | overview, no Legal filter |
+| `legal entity spend` | blocking phrase holds | overview, no Legal filter |
+| `asdfghjkl` | no crash | overview |
+| `show me a bar chart of category spend` | chart path intact | stacked bar rendered, total €7,384,113.73, caption correct |
+
+Chart render and the supplier drill-down were viewed as screenshots, not just
+read as text (Rule 24: for anything a human looks at, viewing it IS the test).
+
+The architecture question is answered in `_LLM-UPGRADE-RESEARCH.md`
+(7 Aug 2026): recommendation is to wire Claude Sonnet 5 via an Anthropic API
+key as the understanding + reply-phrasing layer only, keeping computation in
+the existing deterministic pandas code, with the rule-based parser retained
+as an automatic fallback. Blocker: whose API account (Hayden's ~$5 demo
+credit vs a Zureli-owned key). Cost ≈ under a penny per question at Sonnet 5
+intro pricing. Prices/policies in that doc were verified against provider
+pages on 7 Aug 2026 and go stale — re-verify before re-quoting.
 
 ## How to run it
 ```
