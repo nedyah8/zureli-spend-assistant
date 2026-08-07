@@ -135,6 +135,14 @@ def supplier_drilldown(df: pd.DataFrame, supplier: str, **filters) -> dict:
     entity_count = int(year_rows["Entity"].nunique())
     category_count = int(year_rows["L1"].nunique())
 
+    # A null Entity/L1 value would otherwise be silently dropped by
+    # groupby's default dropna=True — same guard as category_spend() above,
+    # so by_entity/by_category can never disagree with net_spend purely
+    # because of a missing dimension value (Task 6 review finding).
+    year_rows = year_rows.copy()
+    year_rows["Entity"] = year_rows["Entity"].fillna("(unspecified)")
+    year_rows["L1"] = year_rows["L1"].fillna("(unspecified)")
+
     by_entity = (
         year_rows.groupby("Entity")["Net spend"].sum().sort_values(ascending=False)
         .reset_index().rename(columns={"Entity": "name", "Net spend": "net_spend"})

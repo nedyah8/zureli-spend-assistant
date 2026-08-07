@@ -151,3 +151,32 @@ def test_supplier_drilldown_unknown_supplier_returns_none_year():
     result = supplier_drilldown(df, "Nonexistent Supplier")
     assert result["year"] is None
     assert result["by_entity"].empty
+
+
+def test_supplier_drilldown_null_entity_and_category_values_are_not_dropped():
+    # Task 6 review finding: category_spend() (same file) already guards
+    # against pandas groupby's default dropna=True silently excluding
+    # null-dimension rows (see test_null_category_and_breakdown_values_are_not_dropped
+    # above) — supplier_drilldown()'s by_entity/by_category groupbys
+    # reintroduced that same unguarded pattern for Entity and L1. A null
+    # value in either column must still be counted (under an
+    # "(unspecified)" sentinel), so by_entity/by_category never disagree
+    # with the function's own net_spend total.
+    df = pd.DataFrame(
+        {
+            "Supplier name": ["Demo Supplier X", "Demo Supplier X"],
+            "Year": [2024, 2024],
+            "Entity": ["Demo Alpine", None],
+            "L1": [None, "IT and telecom"],
+            "Net spend": [100.0, 50.0],
+        }
+    )
+    result = supplier_drilldown(df, "Demo Supplier X")
+
+    # (a) the null rows are not dropped — breakdown totals still match net_spend.
+    assert round(result["by_entity"]["net_spend"].sum(), 2) == result["net_spend"]
+    assert round(result["by_category"]["net_spend"].sum(), 2) == result["net_spend"]
+    # (b) the null rows appear under the "(unspecified)" sentinel rather
+    # than vanishing.
+    assert "(unspecified)" in [str(n) for n in result["by_entity"]["name"]]
+    assert "(unspecified)" in [str(n) for n in result["by_category"]["name"]]
