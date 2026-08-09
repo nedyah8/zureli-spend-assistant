@@ -8,7 +8,13 @@ import importlib
 
 def _reload_app():
     import app  # noqa: F401
-    return importlib.reload(app)
+    module = importlib.reload(app)
+    # Streamlit's session_state survives a module reload, so the follow-up
+    # memory added 9 Aug 2026 leaks from one test into the next and makes the
+    # suite order-dependent. A real user session SHOULD carry that context;
+    # a test must not inherit the previous test's question.
+    module.st.session_state.last_parse = None
+    return module
 
 
 # --- 1. Vagueness ladder: must never dead-end, always help/overview ---

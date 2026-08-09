@@ -12,8 +12,14 @@ APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
 
 
 def _reload_app():
-    import app  # noqa: F401 — Streamlit script; import executes top-level code once
-    return importlib.reload(app)
+    import app  # noqa: F401
+    module = importlib.reload(app)
+    # Streamlit's session_state survives a module reload, so the follow-up
+    # memory added 9 Aug 2026 leaks from one test into the next and makes the
+    # suite order-dependent. A real user session SHOULD carry that context;
+    # a test must not inherit the previous test's question.
+    module.st.session_state.last_parse = None
+    return module
 
 
 def test_number_answer_unchanged_for_known_question():

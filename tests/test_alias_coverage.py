@@ -592,3 +592,62 @@ def test_follow_up_inheritance_never_answers_a_meta_question(question):
     assert previous["filters"] == {"l1": "People"}
     parsed = parse_question(question, KV, previous=previous)
     assert parsed["filters"] == {}, f"{question!r} -> {parsed['filters']}"
+
+
+# --- 9. Codex cross-family review of the round-3 changes (9 Aug 2026) ---
+#
+# Five findings, all five reproduced exactly as described before any fix was
+# written. Three were confidently-wrong numbers introduced by round 3 itself.
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "is this available in German numbering format?",
+        "what is the amounts field",
+        "can I change the number format",
+    ],
+)
+def test_a_signal_word_inside_a_longer_word_is_not_a_signal(question):
+    """SPEND_SIGNAL_WORDS were matched as plain substrings, so "numbering"
+    contained "number" — a signal word added the same day — and unlocked the
+    weak "german" alias: Germany, €1,801,388.73. Word boundaries fix the
+    class, not the instance; every future signal word would have inherited
+    the same latent bug.
+    """
+    assert filters_for(question) == {}, f"{question!r} -> {filters_for(question)}"
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["is IT secure?", "is IT down", "who runs IT", "can IT help me"],
+)
+def test_capitalised_it_still_needs_a_spend_signal(question):
+    """Someone asking whether the SOFTWARE is secure writes "IT" too. The
+    capitalisation rule is a weak alias and is gated like one — "is IT
+    secure?" returned the IT and telecom total of €2,630,963.38.
+    """
+    assert filters_for(question) == {}, f"{question!r} -> {filters_for(question)}"
+
+
+def test_asking_what_a_number_means_does_not_repeat_the_number():
+    previous = parse_question("people spend", KV)
+    parsed = parse_question("what does this amount mean?", KV, previous=previous)
+    assert parsed["filters"] == {}, parsed
+
+
+def test_an_elliptical_fragment_narrows_the_previous_answer():
+    """"for 2024?" resolved its own year filter, which REPLACED the context
+    instead of narrowing it — whole-company 2024 (€6,768,853.29) rather than
+    People in 2024 (€1,041,612.74).
+    """
+    previous = parse_question("people spend", KV)
+    parsed = parse_question("for 2024?", KV, previous=previous)
+    assert parsed["filters"] == {"l1": "People", "year": 2024}, parsed
+
+
+def test_a_breakdown_with_no_subject_uses_the_previous_one():
+    previous = parse_question("people spend", KV)
+    parsed = parse_question("by country?", KV, previous=previous)
+    assert parsed["filters"] == {"l1": "People"}, parsed
+    assert parsed["breakdown"] == "country", parsed

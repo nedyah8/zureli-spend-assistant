@@ -236,6 +236,27 @@ def _candidate_terms(known: dict[str, list]) -> list[tuple[str, str, object]]:
     return terms
 
 
+def _has_spend_signal(q: str) -> bool:
+    """Is this question about money at all? Gates every weak alias.
+
+    Matched on WORD BOUNDARIES, not as substrings. Codex (9 Aug 2026) found
+    "is this available in German numbering format?" answering with Germany's
+    €1,801,388.73: "numbering" contains "number", which had just been added
+    as a signal word, which unlocked the weak "german" alias. Substring
+    matching makes every future signal word a latent version of that bug.
+
+    Symbols (€, £, $) have no word boundary, so they stay plain substring
+    tests — they cannot collide with a longer word the way letters can.
+    """
+    for word in SPEND_SIGNAL_WORDS:
+        if word.replace(" ", "").isalpha():
+            if re.search(rf"\b{re.escape(word)}\b", q):
+                return True
+        elif word in q:
+            return True
+    return False
+
+
 def _drop_contradictory_l1(filters: dict, known: dict[str, list]) -> dict:
     """An L2 and an L1 that are not parent and child cannot both be true, and
     AND-ing them yields "€0.00 across 0 spend rows" — a false "no data" that
@@ -278,7 +299,7 @@ def _extract_filters(q: str, known: dict[str, list], original: str | None = None
     # money. Without this, "what are the legal implications" returns the
     # Legal and audit total — a confidently wrong number, which is worse
     # than the honest "didn't understand" fallback. See aliases.py.
-    has_spend_signal = any(word in q for word in SPEND_SIGNAL_WORDS)
+    has_spend_signal = _has_spend_signal(q)
 
     consumed: list[tuple[int, int]] = []
 
@@ -330,8 +351,15 @@ def _extract_filters(q: str, known: dict[str, list], original: str | None = None
     # nothing: someone writing about the department types "IT", someone using
     # the pronoun types "it". Skipped when the question is ENTIRELY uppercase,
     # since a shouted sentence carries no case information to read.
+    # Gated on a spend signal exactly like a weak alias, because that is what
+    # it is: Codex (9 Aug 2026) found "is IT secure?" answering with the IT
+    # and telecom total of €2,630,963.38. Someone asking whether the SOFTWARE
+    # is secure writes "IT" too. Every genuine phrasing this rule exists for
+    # carries a signal — "IT costs", "IT figures", "the IT total",
+    # "is IT over budget".
     if (
         "l1" not in filters
+        and has_spend_signal
         and original is not None
         and original != original.upper()
         and re.search(r"(?<![A-Za-z0-9])IT(?![A-Za-z0-9])", original)
@@ -351,6 +379,8 @@ REFERRING_PATTERN = re.compile(
     r"\b(?:this|that|these|those|them|same|there)\b"
     r"|^\s*(?:and|also|now|just|what about|how about|ok|okay)\b"
 )
+# Asking what a number MEANS is not asking for the number again.
+META_QUESTION_PATTERN = re.compile(r"\bmean(?:s|ing)?\b|\bexplain\b")
 
 
 def _merge_follow_up(q: str, filters: dict, previous: dict | None,
@@ -367,7 +397,41 @@ def _merge_follow_up(q: str, filters: dict, previous: dict | None,
     on ..." line, so an inherited filter is never invisible.
     """
     previous_filters = (previous or {}).get("filters") or {}
-    if not previous_filters or not REFERRING_PATTERN.search(q):
+    if not previous_filters:
+        return filters
+
+    # "What does this amount mean?" refers back and carries a spend word, but
+    # it asks what a number MEANS — repeating the number is not an answer
+    # (Codex, 9 Aug 2026).
+    if META_QUESTION_PATTERN.search(q):
+        return filters
+
+    has_signal = _has_spend_signal(q)
+
+    # An elliptical follow-up is a bare fragment: "for 2024?", "Germany",
+    # "Alpine Operations". It names a filter, says nothing about spend, and
+    # is too short to be a question in its own right. Codex found "for 2024?"
+    # after "people spend" answering whole-company 2024 (€6,768,853.29)
+    # instead of People in 2024 (€1,041,612.74) — the fragment resolved its
+    # own year filter, which REPLACED the context instead of narrowing it.
+    is_elliptical = bool(filters) and not has_signal and len(q.split()) <= 4
+
+    # A breakdown request with no subject is meaningless on its own: "by
+    # country?" after "people spend" must mean People by country, not the
+    # whole company. These count as referring back even without a pronoun.
+    # The breakdown routes only count when the question names NO subject of
+    # its own. "by country?" is meaningless alone and must inherit; "chart
+    # category spend by cluster for 2024" is a complete question and must not
+    # be silently narrowed by whatever was asked before it.
+    breakdown_only = not filters and (
+        bool(BREAK_IT_DOWN_PATTERN.search(q)) or bool(BY_DIMENSION_PATTERN.search(q))
+    )
+    refers_back = (
+        bool(REFERRING_PATTERN.search(q))
+        or breakdown_only
+        or is_elliptical
+    )
+    if not refers_back:
         return filters
 
     # A referring word on its own is NOT enough, and assuming it was
@@ -385,7 +449,7 @@ def _merge_follow_up(q: str, filters: dict, previous: dict | None,
     # for a breakdown ("break this down", "now by country").
     is_spend_follow_up = (
         bool(filters)
-        or any(word in q for word in SPEND_SIGNAL_WORDS)
+        or has_signal
         or bool(BREAK_IT_DOWN_PATTERN.search(q))
         or bool(BY_DIMENSION_PATTERN.search(q))
     )

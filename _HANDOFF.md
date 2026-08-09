@@ -990,3 +990,41 @@ account** — roughly a penny per question.
 **Tier 4 — sellable to real clients** (unchanged, still deliberately
 deferred): login/auth, private hosting, per-client data isolation, and the
 DPA/GDPR paperwork. None of this is needed for the InSight demo.
+
+### Codex cross-family review of round 3 — 5 findings, all 5 real
+
+Run against the round-3 diff on 9 Aug 2026. Every finding was reproduced by
+running the exact input before a fix was written. **Three were
+confidently-wrong numbers that round 3 introduced itself.**
+
+| Input | Wrong output | Cause |
+|---|---|---|
+| `is this available in German numbering format?` | Germany, €1,801,388.73 | "numbering" contains "number" |
+| `is IT secure?` | IT and telecom, €2,630,963.38 | uppercase-IT rule had no spend gate |
+| `what does this amount mean?` (after People) | People, €2,019,149.48 | asking what a number means is not asking for it again |
+| `for 2024?` (after People) | whole-company 2024, €6,768,853.29 | elliptical fragment replaced the context instead of narrowing it |
+| `by country?` (after People) | whole-company chart, €7,384,113.73 | breakdown with no subject did not inherit |
+
+**The first one is the important one.** `SPEND_SIGNAL_WORDS` were matched as
+plain **substrings**, so every signal word was a latent version of this bug
+and each new one added another. They now match on **word boundaries**
+(symbols like `€` stay substring tests, having no boundary to match).
+
+The uppercase-`IT` rule is now gated on a spend signal exactly like a weak
+alias — which is what it is. Cost of that gate: `just the IT part` no longer
+resolves, since "part" is not a spend word. That is the right trade against
+`is IT secure?` returning €2.6m.
+
+Follow-up inheritance also gained two rules: an **elliptical fragment**
+(names a filter, no spend word, four words or fewer) narrows the previous
+answer rather than replacing it, and a **subject-less breakdown** ("by
+country?") inherits — but only when the question names no subject of its own,
+so `chart category spend by cluster for 2024` is never silently narrowed.
+
+**Test isolation bug found by this change:** Streamlit's `session_state`
+survives a module reload, so the new follow-up memory leaked between tests
+and made the suite order-dependent — `test_chart_breakdown_by_cluster` passed
+alone and failed in the suite. Both `_reload_app()` helpers now clear
+`last_parse`. A real user session should carry that context; a test must not.
+
+Tests **919**, all passing.
