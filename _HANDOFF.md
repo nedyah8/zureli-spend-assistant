@@ -1028,3 +1028,40 @@ alone and failed in the suite. Both `_reload_app()` helpers now clear
 `last_parse`. A real user session should carry that context; a test must not.
 
 Tests **919**, all passing.
+
+### LIVE VERIFICATION — round 3, passed (9 Aug 2026)
+
+Verified on the deployed URL `zureli-spend-assistant.streamlit.app`, in a
+browser, in the same session as the fixes. Every figure was computed locally
+from the CSV **first**, so each live answer was checked against a known-right
+number rather than accepted at face value.
+
+| Question asked live | Live answer | Verified against |
+|---|---|---|
+| `Just show me the offices figures` | Office — €243,567.52, 61 rows | `query_spend(l1="Office")` |
+| `Show me the overall numbers for the people` | People — €2,019,149.48, 163 rows | the regression, now fixed |
+| `Break this down per sub category for people` | People, Level 2, 3 categories, €977,536.74 | People 2025 = €977,536.74, 80 rows; L2s = Recruitment, Temporary labour, Training |
+| `for 2024?` (elliptical follow-up) | People, year 2024 — €1,041,612.74, 83 rows | `query_spend(l1="People", year=2024)` |
+| `is there an audit trail` | overview fallback, no figure | must decline — it does |
+| `is IT secure?` | overview fallback, no figure | must decline — it does |
+| `IT costs` | IT and telecom — €2,630,963.38, 173 rows | `query_spend(l1="IT and telecom")` |
+
+The capitalised-IT pair is the one to keep an eye on: `IT costs` answers and
+`is IT secure?` declines, live, in the same session.
+
+### The deploy rule, refined by evidence
+
+Last night's rule said any push needs a manual reboot. **That was broader
+than the evidence supported.** This push changed `app.py` itself and the new
+code was serving live within a minute, with **no reboot**. The refined rule:
+
+- Push touches **`app.py`** (the entry point) → Streamlit re-runs the script
+  and the change takes effect on its own. Verified 9 Aug 2026.
+- Push touches **only imported modules** (`aliases.py`, `nl_parser.py`,
+  `spend_query.py`, `chart_*.py`) → the already-imported module stays in
+  memory. **Reboot from Manage app, then re-check live.** Verified 7 Aug
+  2026, when `f88ef68` sat unserved.
+
+Either way, "Updated app!" in the deploy log is a git-pull receipt, not proof
+the new code is running. The only proof is asking the live app a question
+whose answer differs between the old and new code.
