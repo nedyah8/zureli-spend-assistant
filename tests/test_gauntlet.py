@@ -74,7 +74,7 @@ def test_typo_questions_fall_back_honestly_rather_than_guessing():
     # loudly and forces the behaviour change to be reviewed rather than
     # absorbed silently.
     #
-    # "IT and telecomm spend" was an example here until 8 Aug 2026 and is
+    # "IT and telecomm spend" was an example here until 9 Aug 2026 and is
     # deliberately no longer one. It now resolves — not by fuzzy-matching the
     # typo, but because the token "IT" is literally present in uppercase, and
     # the parser reads a capitalised standalone "IT" as the department. That

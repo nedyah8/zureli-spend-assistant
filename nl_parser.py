@@ -14,9 +14,15 @@ and got the whole-company total.
 Known limitation, and the reason the LLM upgrade still matters: the alias list
 is finite and hand-written. It recognises the phrasings someone thought of.
 It does not genuinely understand paraphrasing, so "what's eating our budget?",
-"which category grew the most?" and "why did IT go up?" all still fall back to
-the overview. Extending the list is whack-a-mole; an LLM understanding layer
-is the structural fix — see _LLM-UPGRADE-RESEARCH.md.
+"why did IT go up?" and "where can we save money?" all still fall back to the
+overview. Extending the list is whack-a-mole; an LLM understanding layer is
+the structural fix — see _LLM-UPGRADE-RESEARCH.md.
+
+Since 9 Aug 2026 it also has ONE turn of memory: parse_question takes the
+previous turn's parse, so "break this down" and "what about Germany" resolve
+against the last answer instead of the whole company. That is genuine
+conversational state, but it is still rule-based — it inherits filters, it
+does not understand what was said.
 """
 
 import re
@@ -65,26 +71,23 @@ BAR_PATTERN = re.compile(r"\bbar\b")
 # later in the question by "by" — "split payment spend" has no "by" and
 # correctly falls through to a plain number question.
 SPLIT_PATTERN = re.compile(r"\bsplit\b.*\bby\b")
-# "show me spend by country" / "show me category spend by entity" (spec's
-# "show me ... by" chart-trigger pattern) contain none of the substring
-# keywords above. Requires "show me" AND "by" followed directly by one of
-# the supported breakdown dimension words — not just any word after "by"
-# (Codex follow-up review, Fix A): the original pattern matched ANY "show me
-# ... by ..." sentence, so "show me total spend by Alpine Operations" (an
-# entity name, not a breakdown dimension) was incorrectly promoted to chart
-# intent and picked up the chart path's default-year filter, silently
-# changing the answer from the established all-years total. "by" alone
-# remains far too generic a word to add as a blanket keyword (it would
-# misfire on almost any question, e.g. plain number questions like "spend by
-# Alpine Operations in 2024") — this narrowly targets "show me X by <real
-# breakdown dimension>", matching the same dimension words
-# COUNTRY_BREAKDOWN_KEYWORDS/CLUSTER_BREAKDOWN_KEYWORDS/LEVEL_2_KEYWORDS
-# below already look for, not an arbitrary entity/supplier name.
+# "spend by country" / "category spend by entity" contain none of the
+# substring keywords above, so they need their own pattern.
+#
+# What makes this safe is requiring a real BREAKDOWN DIMENSION after "by",
+# never "by" alone: "by" is far too generic to be a blanket chart keyword, and
+# an earlier version that matched any "show me ... by ..." sentence promoted
+# "show me total spend by Alpine Operations" — an entity FILTER, not a
+# breakdown axis — to chart intent, where it picked up the chart path's
+# default-year filter and silently changed the answer from the established
+# all-years total (Codex follow-up review, Fix A). The dimension words below
+# are the same ones COUNTRY_BREAKDOWN_KEYWORDS / CLUSTER_BREAKDOWN_KEYWORDS /
+# LEVEL_2_KEYWORDS already look for.
 BREAKDOWN_DIMENSION_WORDS = (
     r"(?:entit(?:y|ies)|countr(?:y|ies)|cluster[s]?|"
     r"sub[- ]?categor(?:y|ies)|categor(?:y|ies)|level)"
 )
-# Generalised 8 Aug 2026 from the old "show me ... by <dimension>" form. The
+# Generalised 9 Aug 2026 from the old "show me ... by <dimension>" form. The
 # "show me" prefix was never the thing that made the pattern safe — requiring
 # a real BREAKDOWN DIMENSION after "by" is. Without the generalisation,
 # "spend by cluster", "category spend by entity" and "break this down per sub
@@ -110,7 +113,7 @@ LEVEL_2_KEYWORDS = ("level 2", "sub-category", "subcategory", "sub category")
 
 HELP_KEYWORDS = (
     "help", "what can you do", "what can i ask", "how does this work", "examples",
-    # Added 8 Aug 2026. A first-time user opening the tool types one of these
+    # Added 9 Aug 2026. A first-time user opening the tool types one of these
     # before anything else, and every one of them previously returned a full
     # spend overview — an answer to a question nobody asked.
     "what is this", "what's this", "what can this do", "who are you",
@@ -166,7 +169,7 @@ CATEGORY_COMPARISON_KEYWORDS = (
     # fallback — a dead-end on a question this view answers directly.
     "vs last year", "versus last year", "compared to last year",
     "year on year", "yoy",
-    # Added 8 Aug 2026 (customer sweep). "Which category grew the most" is
+    # Added 9 Aug 2026 (customer sweep). "Which category grew the most" is
     # the question this table exists to answer, and it reached the overview
     # instead — which shows only the single fastest-growing category, not the
     # ranking the user asked for.
@@ -240,7 +243,7 @@ def _drop_contradictory_l1(filters: dict, known: dict[str, list]) -> dict:
     this. The L2 is the more specific reading, so it wins and the contradicted
     L1 is dropped rather than the query being emptied.
 
-    Extracted from _extract_filters 8 Aug 2026 because follow-up merging can
+    Extracted from _extract_filters 9 Aug 2026 because follow-up merging can
     produce the same contradiction a second way: a previous turn's L1 carried
     forward onto a new turn's unrelated L2.
     """

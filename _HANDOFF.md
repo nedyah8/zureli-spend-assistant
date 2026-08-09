@@ -862,3 +862,131 @@ streamlit run app.py
 ```
 It was left running locally on port 8501 during this session
 (`http://localhost:8501`) for Hayden to try directly.
+
+---
+
+## Round 3 — Hayden's live customer test + the 134-question sweep (9 Aug 2026)
+
+Commits `9967508`, `4b0134a`, `8fa0976` were pushed to `origin/main` at
+01:33 BST on 9 Aug 2026. Hayden then tested the live app again (still serving
+`f88ef68` at that point, since a push alone does not restart it) and hit
+three defects. Investigating them properly meant running a **customer sweep**
+rather than fixing the three: 134 questions written as the buyer would type
+them, put through the real parser. **44 dead-ended on the overview; 21 now
+do, and 10 of those 21 are correct declines.**
+
+### The regression this project introduced itself
+
+`Show me the overall numbers for the people` was **working live** — Hayden's
+own screenshot shows People, €2,019,149.48. Round 2 made `people` a WEAK
+alias so that "how many people work here" would stop answering with €2m.
+That was right, but weak aliases require a spend-signal word, and `numbers`
+was not one. The query started returning the overview.
+
+This is the cost of the weak-alias guard and it will recur: **every time a
+word is made weak, the signal-word list must be checked against the phrasings
+that already worked.** `number`, `numbers`, `amount`, `amounts` are now
+signal words alongside the existing `figures`.
+
+### Defects found and fixed
+
+| Input | Was | Now |
+|---|---|---|
+| `Show me the overall numbers for the people` | overview (regression) | People |
+| `Just show me the offices figures` | overview | Office |
+| `Break this down per sub category for people` | repeated the same flat total | People, sub-category breakdown |
+| `IT costs` / `IT figures` / `what's the IT total` | overview | IT and telecom |
+| `spend by cluster` / `category spend by entity` | overview | the breakdown chart |
+| `phone spend` | overview | Telecommunications |
+| `which category grew the most` | overview | year-on-year table |
+| `hello` / `what is this` | full spend overview | help |
+
+### Two structural changes, not alias patches
+
+**Capitalisation now distinguishes the IT department from the pronoun.**
+`aliases.py` design rule 2 refuses a bare `it` alias because "it" is the
+commonest pronoun in English. Correct — but it left `IT costs`, `IT figures`,
+`IT numbers` and `what's the IT total` dead-ending while `IT spend` worked,
+which reads as the tool being broken. A standalone **uppercase** `IT` in the
+original (un-lowercased) question is the department; lowercase `it` never is;
+an all-caps sentence carries no case information and is skipped. This is an
+exact match on text the user typed, not fuzzy matching.
+
+**The parser now has one turn of memory.** `parse_question(question, known,
+previous)` merges the previous turn's filters when the question refers back.
+`app.py` holds the last parse in `st.session_state` and **only remembers
+turns that resolved something**, so a miss never becomes the context for the
+next question. Session-scoped, so two users never share context.
+
+### The new bug that memory created — found before shipping, not after
+
+Inheritance **bypasses the alias layer entirely**, so `WEAK_ALIASES` cannot
+protect it. Keyed on a referring word alone, with People in context:
+
+- `is there an audit trail` → People, €2,019,149.48
+- `is this available in German` → People, €2,019,149.48
+- `is this secure`, `can I export this`, `that is wrong` → same
+
+That is precisely the confidently-wrong class this project exists to prevent,
+recreated by a second route within an hour of fixing the first. **A referring
+word is now insufficient**: the question must also name a filter of its own,
+carry a spend word, or ask for a breakdown. Eight of these are pinned by
+test.
+
+**The lesson worth keeping: any new path that sets filters must re-apply the
+weak-alias guard.** The guard lives in `_extract_filters`; anything that
+writes to `filters` outside it starts unprotected.
+
+### One test example changed — deliberately, and why it is not measurement gaming
+
+`test_gauntlet.py`'s typo test listed `IT and telecomm spend` as something
+that must NOT resolve. It now resolves. That is **not** fuzzy-matching the
+typo — the token `IT` is literally present in uppercase, so the category is
+an exact match on what was typed. `Telecomm spend` (which genuinely matches
+nothing) takes its place, and a new test pins the capitalised/lowercase pair
+together so neither can be fixed by breaking the other. The test's protection
+is unchanged; only its example was wrong for the new behaviour.
+
+### Deliberately NOT fixed
+
+- `it costs` **lowercase** — the pronoun reading ("what did it cost") is real
+  and case is the only discriminator.
+- `last year's spend` — relative dates. The data holds 2024 and 2025 and the
+  real current year is 2026, so any mapping is a guess, and a guessed year is
+  a confidently wrong number.
+- `where can we save money`, `why did IT go up`, `what percentage is IT` —
+  genuinely unsupported analysis, not vocabulary gaps. These need the LLM
+  layer or new computations; see the roadmap below.
+- `western spend` / `southern spend` — unchanged from round 2, still
+  ambiguous between cluster and entity.
+
+### Tests
+
+700 → 847 → **909**. The round-3 additions were checked against the pre-fix
+source: **33 of them fail there**, so they are load-bearing rather than the
+assert-anything kind that let the original bug through.
+
+### Roadmap to full functionality — what still stands between this and a tool a client relies on
+
+**Tier 1 — vocabulary and phrasing (done for now, but permanently open).**
+The alias list is finite and hand-written; every round of real user testing
+has found more phrasings, and the next one will too. This is whack-a-mole by
+construction. Mitigation until the LLM layer lands: run the customer sweep
+(`134 questions`, in the session scratchpad — worth moving into `tests/`)
+after any vocabulary change.
+
+**Tier 2 — analysis the tool cannot do at all.** "Where can we save money",
+"why did IT go up", "what percentage of spend is IT", "show me spend for
+Alpine AND Baltic" (multi-value filters are explicitly unsupported — see the
+`compare` note in `nl_parser.py`). These are missing computations, not
+missing words, and each needs its own deterministic query plus a view.
+
+**Tier 3 — the LLM understanding layer** (`_LLM-UPGRADE-RESEARCH.md`). Claude
+Sonnet 5 as the understanding and phrasing layer only, computation staying in
+pandas, rule-based parser retained as fallback. This is the structural fix
+for Tiers 1 and most of 2. **Blocked on Zureli opening its own Anthropic API
+account** — roughly a penny per question.
+
+**Tier 4 — sellable to real clients** (unchanged, still deliberately
+deferred): login/auth, private hosting, per-client data isolation, and the
+DPA/GDPR paperwork. None of this is needed for the InSight demo.

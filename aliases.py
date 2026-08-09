@@ -66,7 +66,7 @@ L1_ALIASES = {
         "marketing", "brand", "branding", "promotion", "promotions",
     ],
     "Office": [
-        # Plural added 8 Aug 2026 after Hayden's own live test: "just show me
+        # Plural added 9 Aug 2026 after Hayden's own live test: "just show me
         # the offices figures" returned the whole-company overview. Both forms
         # are WEAK — see WEAK_ALIASES — so neither fires outside a spend question.
         "office", "offices",
@@ -118,7 +118,7 @@ L2_ALIASES = {
         "telecommunications", "telephony", "mobile spend", "phone bill",
         "phone bills",
         # Bare "phone" was removed in the first Codex review as too risky.
-        # Restored 8 Aug 2026 as a WEAK alias instead of dropped entirely:
+        # Restored 9 Aug 2026 as a WEAK alias instead of dropped entirely:
         # "phone spend" is what a buyer actually types, and the spend-signal
         # gate plus the blocking phrases below cover the everyday readings
         # ("phone call", "phone number") that motivated the removal.
@@ -239,7 +239,7 @@ WEAK_ALIASES = frozenset({
     "people", "staff", "personnel", "workforce", "office",
     "brand", "branding",
     "british", "dutch", "french", "german", "polish", "portuguese", "spanish",
-    # Added 8 Aug 2026 alongside the new aliases above. "offices" inherits
+    # Added 9 Aug 2026 alongside the new aliases above. "offices" inherits
     # "office"'s weakness; "phone"/"phones" are ordinary English far more
     # often than they are the Telecommunications category.
     "offices", "phone", "phones",
@@ -285,7 +285,7 @@ SPEND_SIGNAL_WORDS = (
     "how much", "total", "invoice", "invoiced", "paid", "pay", "supplier",
     "suppliers", "€", "eur", "value", "figures", "fees", "fee", "bill",
     "bills", "outlay",
-    # Added 8 Aug 2026 to close a REGRESSION this file's own weak-alias guard
+    # Added 9 Aug 2026 to close a REGRESSION this file's own weak-alias guard
     # introduced the day before. "Show me the overall numbers for the people"
     # was working live (People, €2,019,149.48 — Hayden's screenshot). Making
     # "people" weak then required a spend signal, and "numbers" was not one,

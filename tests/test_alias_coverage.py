@@ -371,7 +371,7 @@ def test_combined_alias_answer_matches_query_spend():
     assert f"{expected:,.2f}" in payload["text"], payload["text"]
 
 
-# --- 8. Hayden's live customer testing + the 134-question sweep (8 Aug 2026) ---
+# --- 8. Hayden's live customer testing + the 134-question sweep (9 Aug 2026) ---
 #
 # Every case below was reproduced against the shipping parser before its fix
 # was written. The first one is a REGRESSION this project introduced itself:
