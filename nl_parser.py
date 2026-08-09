@@ -80,14 +80,47 @@ SPLIT_PATTERN = re.compile(r"\bsplit\b.*\bby\b")
 # breakdown dimension>", matching the same dimension words
 # COUNTRY_BREAKDOWN_KEYWORDS/CLUSTER_BREAKDOWN_KEYWORDS/LEVEL_2_KEYWORDS
 # below already look for, not an arbitrary entity/supplier name.
-BREAKDOWN_DIMENSION_WORDS = r"(?:entit(?:y|ies)|countr(?:y|ies)|cluster[s]?|categor(?:y|ies)|level)"
-SHOW_ME_BY_PATTERN = re.compile(rf"\bshow me\b.*\bby\s+{BREAKDOWN_DIMENSION_WORDS}\b")
+BREAKDOWN_DIMENSION_WORDS = (
+    r"(?:entit(?:y|ies)|countr(?:y|ies)|cluster[s]?|"
+    r"sub[- ]?categor(?:y|ies)|categor(?:y|ies)|level)"
+)
+# Generalised 8 Aug 2026 from the old "show me ... by <dimension>" form. The
+# "show me" prefix was never the thing that made the pattern safe — requiring
+# a real BREAKDOWN DIMENSION after "by" is. Without the generalisation,
+# "spend by cluster", "category spend by entity" and "break this down per sub
+# category" matched no view at all and dead-ended on the overview, while the
+# identical question prefixed with "show me" worked. "by Alpine Operations"
+# still cannot match, because an entity name is not a dimension word.
+BY_DIMENSION_PATTERN = re.compile(
+    rf"\b(?:by|per|across|for each)\s+(?:each\s+)?{BREAKDOWN_DIMENSION_WORDS}\b"
+)
+# "Break this down" is the single most natural follow-up in a chat tool and
+# the plain "break down" substring in CHART_KEYWORDS above does not contain
+# it — the pronoun sits in the middle. Found in Hayden's own live testing:
+# "Break this down per sub category for people" returned the same flat total
+# it had just given, with no breakdown at all.
+BREAK_IT_DOWN_PATTERN = re.compile(
+    r"\bbreak\s+(?:this|that|it|these|those|them)\s+down\b"
+    r"|\bdrill\s+(?:in|into|down)\b"
+    r"|\bmore (?:detail|granular|granularity)\b"
+)
 COUNTRY_BREAKDOWN_KEYWORDS = ("by country", "per country", "country breakdown", "each country")
 CLUSTER_BREAKDOWN_KEYWORDS = ("by cluster", "per cluster", "cluster breakdown", "each cluster")
 LEVEL_2_KEYWORDS = ("level 2", "sub-category", "subcategory", "sub category")
 
 HELP_KEYWORDS = (
     "help", "what can you do", "what can i ask", "how does this work", "examples",
+    # Added 8 Aug 2026. A first-time user opening the tool types one of these
+    # before anything else, and every one of them previously returned a full
+    # spend overview — an answer to a question nobody asked.
+    "what is this", "what's this", "what can this do", "who are you",
+    "what do you do", "what does this do",
+)
+# Greetings need a word-boundary match, not the substring test HELP_KEYWORDS
+# uses: "hi" is inside "this", "which" and "within", and "hey" is inside
+# "they". Anchored to the start because "hi" mid-sentence is not a greeting.
+GREETING_PATTERN = re.compile(
+    r"^\s*(?:hi|hiya|hey|hello|yo|good (?:morning|afternoon|evening))\b"
 )
 
 OVERVIEW_KEYWORDS = (
@@ -133,6 +166,12 @@ CATEGORY_COMPARISON_KEYWORDS = (
     # fallback — a dead-end on a question this view answers directly.
     "vs last year", "versus last year", "compared to last year",
     "year on year", "yoy",
+    # Added 8 Aug 2026 (customer sweep). "Which category grew the most" is
+    # the question this table exists to answer, and it reached the overview
+    # instead — which shows only the single fastest-growing category, not the
+    # ranking the user asked for.
+    "grew the most", "growing fastest", "fastest growing", "fastest-growing",
+    "biggest increase", "biggest growth", "which grew", "what grew",
 )
 
 # Words where the user explicitly names the OUTPUT FORMAT they want, rather
@@ -194,7 +233,24 @@ def _candidate_terms(known: dict[str, list]) -> list[tuple[str, str, object]]:
     return terms
 
 
-def _extract_filters(q: str, known: dict[str, list]) -> dict:
+def _drop_contradictory_l1(filters: dict, known: dict[str, list]) -> dict:
+    """An L2 and an L1 that are not parent and child cannot both be true, and
+    AND-ing them yields "€0.00 across 0 spend rows" — a false "no data" that
+    reads as an authoritative answer. "office software spend" did exactly
+    this. The L2 is the more specific reading, so it wins and the contradicted
+    L1 is dropped rather than the query being emptied.
+
+    Extracted from _extract_filters 8 Aug 2026 because follow-up merging can
+    produce the same contradiction a second way: a previous turn's L1 carried
+    forward onto a new turn's unrelated L2.
+    """
+    l2, l1 = filters.get("l2"), filters.get("l1")
+    if l2 is not None and l1 is not None and known.get("l2_parent", {}).get(l2) != l1:
+        del filters["l1"]
+    return filters
+
+
+def _extract_filters(q: str, known: dict[str, list], original: str | None = None) -> dict:
     """Resolve a lowercased question to canonical filter values.
 
     Matching is GLOBAL longest-alias-first with span consumption, not
@@ -261,24 +317,95 @@ def _extract_filters(q: str, known: dict[str, list]) -> dict:
                     continue
             claim(alias, dimension, canonical)
 
-    # An L2 and an L1 that are not parent and child cannot both be true, and
-    # AND-ing them yields "€0.00 across 0 spend rows" — a false "no data" that
-    # reads as an authoritative answer. "office software spend" did exactly
-    # this. The L2 is the more specific reading, so it wins and the
-    # contradicted L1 is dropped rather than the query being emptied.
-    l2, l1 = filters.get("l2"), filters.get("l1")
-    if l2 is not None and l1 is not None and known.get("l2_parent", {}).get(l2) != l1:
-        del filters["l1"]
+    # "IT" the department vs "it" the pronoun. aliases.py deliberately refuses
+    # a bare "it" alias (its design rule 2) because "it" is the commonest
+    # pronoun in English — correct, but it left "IT figures", "IT numbers",
+    # "IT costs" and "what's the IT total" all dead-ending on the overview
+    # while "IT spend" worked, which reads as the tool being broken.
+    #
+    # Capitalisation is the discriminator a human actually uses, and it costs
+    # nothing: someone writing about the department types "IT", someone using
+    # the pronoun types "it". Skipped when the question is ENTIRELY uppercase,
+    # since a shouted sentence carries no case information to read.
+    if (
+        "l1" not in filters
+        and original is not None
+        and original != original.upper()
+        and re.search(r"(?<![A-Za-z0-9])IT(?![A-Za-z0-9])", original)
+    ):
+        filters["l1"] = "IT and telecom"
 
-    return filters
+    return _drop_contradictory_l1(filters, known)
 
 
-def parse_question(question: str, known: dict[str, list]) -> dict:
+# A follow-up refers back to the previous answer instead of restating it.
+# "Break this down", "and for 2024?", "what about Germany", "now by entity" —
+# each is meaningless on its own, and a stateless parser answers them about
+# the whole company. Hayden's live test showed the shape exactly: an answer
+# about People, then "Break this down per sub category for people", then the
+# same flat total again.
+REFERRING_PATTERN = re.compile(
+    r"\b(?:this|that|these|those|them|same|there)\b"
+    r"|^\s*(?:and|also|now|just|what about|how about|ok|okay)\b"
+)
+
+
+def _merge_follow_up(q: str, filters: dict, previous: dict | None,
+                     known: dict[str, list]) -> dict:
+    """Carry the previous turn's filters into a follow-up question.
+
+    Only fires when the question actually refers back ("this", "that", a
+    leading "and"/"now"/"what about"). A self-contained question is never
+    silently narrowed by whatever was asked before it.
+
+    The new question always wins per dimension, so "what about Germany"
+    after "IT spend in France" swaps the country and keeps the category.
+    Whatever survives is stated back to the user in the answer's "Matched
+    on ..." line, so an inherited filter is never invisible.
+    """
+    previous_filters = (previous or {}).get("filters") or {}
+    if not previous_filters or not REFERRING_PATTERN.search(q):
+        return filters
+
+    # A referring word on its own is NOT enough, and assuming it was
+    # reintroduced the exact bug class this project exists to avoid. With
+    # "people spend" in context, "is there an audit trail", "is this
+    # available in German" and "is this secure" all contain a referring word,
+    # inherited l1=People, and answered a question about the software with
+    # €2,019,149.48 of staff spend. Caught by adversarially testing the new
+    # inheritance rule against the meta-questions WEAK_ALIASES already
+    # protects — the guard has to be repeated here, because inheritance
+    # bypasses the alias layer entirely.
+    #
+    # So the question must ALSO look like a spend follow-up: it names a
+    # filter of its own ("what about Germany"), carries a spend word, or asks
+    # for a breakdown ("break this down", "now by country").
+    is_spend_follow_up = (
+        bool(filters)
+        or any(word in q for word in SPEND_SIGNAL_WORDS)
+        or bool(BREAK_IT_DOWN_PATTERN.search(q))
+        or bool(BY_DIMENSION_PATTERN.search(q))
+    )
+    if not is_spend_follow_up:
+        return filters
+
+    merged = dict(previous_filters)
+    merged.update(filters)
+    return _drop_contradictory_l1(merged, known)
+
+
+def parse_question(question: str, known: dict[str, list],
+                   previous: dict | None = None) -> dict:
+    """previous: the parse_question result of the last answered turn, or None.
+
+    Optional so every existing caller and test keeps working unchanged; the
+    app passes it so follow-up questions resolve against the last answer.
+    """
     q = question.lower()
-    filters = _extract_filters(q, known)
+    filters = _merge_follow_up(q, _extract_filters(q, known, question), previous, known)
     base = {"top_n": None, "filters": filters}
 
-    if any(kw in q for kw in HELP_KEYWORDS):
+    if GREETING_PATTERN.search(q) or any(kw in q for kw in HELP_KEYWORDS):
         return {"intent": "help", "chart_kind": None, "breakdown": None, "category_level": None, **base}
 
     if any(kw in q for kw in OVERVIEW_KEYWORDS):
@@ -362,7 +489,11 @@ def parse_question(question: str, known: dict[str, list]) -> dict:
         any(keyword in q for keyword in CHART_KEYWORDS)
         or bool(BAR_PATTERN.search(q))
         or bool(SPLIT_PATTERN.search(q))
-        or bool(SHOW_ME_BY_PATTERN.search(q))
+        or bool(BY_DIMENSION_PATTERN.search(q))
+        # A supplier drill-down is already the detailed per-supplier view, so
+        # "tell me more about supplier 51" must reach it rather than being
+        # promoted to a category chart by the word "more".
+        or (bool(BREAK_IT_DOWN_PATTERN.search(q)) and "supplier" not in filters)
     )
 
     if not is_chart:

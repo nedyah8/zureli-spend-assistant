@@ -73,10 +73,29 @@ def test_typo_questions_fall_back_honestly_rather_than_guessing():
     # future fuzzy-matching change starts resolving these, this test fails
     # loudly and forces the behaviour change to be reviewed rather than
     # absorbed silently.
+    #
+    # "IT and telecomm spend" was an example here until 8 Aug 2026 and is
+    # deliberately no longer one. It now resolves — not by fuzzy-matching the
+    # typo, but because the token "IT" is literally present in uppercase, and
+    # the parser reads a capitalised standalone "IT" as the department. That
+    # is an exact match on text the user actually typed, not a guess at what
+    # they meant, so it does not weaken what this test protects. "Telecomm"
+    # on its own still matches nothing and takes its place below.
     app = _reload_app()
-    for question in ["Germny spend", "IT and telecomm spend", "Alpin Operations spend"]:
+    for question in ["Germny spend", "Telecomm spend", "Alpin Operations spend"]:
         payload = app.answer_payload(question)
         assert payload["kind"] == "overview", f"{question!r} -> {payload['kind']}"
+
+
+def test_a_capitalised_it_resolves_but_the_pronoun_never_does():
+    # The pair that justifies reading case. Both sentences contain the letters
+    # "it"; only one is about the IT category, and capitalisation is the only
+    # thing that distinguishes them. Pinned together so a future change cannot
+    # fix one by breaking the other.
+    app = _reload_app()
+    assert app.answer_payload("IT costs")["kind"] == "text"
+    assert app.answer_payload("what did it cost")["kind"] == "overview"
+    assert app.answer_payload("what is it")["kind"] == "overview"
 
 
 # --- 4. Abuse: must never crash, never behave as instructed by injection ---

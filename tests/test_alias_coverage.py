@@ -369,3 +369,226 @@ def test_combined_alias_answer_matches_query_spend():
         DF, l1="IT and telecom", entity="Demo Alpine Operations", year=2024
     )["total_net_spend"]
     assert f"{expected:,.2f}" in payload["text"], payload["text"]
+
+
+# --- 8. Hayden's live customer testing + the 134-question sweep (8 Aug 2026) ---
+#
+# Every case below was reproduced against the shipping parser before its fix
+# was written. The first one is a REGRESSION this project introduced itself:
+# section 7 made "people" a weak alias to stop "how many people work here"
+# answering with €2m, which was right, but "numbers" was not a spend-signal
+# word, so "show me the overall numbers for the people" — a query Hayden had
+# screenshotted working live — started returning the overview instead.
+
+
+@pytest.mark.parametrize(
+    "question,expected",
+    [
+        ("show me the overall numbers for the people", {"l1": "People"}),
+        ("what are our people numbers", {"l1": "People"}),
+        ("give me the people number", {"l1": "People"}),
+        ("what's the marketing amount", {"l1": "Marketing"}),
+    ],
+)
+def test_asking_for_the_numbers_is_asking_about_spend(question, expected):
+    assert filters_for(question) == expected
+
+
+@pytest.mark.parametrize(
+    "question,expected",
+    [
+        ("just show me the offices figures", {"l1": "Office"}),
+        ("offices spend", {"l1": "Office"}),
+        ("office spend", {"l1": "Office"}),
+        ("phone spend", {"l2": "Telecommunications"}),
+        ("phones budget", {"l2": "Telecommunications"}),
+    ],
+)
+def test_plural_and_restored_aliases_resolve(question, expected):
+    assert filters_for(question) == expected
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "what's the phone number",
+        "can you phone me",
+        "i'll give you a phone call",
+        "what are the office hours",
+    ],
+)
+def test_the_new_weak_aliases_still_decline_ordinary_english(question):
+    """"number" became a spend-signal word in the same change that added
+    "phone" as an alias, so "what's the phone number" carries both a signal
+    and a weak alias. Without the blocking phrase it answers with the
+    Telecommunications total.
+    """
+    assert filters_for(question) == {}, f"{question!r} -> {filters_for(question)}"
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["IT costs", "IT figures", "show me the IT numbers", "what's the IT total",
+     "is IT over budget"],
+)
+def test_capitalised_it_is_the_department(question):
+    """aliases.py deliberately refuses a bare "it" alias because it is the
+    commonest pronoun in English. Correct — but it left every one of these
+    phrasings dead-ending on the overview while "IT spend" worked. Case is
+    the discriminator a human uses, and it is free to read.
+    """
+    assert filters_for(question) == {"l1": "IT and telecom"}
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["what did it cost", "what is it", "how much did it cost us",
+     "it depends on the budget", "is it worth the spend"],
+)
+def test_the_lowercase_pronoun_is_never_the_department(question):
+    assert filters_for(question) == {}, f"{question!r} -> {filters_for(question)}"
+
+
+def test_a_shouted_question_carries_no_case_information():
+    """An all-caps sentence tells us nothing about which "it" was meant, so
+    the capitalisation rule must not fire on it."""
+    assert filters_for("WHAT DID IT COST") == {}
+
+
+@pytest.mark.parametrize(
+    "question,expected_level",
+    [
+        ("break this down", "l1"),
+        ("break it down", "l1"),
+        ("break this down per sub category", "l2"),
+        ("drill into that", "l1"),
+        ("show me more detail", "l1"),
+    ],
+)
+def test_break_this_down_is_a_breakdown_request(question, expected_level):
+    """"break down" was already a chart keyword, but the phrase people
+    actually type puts a pronoun in the middle — "break THIS down" — so the
+    substring never matched. Hayden's live test: an answer about People,
+    then "Break this down per sub category for people", then the same flat
+    total again with no breakdown.
+    """
+    parsed = parse_question(question, KV)
+    assert parsed["intent"] == "chart", parsed
+    assert parsed["category_level"] == expected_level, parsed
+
+
+@pytest.mark.parametrize(
+    "question,expected_breakdown",
+    [
+        ("spend by cluster", "cluster"),
+        ("spend by country", "country"),
+        ("category spend by entity", "entity"),
+        ("spend per country", "country"),
+    ],
+)
+def test_by_dimension_charts_without_needing_the_words_show_me(question, expected_breakdown):
+    """The old pattern required a literal "show me" prefix, so "show me spend
+    by country" charted and "spend by country" matched nothing at all."""
+    parsed = parse_question(question, KV)
+    assert parsed["intent"] == "chart", parsed
+    assert parsed["breakdown"] == expected_breakdown, parsed
+
+
+def test_by_an_entity_name_is_still_not_a_breakdown():
+    """The dimension word is what makes the "by" pattern safe — an entity
+    name after "by" is a filter, not a breakdown axis."""
+    parsed = parse_question("total spend by Alpine Operations", KV)
+    assert parsed["intent"] == "number", parsed
+
+
+# --- Follow-up questions: the parser now sees the previous turn ---
+
+
+def test_a_follow_up_inherits_the_previous_filters():
+    first = parse_question("people spend", KV)
+    assert first["filters"] == {"l1": "People"}
+    second = parse_question("break this down per sub category", KV, previous=first)
+    assert second["filters"] == {"l1": "People"}, second
+    assert second["category_level"] == "l2", second
+
+
+def test_a_follow_up_overrides_the_dimension_it_names():
+    first = parse_question("IT spend in France", KV)
+    second = parse_question("what about Germany", KV, previous=first)
+    assert second["filters"] == {"l1": "IT and telecom", "country": "Germany"}, second
+
+
+def test_a_follow_up_can_add_a_year_to_the_previous_question():
+    first = parse_question("IT spend", KV)
+    second = parse_question("and for 2024?", KV, previous=first)
+    assert second["filters"] == {"l1": "IT and telecom", "year": 2024}, second
+
+
+def test_a_self_contained_question_is_never_narrowed_by_the_previous_one():
+    """Inheritance only applies to questions that actually refer back. A
+    fresh question must not be silently filtered by whatever came before it.
+    """
+    first = parse_question("IT spend in France", KV)
+    second = parse_question("marketing spend", KV, previous=first)
+    assert second["filters"] == {"l1": "Marketing"}, second
+
+
+def test_a_follow_up_never_produces_a_contradictory_category_pair():
+    """Carrying a previous L1 onto a new, unrelated L2 recreates the
+    "€0.00 across 0 spend rows" false-no-data bug by a second route.
+    """
+    first = parse_question("people spend", KV)
+    second = parse_question("what about this software spend", KV, previous=first)
+    assert second["filters"] == {"l2": "Software licensing"}, second
+
+
+def test_parse_question_still_works_with_no_previous_turn():
+    assert parse_question("IT spend", KV)["filters"] == {"l1": "IT and telecom"}
+
+
+# --- Greetings and meta-questions are not spend questions ---
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["hello", "hi", "hey there", "good morning", "what is this",
+     "what can this do", "who are you"],
+)
+def test_a_greeting_gets_help_not_a_spend_overview(question):
+    assert parse_question(question, KV)["intent"] == "help", question
+
+
+@pytest.mark.parametrize("question", ["this spend", "which entity spends most", "within budget"])
+def test_words_containing_hi_and_hey_are_not_greetings(question):
+    """"hi" is inside "this", "which" and "within"; "hey" is inside "they".
+    A substring test would treat all of these as greetings."""
+    assert parse_question(question, KV)["intent"] != "help", question
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "is there an audit trail",
+        "is this available in German",
+        "is this secure",
+        "can I export this",
+        "that is wrong",
+        "no that is not what I meant",
+        "is there a mobile app",
+        "what are the legal implications of that",
+    ],
+)
+def test_follow_up_inheritance_never_answers_a_meta_question(question):
+    """Inheritance bypasses the alias layer entirely, so WEAK_ALIASES cannot
+    protect it — the guard has to be repeated inside _merge_follow_up.
+
+    Every question here contains a referring word ("this", "that", "there").
+    With a previous answer in context, an inheritance rule keyed on the
+    referring word alone hands each of them the previous filter and answers a
+    question about the software with a spend figure. Reproduced exactly:
+    "is there an audit trail" returned People, €2,019,149.48.
+    """
+    previous = parse_question("people spend", KV)
+    assert previous["filters"] == {"l1": "People"}
+    parsed = parse_question(question, KV, previous=previous)
+    assert parsed["filters"] == {}, f"{question!r} -> {parsed['filters']}"

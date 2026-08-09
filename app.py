@@ -116,6 +116,12 @@ df, kv = get_data()
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# The last question's parse, so a follow-up ("break this down", "and for
+# 2024?") resolves against what was just answered instead of the whole
+# company. Session-scoped, so two people using the app never share context.
+if "last_parse" not in st.session_state:
+    st.session_state.last_parse = None
+
 LABELS = {
     "entity": "entity",
     "country": "country",
@@ -311,8 +317,14 @@ def build_supplier_drilldown_payload(filters: dict) -> dict:
 
 
 def answer_payload(question: str) -> dict:
-    parsed = parse_question(question, kv)
+    parsed = parse_question(question, kv, previous=st.session_state.last_parse)
     filters = parsed["filters"]
+
+    # Only remember turns that actually resolved something. A question the
+    # parser did not understand must not become the context a later "break
+    # this down" inherits — that would silently chain one miss into the next.
+    if filters:
+        st.session_state.last_parse = parsed
 
     if parsed["intent"] == "help":
         return build_help_payload()
