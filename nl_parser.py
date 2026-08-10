@@ -382,6 +382,40 @@ REFERRING_PATTERN = re.compile(
 # Asking what a number MEANS is not asking for the number again.
 META_QUESTION_PATTERN = re.compile(r"\bmean(?:s|ing)?\b|\bexplain\b")
 
+# The ENTIRE question is a request to redraw the last answer — "as a bar
+# chart", "chart it", "plot this" — with no subject of its own.
+#
+# Codex (10 Aug 2026) rejected the first version of the chart follow-up rule,
+# correctly: it treated any chart word as evidence the question was about
+# spend, and chart words are domain-general. All 8 of its cases reproduced.
+# "Plot our employee satisfaction trend", "Graph customer support response
+# times" and "Can you make a chart of open invoices?" each name their own,
+# non-spend subject after the chart word, and each inherited the previous
+# answer's category and country — a spend chart presented as the answer to a
+# question about something else entirely.
+#
+# So a chart word alone is no longer enough. The question must either refer
+# back explicitly ("chart THIS") or be nothing but a bare chart request. A
+# subject after the chart word means it is a new question, not a redraw.
+# A REFERRING WORD IS DELIBERATELY NOT ENOUGH HERE, even though it is what
+# makes "chart this" mean the last answer. "Can this graph be exported?" also
+# contains "this" and also refers back — but it asks about the APP, not the
+# data, and inheriting for it turned a whole-company chart into a narrow
+# People-in-Germany one, which reads as a deliberate answer to a question the
+# tool never understood. Requiring the WHOLE question to be a redraw request
+# is the stricter test and costs only exotic phrasings, which fall back to the
+# honest whole-company chart rather than to a wrong narrow one.
+BARE_CHART_REQUEST = re.compile(
+    r"^\s*(?:(?:ok|okay|now|and|also|just|please)\s+)*"
+    r"(?:can you\s+|could you\s+|please\s+)?"
+    r"(?:show\s+(?:me\s+)?)?"
+    r"(?:it\s+|this\s+|that\s+)?"
+    r"(?:as\s+|in\s+)?(?:a\s+|an\s+)?"
+    r"(?:bar\s+|stacked\s+|simple\s+)?"
+    r"(?:chart|graph|plot|visuali[sz]e)"
+    r"\s*(?:it|this|that|them)?\s*(?:please)?\s*[?.!]*$"
+)
+
 
 def _merge_follow_up(q: str, filters: dict, previous: dict | None,
                      known: dict[str, list]) -> dict:
@@ -426,9 +460,28 @@ def _merge_follow_up(q: str, filters: dict, previous: dict | None,
     breakdown_only = not filters and (
         bool(BREAK_IT_DOWN_PATTERN.search(q)) or bool(BY_DIMENSION_PATTERN.search(q))
     )
+
+    # Asking to SEE the same answer differently is the same shape as
+    # breakdown_only: "show this in a bar chart" names no subject, so it can
+    # only mean the answer already on screen. Found in Hayden's own live
+    # testing (10 Aug 2026): "2024 spend" answered €6,768,853.29, then "Show
+    # this in a bar chart" returned a 2025 chart. Not a wrong number — the
+    # caption said "matched on year = 2025" honestly — but not the year he was
+    # looking at either, because the chart path falls back to its own default
+    # year whenever no year survives. Same class as the four follow-up gaps
+    # Codex found the day before, in a phrasing the sweep had not tried.
+    #
+    # BAR_PATTERN is deliberately NOT a trigger here, though it is one for
+    # chart INTENT below. As a bare word "bar" is ordinary product English —
+    # "is the search bar working?", "why is the top bar missing?" — and using
+    # it as an inheritance trigger handed those questions a filtered spend
+    # chart (Codex, 10 Aug 2026). Nothing genuine is lost: every real redraw
+    # phrasing says "bar chart", which EXPLICIT_CHART_PATTERN already matches.
+    chart_only = not filters and bool(BARE_CHART_REQUEST.match(q))
     refers_back = (
         bool(REFERRING_PATTERN.search(q))
         or breakdown_only
+        or chart_only
         or is_elliptical
     )
     if not refers_back:
@@ -452,6 +505,7 @@ def _merge_follow_up(q: str, filters: dict, previous: dict | None,
         or has_signal
         or bool(BREAK_IT_DOWN_PATTERN.search(q))
         or bool(BY_DIMENSION_PATTERN.search(q))
+        or chart_only
     )
     if not is_spend_follow_up:
         return filters

@@ -1065,3 +1065,84 @@ code was serving live within a minute, with **no reboot**. The refined rule:
 Either way, "Updated app!" in the deploy log is a git-pull receipt, not proof
 the new code is running. The only proof is asking the live app a question
 whose answer differs between the old and new code.
+
+---
+
+## Round 4 — the chart follow-up gap (10 Aug 2026)
+
+Found by reading Hayden's OWN chat history off the deployed app rather than by
+running another synthetic sweep. He asked "2024 spend" (€6,768,853.29), then
+"Show this in a bar chart", and got a chart of **2025**.
+
+Not a wrong number — the caption read "matched on year = 2025" honestly — but
+not the year he was looking at either. Asking to SEE the same answer
+differently was not recognised as referring back at all, so the year was
+dropped and the chart path fell through to its own default year.
+
+Same class as the four follow-up gaps Codex found on 9 Aug, in a phrasing the
+134-question sweep had never tried. Fixed the same way as the subject-less
+breakdown case rather than by special-casing the sentence.
+
+### What shipped
+`chart_only` in `nl_parser._merge_follow_up`: a question whose ENTIRE text is a
+redraw request ("as a bar chart", "chart it", "now plot this") inherits the
+previous turn's filters.
+
+### Codex round 1 — 8 findings, all 8 real, all 8 reproduced before fixing
+The first version treated any chart word as evidence the question was about
+spend. It is not — chart words are domain-general, and a bare "bar" is
+ordinary product English:
+
+| Previous answer | Follow-up | Wrongly inherited |
+|---|---|---|
+| IT spend in France 2024 | "Is the search bar working?" | IT / France / 2024 |
+| People spend in Germany | "Can this graph be exported?" | People / Germany |
+| Facilities spend 2025 | "Plot our employee satisfaction trend." | Facilities / 2025 |
+| Marketing spend UK | "Graph customer support response times." | Marketing / UK |
+| Travel spend 2024 | "Why is the top bar missing?" | 2024 |
+| Legal spend Spain | "Visualize the approval workflow." | Legal and audit / Spain |
+| Software 2024 | "Can you make a chart of open invoices?" | Software licensing / 2024 |
+| Utilities Germany | "Make a bar chart of supplier risk ratings." | Utilities / Germany |
+
+Note these already produced a CHART before the change (chart intent comes from
+the words, not the filters). The change made the chart NARROWER, which reads as
+a deliberate answer to a question the tool never understood — worse, not new.
+
+Fixed by requiring the whole question to be a redraw request (`BARE_CHART_REQUEST`),
+and dropping bare "bar" as an inheritance trigger entirely. A referring word is
+deliberately NOT sufficient: "Can this graph be exported?" refers back and is
+still not a request for data.
+
+### Codex round 2 — 5 findings, all 5 REJECTED with reasons
+Re-run against the revised rule, because the first pass was stale for what was
+actually shipping. It flagged "can you graph?", "can you plot?",
+"can you visualize?", "can you show me this graph?", "show me this chart" as
+capability questions that should not inherit.
+
+Rejected after checking the OUTCOME rather than the grammar: typed straight
+after "2024 spend", every one means "graph that". Inheriting gives a 2024
+chart; not inheriting would give a 2025 whole-company chart — further from what
+was asked, not closer. Pinned as tests so the decision is deliberate.
+
+### Tests 931 → 965
+16 of the 27 new tests fail against the pre-fix source (`git stash push nl_parser.py`).
+The rest are guard tests that must pass both before and after. Customer sweep
+unchanged at 22/134 fall-throughs — no regression.
+
+### RESIDUAL GAP — flagged, deliberately NOT fixed
+Charting an answer that spanned BOTH years still narrows to one year:
+"people spend" answers €2,019,149.48 (all years), and charting it shows
+€977,536.74 (2025 only). The subject now carries correctly; the year does not,
+because `_resolve_chart_year` in `app.py` imposes a year on every chart that
+lacks one — deliberate, documented, and shared by every chart path.
+
+Disclosed in the caption ("year = 2025"), so it is honest rather than silent,
+but the total still changes between the answer and its own chart. Fixing it
+means making charts span multiple years: `chart_query.category_spend` already
+accepts no year, but the axis label, `_resolve_chart_year`, and every other
+chart view (fragmentation, top suppliers, intensity) share the rule. That is a
+larger, separately-scoped change than the one asked for — Hayden's call.
+
+Related known inconsistency, same reason: "for 2024?" (2 words) inherits the
+previous subject, but "show 2025 in a bar chart" (6 words) does not, because
+only short fragments count as elliptical. Both name only a year.

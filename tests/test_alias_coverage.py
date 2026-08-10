@@ -651,3 +651,188 @@ def test_a_breakdown_with_no_subject_uses_the_previous_one():
     parsed = parse_question("by country?", KV, previous=previous)
     assert parsed["filters"] == {"l1": "People"}, parsed
     assert parsed["breakdown"] == "country", parsed
+
+
+# ---------------------------------------------------------------------------
+# 10. "Show this in a bar chart" — the follow-up that changes VIEW, not subject
+#
+# Found in Hayden's own live testing (10 Aug 2026), reading his real chat
+# history off the deployed app rather than a synthetic sweep. He asked
+# "2024 spend" (€6,768,853.29), then "Show this in a bar chart", and got a
+# chart of 2025.
+#
+# Not a wrong number — the caption honestly read "matched on year = 2025" —
+# but not the year he was looking at either. Asking to SEE the same answer
+# differently was not recognised as referring back at all, so the year was
+# dropped and the chart path fell through to its own default year.
+#
+# Structurally identical to the subject-less breakdown case ("by country?")
+# fixed the day before, so it is fixed the same way rather than by
+# special-casing this one sentence.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "follow_up",
+    [
+        "Show this in a bar chart",
+        "show me that as a bar chart",
+        "as a bar chart",
+        "chart it",
+        "plot it",
+        "graph this",
+        "visualise this",
+    ],
+)
+def test_a_subjectless_chart_request_keeps_the_previous_subject(follow_up):
+    """The whole point of "show THIS as a chart" is the word "this". A chart
+    request naming no subject of its own can only mean the answer already on
+    screen; without inheritance it silently became a different year.
+    """
+    previous = parse_question("2024 spend", KV)
+    assert previous["filters"] == {"year": 2024}, previous
+
+    parsed = parse_question(follow_up, KV, previous=previous)
+    assert parsed["intent"] == "chart", parsed
+    assert parsed["filters"] == {"year": 2024}, f"{follow_up!r} -> {parsed['filters']}"
+
+
+def test_a_chart_follow_up_inherits_every_dimension_not_just_year():
+    previous = parse_question("IT spend in France", KV)
+    parsed = parse_question("show this in a bar chart", KV, previous=previous)
+    assert parsed["filters"] == {"l1": "IT and telecom", "country": "France"}, parsed
+
+
+def test_a_chart_question_naming_its_own_subject_is_never_narrowed():
+    """The guard that stops inheritance becoming a second confidently-wrong
+    class: a complete question must not be silently reinterpreted by whatever
+    happened to be asked before it.
+    """
+    previous = parse_question("people spend", KV)
+    parsed = parse_question("chart category spend by cluster for 2024", KV,
+                            previous=previous)
+    assert "l1" not in parsed["filters"], parsed
+    assert parsed["filters"] == {"year": 2024}, parsed
+    assert parsed["breakdown"] == "cluster", parsed
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["what does this chart mean?", "can you explain this chart"],
+)
+def test_asking_what_a_chart_means_does_not_inherit_the_subject(question):
+    """A question ABOUT the output is not a request for the output again.
+    Same guard as "what does this amount mean?" — pinned separately because
+    the chart route reaches inheritance by a different path.
+    """
+    previous = parse_question("people spend", KV)
+    parsed = parse_question(question, KV, previous=previous)
+    assert parsed["filters"] == {}, f"{question!r} -> {parsed['filters']}"
+
+
+def test_a_supplier_context_survives_a_chart_request():
+    """Inherited filters can change INTENT, not just the numbers: a supplier
+    filter routes to the drill-down view. Pinned so the chart request keeps
+    reaching the chart, rather than being re-routed by its own inheritance.
+    """
+    previous = parse_question("supplier 25 spend", KV)
+    parsed = parse_question("show this in a bar chart", KV, previous=previous)
+    assert parsed["intent"] == "chart", parsed
+    assert parsed["filters"] == {"supplier": "Demo Supplier 025"}, parsed
+
+
+# ---------------------------------------------------------------------------
+# 11. Codex cross-family review of the chart follow-up rule (10 Aug 2026)
+#
+# The FIRST version of that rule treated any chart word as evidence the
+# question was about spend. Codex rejected it with 8 concrete cases and all 8
+# reproduced: chart words are domain-general, and a bare "bar" is ordinary
+# product English. "Plot our employee satisfaction trend" inherited Facilities
+# 2025; "Is the search bar working?" inherited IT/France/2024.
+#
+# The rule now requires the WHOLE question to be a redraw request. Note that a
+# referring word is deliberately insufficient — "Can this graph be exported?"
+# refers back and is still not a request for data.
+#
+# These pin the failure cases themselves, not the mechanism, so a future
+# rewrite of the trigger is still held to the same outcomes.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "previous_question, follow_up",
+    [
+        ("What was IT spend in France in 2024?", "Is the search bar working?"),
+        ("How much did we spend on People in Germany?", "Can this graph be exported?"),
+        ("What was Facilities spend in 2025?", "Plot our employee satisfaction trend."),
+        ("Show Marketing spend for the UK.", "Graph customer support response times."),
+        ("What was Travel spend in 2024?", "Why is the top bar missing?"),
+        ("How much did Legal spend in Spain?", "Visualize the approval workflow."),
+        ("What did we spend on Software in 2024?", "Can you make a chart of open invoices?"),
+        ("What was Utilities spend in Germany?", "Make a bar chart of supplier risk ratings."),
+    ],
+)
+def test_a_chart_word_alone_never_inherits_a_spend_filter(previous_question, follow_up):
+    """Each of these names its own non-spend subject, or asks about the app
+    rather than the data. Inheriting gave them a narrow spend chart that reads
+    as a deliberate answer to a question the tool never understood.
+    """
+    previous = parse_question(previous_question, KV)
+    assert previous["filters"], f"precondition: {previous_question!r} must set context"
+
+    parsed = parse_question(follow_up, KV, previous=previous)
+    assert parsed["filters"] == {}, f"{follow_up!r} -> {parsed['filters']}"
+
+
+@pytest.mark.parametrize(
+    "follow_up",
+    [
+        "now chart this", "ok graph it", "just plot it", "Chart it.",
+        "GRAPH THIS", "can you chart it?", "chart this please",
+    ],
+)
+def test_redraw_requests_survive_the_tightened_rule(follow_up):
+    """The tightening must not cost the ordinary phrasings. Conversational
+    lead-ins ("now", "ok", "just"), trailing punctuation and shouting are all
+    filler around the same request.
+    """
+    previous = parse_question("2024 spend", KV)
+    parsed = parse_question(follow_up, KV, previous=previous)
+    assert parsed["filters"] == {"year": 2024}, f"{follow_up!r} -> {parsed['filters']}"
+
+
+@pytest.mark.parametrize(
+    "follow_up",
+    ["can you graph?", "can you plot?", "can you visualize?",
+     "can you show me this graph?", "show me this chart"],
+)
+def test_a_capability_phrasing_is_still_a_redraw_request(follow_up):
+    """Codex's round-2 review flagged these five as capability questions that
+    should not inherit. REJECTED after checking the outcome rather than the
+    grammar: typed straight after "2024 spend", every one of them means "graph
+    that". Inheriting gives a 2024 chart; not inheriting would give a 2025
+    whole-company chart, which is further from what was asked, not closer.
+
+    Pinned so the decision is deliberate and survives a future rewrite.
+    """
+    previous = parse_question("2024 spend", KV)
+    parsed = parse_question(follow_up, KV, previous=previous)
+    assert parsed["filters"] == {"year": 2024}, f"{follow_up!r} -> {parsed['filters']}"
+
+
+@pytest.mark.parametrize(
+    "not_a_redraw",
+    ["what is a chart", "is the chart wrong", "the chart is broken",
+     "who made this chart", "delete this chart", "chart of headcount",
+     "graph our attrition", "plot twist", "plot the revenue forecast",
+     "can i download this chart", "is this chart interactive",
+     "print this chart", "email me this chart", "why is this chart empty"],
+)
+def test_questions_about_a_chart_are_not_requests_to_redraw_one(not_a_redraw):
+    """Own adversarial fuzz alongside the Codex pass — a question that merely
+    CONTAINS a chart word, or asks something about a chart, must never pick up
+    the previous answer's filters.
+    """
+    previous = parse_question("2024 spend", KV)
+    parsed = parse_question(not_a_redraw, KV, previous=previous)
+    assert parsed["filters"] == {}, f"{not_a_redraw!r} -> {parsed['filters']}"
