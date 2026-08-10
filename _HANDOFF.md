@@ -1124,10 +1124,17 @@ after "2024 spend", every one means "graph that". Inheriting gives a 2024
 chart; not inheriting would give a 2025 whole-company chart — further from what
 was asked, not closer. Pinned as tests so the decision is deliberate.
 
-### Tests 931 → 965
-16 of the 27 new tests fail against the pre-fix source (`git stash push nl_parser.py`).
-The rest are guard tests that must pass both before and after. Customer sweep
-unchanged at 22/134 fall-throughs — no regression.
+### Tests 919 → 965
+46 new tests. Checked with `git checkout HEAD~1 -- nl_parser.py`: **21 fail
+against the pre-fix parser**, 944 pass. The other 25 are guard tests that must
+pass both before and after — they pin behaviour the fix must not break.
+
+(An earlier mid-session count of "16" was taken before the last two test
+batches existed and is superseded by the 21 above. A `git stash push` of a
+committed, clean file is a silent no-op and proves nothing — use the explicit
+`git checkout HEAD~1 --` form for this check.)
+
+Customer sweep unchanged at 22/134 fall-throughs — no regression.
 
 ### RESIDUAL GAP — flagged, deliberately NOT fixed
 Charting an answer that spanned BOTH years still narrows to one year:
