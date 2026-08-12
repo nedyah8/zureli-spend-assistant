@@ -1389,3 +1389,64 @@ onto two lines in them) and it was not noticed, because nothing in the check
 compared new output against old output. When replacing a render path, diff
 the produced text/markup against what the old path produced, for at least
 one message of each payload kind.
+
+---
+
+## Round 6 fix round 2 — vertical breathing room (12 Aug 2026)
+
+Hayden's request after seeing the bubbles live: the interface used too little
+of the page's vertical space. The zureli logo, Demo data pill and divider all
+sat too far down, squeezing the conversation; the landing screen's greeting
+floated past the middle of an otherwise empty page. Explicitly NOT a request
+to jam the header against the top of the window — just to reclaim the dead
+space above it.
+
+Ran via the `interface-polish` skill (its scope: spacing and breathing room,
+measured against existing tokens rather than eyeballed).
+
+### Where the space actually went (measured on a 1400px-tall window)
+- `stMainBlockContainer` carried Streamlit's default **96px** top padding.
+  Round 4's CSS had deliberately left padding-top untouched while overriding
+  left/right, so this had never been revisited.
+- The header block added a further **32px** above the logo.
+- The empty-state hero used **`18vh`**, which is viewport-RELATIVE and so got
+  worse on exactly the large screens this gets demoed on: 252px at 1400px
+  tall, dropping the greeting past the halfway mark.
+
+### What changed
+| | Before | After |
+|---|---|---|
+| `stMainBlockContainer` padding-top | 96px | 48px |
+| header block padding | `32px 0 16px` | `24px 0 16px` |
+| empty-state hero padding-top | `18vh` (252px @1400) | `10vh` (140px @1400, 72px @720) |
+
+Measured result, same viewport: logo top 144px → **88px**; conversation start
+225px → **137px**; landing greeting 477px → **309px**. The full 15-supplier
+chart plus its caption now fits in one view, where before it cut off at
+supplier 027.
+
+The hero stays viewport-relative rather than becoming a fixed px value
+specifically so it cannot crowd a short laptop screen — verified at 720px
+tall, where it resolves to 72px and the layout still breathes.
+
+### The floor on how far this could go, and why
+`[data-testid="stHeader"]` is a 60px-tall, absolutely-positioned, transparent
+bar that OVERLAYS the content rather than pushing it, and on Streamlit Cloud
+it carries the Share / edit / GitHub controls at top-right — the same corner
+as our own Demo data pill. 48px + the header block's 24px puts our top row at
+88px, leaving **30px clearance** below those controls (measured at both 1400px
+and 720px viewport heights). Cutting the padding further would start closing
+that gap, which is why it stopped at 48px rather than going lower.
+
+### Tests 997 → 998
+One new test, and it guards the subtle risk rather than the visible change:
+the width/max-width rule is a SHARED selector covering both
+`stMainBlockContainer` and `stBottomBlockContainer`, and the latter is the
+pinned chat-input strip. Putting padding-top on that shared rule would move
+the input as well as the page content — an easy "tidy-up" for a future
+session to make. The test asserts the override lives in its own
+main-container-only rule, and was proved load-bearing by actually making that
+mistake in a scratch copy and watching it fail. It strips CSS comments before
+asserting, because the comments legitimately discuss padding-top and a naive
+substring check matched the prose (caught when the first version of the test
+failed against correct code).

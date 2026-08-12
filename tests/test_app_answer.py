@@ -1,3 +1,4 @@
+import re
 import sys
 from pathlib import Path
 
@@ -574,6 +575,25 @@ def test_bubble_escapes_html_before_inserting_bold_tags():
     assert "<script>" not in body
     assert "&lt;script&gt;" in body
     assert "<strong>bold</strong>" in body
+
+
+def test_top_padding_is_scoped_to_the_main_container_only():
+    # Round 6 fix round 2 (vertical breathing room): the shared selector
+    # covers BOTH stMainBlockContainer and stBottomBlockContainer, and the
+    # latter is the pinned chat-input strip at the bottom of the page. A
+    # padding-top added to that shared rule would silently move the input as
+    # well as the page content. The override must therefore live in its own
+    # main-container-only rule, which is easy to "tidy up" into the shared
+    # block later without noticing what it breaks.
+    source = Path(APP_PATH).read_text()
+    css = source.split("<style>")[1].split("</style>")[0]
+    # Strip CSS comments first — they legitimately discuss padding-top, and a
+    # bare substring check would match the prose rather than a declaration.
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+    shared_rule = css.split('[data-testid="stBottomBlockContainer"] {')[1].split("}")[0]
+    assert "padding-top" not in shared_rule, "padding-top on the shared rule would move the chat input"
+    main_only_rule = css.rsplit('[data-testid="stMainBlockContainer"] {', 1)[1].split("}")[0]
+    assert "padding-top: 48px;" in main_only_rule
 
 
 def test_bubble_width_cap_is_on_the_wrapper_not_the_bubble():

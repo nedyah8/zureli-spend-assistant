@@ -52,13 +52,29 @@ st.markdown(
            rendered content column to ~950px, matching Part E's target and
            close to the InSight demo's own ~1000px chart width — confirmed
            via DOM measurement after the change, not assumed.
-           padding-top/padding-bottom are left untouched (only the two
-           longhand properties below are set, not the shorthand). */
+           Only the two longhand properties below are set here, never the
+           shorthand — padding-top is handled separately (next rule) because
+           it must apply to the MAIN container alone. Setting it on this
+           shared selector would also move stBottomBlockContainer, which is
+           the pinned chat-input strip. */
         max-width: 1000px;
         padding-left: 24px;
         padding-right: 24px;
         margin-left: auto;
         margin-right: auto;
+    }
+    [data-testid="stMainBlockContainer"] {
+        /* Streamlit's default is 96px, which (plus the header block's own
+           32px) pushed the zureli logo 144px down the page and left the
+           conversation starting ~225px in — measured, not estimated. Halved
+           to 48px so the whole interface sits higher and the chat area gets
+           the room back.
+           NOT reduced further: [data-testid="stHeader"] is a 60px-tall
+           absolutely-positioned transparent bar that OVERLAYS this content
+           rather than pushing it, and on Streamlit Cloud it carries the
+           Share / edit / GitHub controls at top-right. 48px here plus the
+           header block's 24px puts our own top row at ~72px, clear of it. */
+        padding-top: 48px;
     }
     /* Chat bubble redesign: an earlier attempt (Task 13 Step 5) tried to
        right-align Streamlit's own st.chat_message() DOM via CSS override and
@@ -120,7 +136,7 @@ st.markdown(
 
 st.markdown(
     f"""
-    <div style="display:flex;align-items:center;padding:32px 0 16px;">
+    <div style="display:flex;align-items:center;padding:24px 0 16px;">
         <span style="font-size:20px;font-weight:700;color:{BRAND};letter-spacing:-0.01em;">zureli.</span>
         <span style="margin-left:auto;font-size:11px;font-weight:600;letter-spacing:0.04em;
                      text-transform:uppercase;color:{MUTED};border:1px solid {BORDER};
@@ -766,8 +782,14 @@ if not st.session_state.messages:
     # Streamlit source, elements/widgets/chat.py) — nested inside
     # st.container(), it renders inline instead, wherever that container
     # sits in the page flow. That's what makes this layout possible at all.
+    #
+    # The top offset was 18vh, which is viewport-RELATIVE and so got worse on
+    # exactly the large screens this is demoed on: measured at 252px on a
+    # 1400px-tall window, dropping the greeting past the halfway mark of an
+    # otherwise empty page. 10vh keeps the offset responsive (so it can't
+    # crowd a short laptop screen) while roughly halving it on a tall one.
     st.markdown(
-        f"<div style='text-align:center;padding:18vh 0 32px;'>"
+        f"<div style='text-align:center;padding:10vh 0 32px;'>"
         f"<p style='font-size:44px;font-weight:700;color:{BRAND};margin:0;"
         f"letter-spacing:-0.01em;'>Ask about your spend</p></div>",
         unsafe_allow_html=True,
