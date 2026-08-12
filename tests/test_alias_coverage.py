@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pytest
 
 from aliases import ALIASES_BY_DIMENSION, supplier_aliases
-from nl_parser import parse_question
+from nl_parser import DEFAULT_TOP_SUPPLIERS_N, parse_question
 from spend_query import known_values, load_data, query_spend
 
 DF = load_data()
@@ -836,3 +836,179 @@ def test_questions_about_a_chart_are_not_requests_to_redraw_one(not_a_redraw):
     previous = parse_question("2024 spend", KV)
     parsed = parse_question(not_a_redraw, KV, previous=previous)
     assert parsed["filters"] == {}, f"{not_a_redraw!r} -> {parsed['filters']}"
+
+
+# ---------------------------------------------------------------------------
+# 12. "top IT suppliers in UK" — the category-in-the-middle gap
+#
+# Found in Jayesh's own live testing (12 Aug 2026). TOP_SUPPLIERS_KEYWORDS
+# only matches the literal phrase "top suppliers" — inserting a category
+# between the two words broke it, and the question fell through to a single
+# flat total instead of the ranked list it asked for. The filter extraction
+# was already correct (l1=IT and telecom, country=United Kingdom); only the
+# INTENT was wrong.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "question, expected_filters",
+    [
+        ("top IT suppliers in UK", {"country": "United Kingdom", "l1": "IT and telecom"}),
+        ("top suppliers in France", {"country": "France"}),
+        ("top logistics suppliers", {"l1": "Logistics"}),
+        ("top vendors for Facilities", {"l1": "Facilities"}),
+        ("top People suppliers in 2024", {"year": 2024, "l1": "People"}),
+    ],
+)
+def test_top_suppliers_with_a_subject_reaches_the_ranking_not_a_total(question, expected_filters):
+    parsed = parse_question(question, KV)
+    assert parsed["intent"] == "chart", f"{question!r} -> {parsed}"
+    assert parsed["chart_kind"] == "top_suppliers", f"{question!r} -> {parsed}"
+    assert parsed["filters"] == expected_filters, f"{question!r} -> {parsed['filters']}"
+    assert parsed["top_n"] == 15, f"{question!r} -> top_n={parsed['top_n']}"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "top spend for supplier 25",
+        "what did supplier 25 spend on top",
+        "supplier 25 top spend 2024",
+    ],
+)
+def test_a_named_supplier_never_gets_promoted_to_a_ranking(question):
+    """A specific supplier's own "top list" is meaningless — these must stay
+    the drill-down view, not be swept into the new subject-aware pattern.
+    """
+    parsed = parse_question(question, KV)
+    assert parsed["intent"] == "supplier_drilldown", f"{question!r} -> {parsed}"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "is our supplier count at the top",
+        "we went to the top of our supplier list",
+        "top of the range suppliers",
+    ],
+)
+def test_top_and_supplier_appearing_without_a_real_subject_does_not_trigger(question):
+    """"top" and "supplier(s)" appearing in the same sentence is not enough by
+    itself — these name no real category/entity/country, so filters stays
+    empty and the new pattern must not fire on proximity alone.
+    """
+    parsed = parse_question(question, KV)
+    assert parsed["chart_kind"] != "top_suppliers", f"{question!r} -> {parsed}"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "top of the range suppliers in UK",
+        "is our supplier count at the top for IT suppliers?",
+        "which countries are at the top for IT suppliers?",
+    ],
+)
+def test_a_connector_word_between_top_and_suppliers_is_not_a_subject(question):
+    """Codex (12 Aug 2026) found the first version of the subject-aware
+    pattern still over-matched: "of the range" and "for" are ordinary
+    connector words, not category names, but the bare (?:\\S+\\s+){0,3} slots
+    accepted them as if they were. Each of these carries a real filter
+    (country=UK or l1=IT) so the AND-gate alone did not stop them — only
+    rejecting a stopword-containing gap does.
+    """
+    parsed = parse_question(question, KV)
+    assert parsed["chart_kind"] != "top_suppliers", f"{question!r} -> {parsed}"
+
+
+def test_a_five_word_category_name_is_a_known_accepted_gap():
+    """Residual limitation, deliberately not fixed: the gap is capped at 3
+    filler words, so a long category description between "top" and
+    "suppliers" still falls to a flat total. Widening the cap to catch this
+    reopens the connector-word leaks the stopword check above closes.
+    """
+    parsed = parse_question("top IT hardware and software services suppliers in UK", KV)
+    assert parsed["chart_kind"] != "top_suppliers", parsed
+
+
+def test_an_unreasonable_top_n_falls_back_to_the_default_rather_than_crashing():
+    """11 digits is one past TOP_N_PATTERN's own \\d{1,10} clamp, so the
+    number is absorbed as an ordinary filler word instead of a requested N.
+    Codex read this as bypassing the numeric guard; checked directly, it
+    falls back to the safe default (15) rather than reaching int() at all —
+    accepted as correct, not fixed.
+    """
+    parsed = parse_question("top 10000000000 IT suppliers in UK", KV)
+    assert parsed["chart_kind"] == "top_suppliers", parsed
+    assert parsed["top_n"] == DEFAULT_TOP_SUPPLIERS_N, parsed
+
+
+def test_a_genuine_category_name_containing_and_is_not_rejected():
+    """Codex round 2 (12 Aug 2026): "and"/"or" were in the first stopword
+    list, and "IT and telecom" is the REAL L1 category name in this dataset —
+    the fix built to recognise it was rejecting it. Checked against the 3
+    original leaks: neither word was load-bearing for blocking any of them,
+    so removing both cost nothing.
+    """
+    parsed = parse_question("top IT and telecom suppliers in UK", KV)
+    assert parsed["chart_kind"] == "top_suppliers", parsed
+    assert parsed["filters"] == {"l1": "IT and telecom", "country": "United Kingdom"}, parsed
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "is spend at the top among IT suppliers in UK?",
+        "is our spend top versus IT suppliers in UK?",
+    ],
+)
+def test_comparison_connectors_are_not_a_subject_either(question):
+    """Codex round 2's replacement findings once "and"/"or" were removed —
+    the same connector-word class, different words.
+    """
+    parsed = parse_question(question, KV)
+    assert parsed["chart_kind"] != "top_suppliers", f"{question!r} -> {parsed}"
+
+
+@pytest.mark.parametrize("category", ["Facilities", "Logistics", "Marketing", "Office",
+                                       "People", "Professional services", "Utilities"])
+def test_every_real_l1_category_name_reaches_the_ranking(category):
+    """Sanity sweep: every genuine category in this dataset, not just the one
+    Codex happened to name, must clear the stopword denylist.
+    """
+    parsed = parse_question(f"top {category} suppliers", KV)
+    assert parsed["chart_kind"] == "top_suppliers", f"{category!r} -> {parsed}"
+    assert parsed["filters"] == {"l1": category}, parsed
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "is spend at the top by IT suppliers in UK?",
+        "is spend at the top across IT suppliers in UK?",
+    ],
+)
+def test_round_3_connector_words_are_also_not_a_subject(question):
+    """Codex round 3 (12 Aug 2026): "by" and "across" were still missing from
+    the round-2 reactive list. Fixed by replacing the reactive list with
+    English's actual closed word class (see the comment on
+    _TOP_SUPPLIERS_GAP_STOPWORDS) rather than adding two more words.
+    """
+    parsed = parse_question(question, KV)
+    assert parsed["chart_kind"] != "top_suppliers", f"{question!r} -> {parsed}"
+
+
+def test_every_real_value_in_the_dataset_clears_the_stopword_denylist():
+    """The comprehensive-stopword-list decision is only sound if it is true
+    against the actual data, not just the cases Codex happened to try. Sweeps
+    every l1/l2/entity/country/cluster/supplier value in the dataset.
+    """
+    from nl_parser import _TOP_SUPPLIERS_GAP_STOPWORDS
+
+    collisions = []
+    for dimension in ("l1", "l2", "entity", "country", "cluster", "supplier"):
+        for value in KV[dimension]:
+            words = {w.lower().rstrip(".,") for w in value.replace("Demo ", "").split()}
+            if words & _TOP_SUPPLIERS_GAP_STOPWORDS:
+                collisions.append((dimension, value, words & _TOP_SUPPLIERS_GAP_STOPWORDS))
+    assert collisions == [], collisions

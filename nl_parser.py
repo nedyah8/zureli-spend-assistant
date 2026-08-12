@@ -148,6 +148,98 @@ MIN_TOP_SUPPLIERS_N = 3
 MAX_TOP_SUPPLIERS_N = 56
 DEFAULT_TOP_SUPPLIERS_N = 15
 
+# "top IT suppliers", "top suppliers in Germany" name a category/entity/
+# country right next to "suppliers", but TOP_SUPPLIERS_KEYWORDS only matches
+# the exact phrase "top suppliers" — a subject inserted between the two words
+# breaks it, and the question fell through to a single flat total instead of
+# the ranked list it asked for. Found in Jayesh's own live testing (12 Aug
+# 2026): "top IT suppliers in UK" correctly filtered to IT/UK but answered
+# with one number (€737,392.25) instead of a ranking.
+#
+# Bounded to a short gap, not "top" and "supplier(s)" appearing anywhere in
+# the sentence — that risks the same over-matching class Codex found in the
+# chart follow-up fix two days earlier. Applied only alongside filters
+# already being non-empty (see is_top_suppliers below), so a bare proximity
+# match is never enough by itself.
+#
+# The gap is captured, not just matched, so _top_suppliers_gap_is_real_subject
+# below can reject it. Codex (12 Aug 2026) found the bare version still
+# over-matched: "top of the range suppliers in UK" (filters={country: UK})
+# and "is our supplier count at the top for IT suppliers?" (filters={l1: IT})
+# both wrongly became a supplier ranking, because "of the range" and "for"
+# are ordinary connector words the (?:\S+\s+){0,3} slots accepted as if they
+# were a category name.
+TOP_SUPPLIERS_WITH_SUBJECT_PATTERN = re.compile(
+    r"\btop\s+(?:\d{1,10}\s+)?(?P<gap>(?:\S+\s+){0,3})suppliers?\b"
+)
+# A real category/entity/country name never IS one of these — they are the
+# connective tissue of a sentence, not a subject. Every filler word captured
+# must clear this bar, or the match is treated as coincidental proximity
+# rather than a genuine "top <subject> suppliers" request.
+#
+# Round 1 shipped a small, reactively-built list and Codex's round-2 and
+# round-3 reviews (12 Aug 2026) each found a new preposition it missed
+# ("among"/"versus", then "by"/"across") — the exact whack-a-mole failure
+# mode this project has hit before (the chart follow-up fix two days
+# earlier). The fix there was requiring the WHOLE question match a bounded
+# pattern; the equivalent fix here is using English's actual CLOSED word
+# class — prepositions, conjunctions, articles, copulas — which is
+# genuinely finite and documented, not an open-ended list built one Codex
+# finding at a time.
+#
+# "and"/"or"/"it" are DELIBERATELY excluded from an otherwise-standard list.
+# "and": "IT and telecom" (an L1 category) plus five L2 sub-categories —
+# "Advertising and media", "Cleaning and security", "Electricity and gas",
+# "Freight and courier", "Legal and audit" — all contain it, so it cannot be
+# a stopword here. "it": q is already lowercased before this runs, so "top
+# IT suppliers" arrives as "top it suppliers" — denylisting "it" would
+# reject the exact case this fix exists for.
+#
+# "us" is ALSO deliberately excluded, and this one is not about this
+# dataset's own data — it's about the next one. Codex's round-4 review (12
+# Aug 2026) caught it as a self-inflicted risk: it was in the list as the
+# pronoun ("with us"), but "US" (United States) is an entirely ordinary real
+# country name/abbreviation, and this dataset simply doesn't happen to have
+# one to collide with. Checked and confirmed not load-bearing for any of the
+# seven leaks fixed across rounds 1-3 — every one is already blocked by a
+# genuine closed-class word alongside it, so removing "us" costs nothing.
+#
+# "range"/"count"/"position"/"list" (round 1's original, reactively-added
+# entries) are ALSO removed for the same reason Codex flagged — none of them
+# are actual closed-class words, each is a plausible real category/product
+# name in different data, and checking again: none of them were load-bearing
+# for any confirmed leak either. They were never doing real work.
+#
+# Verified against every real value in this dataset (98 across
+# entity/country/cluster/l1/l2/supplier): zero collisions with this list. A
+# residual, accepted limit: checked against THIS dataset, not proven for all
+# possible future data — a category or entity name containing one of these
+# genuinely closed-class words in different real data would still be
+# rejected. Not fixable without matching the gap against known aliases
+# directly rather than classifying words in isolation, which is a larger
+# change than this bug warranted.
+_TOP_SUPPLIERS_GAP_STOPWORDS = frozenset({
+    "the", "a", "an", "of", "at", "on", "in", "to", "for", "with", "by",
+    "off", "outside", "toward", "towards",
+    "from", "into", "onto", "upon", "over", "under", "above", "below",
+    "across", "through", "throughout", "between", "among", "amongst",
+    "versus", "vs", "against", "than", "near", "beyond", "without",
+    "within", "during", "before", "after", "since", "until", "per", "via",
+    "about", "around", "along",
+    "but", "nor", "so", "yet", "as", "because", "although", "though",
+    "while", "if",
+    "is", "are", "was", "were", "be", "been", "being", "am",
+    "our", "we", "you", "your",
+})
+
+
+def _top_suppliers_gap_is_real_subject(q: str) -> bool:
+    match = TOP_SUPPLIERS_WITH_SUBJECT_PATTERN.search(q)
+    if not match:
+        return False
+    words = match.group("gap").split()
+    return all(w not in _TOP_SUPPLIERS_GAP_STOPWORDS for w in words)
+
 FRAGMENTATION_KEYWORDS = (
     "fragmentation", "fragmented", "supplier concentration", "how spread out",
     "how many suppliers per category", "tail spend",
@@ -533,8 +625,17 @@ def parse_question(question: str, known: dict[str, list],
         return {"intent": "overview", "chart_kind": None, "breakdown": None, "category_level": None, **base}
 
     top_n_match = TOP_N_PATTERN.search(q)
-    is_top_suppliers = any(kw in q for kw in TOP_SUPPLIERS_KEYWORDS) or (
-        top_n_match is not None and "supplier" in q
+    is_top_suppliers = (
+        any(kw in q for kw in TOP_SUPPLIERS_KEYWORDS)
+        or (top_n_match is not None and "supplier" in q)
+        # "supplier" already in filters means a SPECIFIC supplier was named
+        # ("top spend for supplier 25") — that question is a drill-down, not
+        # a ranking, and its own top-list would be meaningless.
+        or (
+            _top_suppliers_gap_is_real_subject(q)
+            and bool(filters)
+            and "supplier" not in filters
+        )
     )
     if is_top_suppliers:
         if top_n_match:

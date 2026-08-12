@@ -1153,3 +1153,65 @@ larger, separately-scoped change than the one asked for — Hayden's call.
 Related known inconsistency, same reason: "for 2024?" (2 words) inherits the
 previous subject, but "show 2025 in a bar chart" (6 words) does not, because
 only short fragments count as elliptical. Both name only a year.
+
+---
+
+## Round 5 — "top IT suppliers in UK" (12 Aug 2026)
+
+Found while investigating Jayesh's client email. His screenshot showed "top IT
+suppliers in UK" answering with the whole-UK total (€4,073,188.81) instead of
+a ranked supplier list — but re-running that exact question live, twice,
+correctly gave €737,392.25 (IT-filtered). His browser tab almost certainly
+mixed an older answer into a persistent chat history; the bug itself, checked
+directly, was real but different: the FILTERS were always correct, the
+INTENT was not. `TOP_SUPPLIERS_KEYWORDS` only matches the literal phrase "top
+suppliers" — inserting a category between the two words ("top IT suppliers")
+broke it, and the question fell through to a plain total instead of the
+ranking it asked for.
+
+### What shipped
+`TOP_SUPPLIERS_WITH_SUBJECT_PATTERN` captures the gap between "top" and
+"supplier(s)" (max 3 filler words); `_top_suppliers_gap_is_real_subject`
+rejects the match if any filler word is a stopword. Fires only alongside
+`filters` already being non-empty and no specific supplier named (that's a
+drill-down, not a ranking).
+
+### Four Codex rounds — the mechanism changed twice, not just the word list
+- **Round 1** (3 findings, all real): a reactively-built ~15-word stopword
+  list still let "of the range", "for" slip through as if they were category
+  names. Fixed.
+- **Round 2** (1 false-negative + 2 false-positives): "and"/"or" in that list
+  wrongly rejected the REAL L1 category "IT and telecom" — checked and
+  confirmed neither word was ever load-bearing for round 1's fixes, so both
+  were removed. New leaks: "among", "versus".
+- **Round 3** (2 more leaks): "by", "across" — the same reactive-list failure
+  mode the chart follow-up fix hit two days earlier. Rather than add two more
+  words, replaced the whole list with English's actual closed word class
+  (prepositions/conjunctions/articles/copulas, ~55 words) — genuinely finite
+  and documented, not built one Codex finding at a time.
+- **Round 4** (self-inflicted risk, not a new leak): "us" was in the list as
+  the pronoun ("with us"), but "US" is an ordinary real country
+  name/abbreviation — this dataset simply has no US entry to expose it.
+  Removed, along with "range"/"count"/"position"/"list" (round 1's own
+  reactive additions, not genuine closed-class words) — checked and none of
+  the five were load-bearing for any of the 7 confirmed leaks across all
+  three rounds.
+
+Every real value in the dataset (98 across entity/country/cluster/l1/l2/
+supplier) checked against the final list: zero collisions, including all 8
+L1 categories and all 6 L2 sub-categories containing "and".
+
+### RESIDUAL LIMIT — flagged, not fixed
+1. The gap is capped at 3 filler words, so a 5-word category description
+   ("top IT hardware and software services suppliers in UK") still falls to
+   a flat total. Widening the cap reopens the connector-word leaks above.
+2. The stopword list is checked against THIS dataset, not proven for all
+   future data — a category or entity name containing a genuine preposition
+   in different real client data would still be rejected. Not fixable
+   without matching the gap against known aliases directly, which is a
+   larger change than this bug warranted.
+
+### Tests 965 → 994 (29 new)
+Checked with `git show HEAD:nl_parser.py` swapped in over the fix: 13 of the
+29 fail against pre-fix code. The other 16 are guard tests that must pass
+both before and after.
