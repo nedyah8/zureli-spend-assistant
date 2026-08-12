@@ -1318,5 +1318,74 @@ oversight.
 Highlight-a-message-to-reply (see above) — scoped as a follow-up once this
 redesign is live, at Hayden's explicit decision.
 
-Not yet committed or pushed — this repo auto-deploys on any push touching
-`app.py`, so pushing needs Hayden's go-ahead, not just a green test suite.
+---
+
+## Round 6 fix round 1 — two rendering bugs found live (12 Aug 2026)
+
+Both found by Hayden on the deployed site AFTER the redesign had passed
+994 tests, a real-browser check, and a Codex review. Neither was caught by
+any of the three, for the same underlying reason: **no test or check had
+ever asserted on the HTML the bubble actually produces.** The browser pass
+looked at two answer shapes and confirmed they rendered; it did not compare
+the rendered text against what the old path produced, and the short strings
+it happened to test were wide enough not to expose the width bug.
+
+### Bug 1 — bubbles far too narrow, breaking words in half
+"IT Spend" rendered as "IT / Spen / d" across three lines. Measured live
+before touching anything: the message row was 952px, but the bubble computed
+to **65px**.
+
+Cause: `max-width: 75%` sat on the bubble, whose parent is a shrink-to-fit
+flex item. That is circular — the wrapper sizes itself to its content, then
+the bubble asks for 75% of that already-shrunken width, so it can never fit
+its own text; `overflow-wrap: break-word` then broke the word rather than
+overflow.
+
+Fix: the cap moved to the flex item (`.msg-row > div { max-width: 75%; }`,
+i.e. 75% of the full row) and the bubble fills it (`max-width: 100%`).
+Verified live after the fix by measurement, not by eye: short messages size
+to content (9.2% / 49.2% / 54.9% of the row on three real messages), and a
+135-character question caps at exactly 75.0% and wraps at word boundaries.
+
+### Bug 2 — markdown bold showing as literal asterisks
+The plain-number answer — the app's single most common reply — is built as
+`f"Matched on {...} — **{total}** across ..."`. The old `st.chat_message`
+path passed that through `st.markdown`, which rendered the figure bold. The
+raw-HTML bubble does not, so the live site displayed
+`— **€2,630,963.38** across 173 spend rows` with the asterisks visible.
+
+**This was made worse by a false claim in my own code comment.** The
+original `render_message_bubble` comment asserted "No current generated
+answer text uses markdown formatting (checked: none of
+spend_query.py/chart_query.py/overview_query.py's templates contain markdown
+syntax)". That check was never actually run — the greps performed at the
+time were for HTML-sensitive characters and for newlines, not for markdown.
+The claim was wrong on the most-used answer path in the app, and the comment
+made it look verified. The comment has been replaced with what is actually
+true, and the check has now genuinely been run (a script scanning every
+f-string that becomes `payload["text"]`: exactly two bold markers exist in
+the file, one of which — `render_callouts`' `box.markdown` — never passes
+through the bubble and was never affected).
+
+Fix: `_bubble_body()` escapes first, THEN converts `**...**` to `<strong>`.
+Order is load-bearing and stated in the code: escaping after substitution
+would neuter the tags; substituting before escaping would let dataset values
+inject markup. Checked the dataset directly — no category/entity/country/
+supplier value contains `*`, `<` or `>` — so the conversion cannot mangle a
+real name today.
+
+### Tests 994 → 997 (3 new, all load-bearing)
+Proved by swapping `git show HEAD:app.py` over the fix: all three fail
+against the pre-fix code (bold-renders, escape-ordering, width-cap-location).
+The width test asserts on the CSS rule's location rather than a rendered
+pixel width, since pytest has no browser — the pixel proof is the live
+measurement above, recorded here because the test cannot capture it.
+
+### Lesson for the next UI change in this project
+A rendering change needs a rendering assertion. "Tests pass + it looked right
+in a screenshot" missed both of these; the screenshots taken during Round 6
+genuinely showed the bug (the "Top 15 suppliers" bubble was already wrapping
+onto two lines in them) and it was not noticed, because nothing in the check
+compared new output against old output. When replacing a render path, diff
+the produced text/markup against what the old path produced, for at least
+one message of each payload kind.

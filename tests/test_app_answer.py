@@ -544,3 +544,47 @@ def test_top_suppliers_caption_discloses_ranking_year():
     assert payload["kind"] == "chart"
     assert "by 2025 net spend" in payload["caption"]
     assert "2024 vs 2025" in payload["caption"]
+
+
+# --- Round 6 fix round 1: bubble rendering regressions found on the LIVE site
+# by Hayden, after the redesign had already passed tests + a Codex review.
+# Both are rendering-layer bugs the 994-test suite could not see, because no
+# test had ever asserted on the bubble's produced HTML. These pin the produced
+# markup itself so neither can silently return.
+
+
+def test_bubble_renders_markdown_bold_rather_than_literal_asterisks():
+    # The plain-number answer — the app's most common reply — emphasises its
+    # figure with **bold**. st.chat_message used to pass that through
+    # st.markdown; the raw-HTML bubble did not, so the live site displayed
+    # "— **€2,630,963.38** across 173 spend rows" with visible asterisks.
+    app = _reload_app()
+    body = app._bubble_body("Matched on category = IT and telecom — **€2,630,963.38** across 173 rows.")
+    assert "<strong>€2,630,963.38</strong>" in body
+    assert "**" not in body
+
+
+def test_bubble_escapes_html_before_inserting_bold_tags():
+    # The bold substitution must never become an injection route: escaping
+    # runs first, so any markup in the content is inert by the time <strong>
+    # is inserted. Guards the ordering inside _bubble_body, which is the
+    # whole reason that function exists as a separate step.
+    app = _reload_app()
+    body = app._bubble_body("<script>alert(1)</script> and **bold**")
+    assert "<script>" not in body
+    assert "&lt;script&gt;" in body
+    assert "<strong>bold</strong>" in body
+
+
+def test_bubble_width_cap_is_on_the_wrapper_not_the_bubble():
+    # The 75% cap on the bubble itself was circular — a shrink-to-fit flex
+    # item sized to its content, then the bubble took 75% of that — which
+    # measured 65px live for the message "IT Spend" in a 952px row and broke
+    # the word in half ("Spen"/"d"). The cap must sit on the flex item
+    # (.msg-row > div); the bubble fills it (100%).
+    source = Path(APP_PATH).read_text()
+    css = source.split("<style>")[1].split("</style>")[0]
+    assert ".msg-row > div { max-width: 75%; }" in css
+    bubble_block = css.split(".msg-row .bubble {")[1].split("}")[0]
+    assert "max-width: 100%;" in bubble_block
+    assert "max-width: 75%;" not in bubble_block

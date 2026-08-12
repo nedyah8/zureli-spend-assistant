@@ -1,3 +1,4 @@
+import re
 import time
 from html import escape
 
@@ -67,12 +68,21 @@ st.markdown(
        of relying on st.chat_message()'s fixed DOM) avoids that entirely:
        these classes are applied to markup this app controls directly. */
     .msg-row { margin-bottom: 4px; }
+    /* The 75% cap belongs on the flex ITEM (this wrapper), not on the bubble
+       inside it. Putting it on the bubble created a circular sizing rule: a
+       flex item shrinks to fit its content, so the bubble asked for 75% of a
+       width that was itself derived from the bubble — measured live at 65px
+       for the message "IT Spend" inside a 952px row, which forced a wrap
+       mid-word ("Spen"/"d"). Capping the wrapper against the full row width
+       lets short messages size naturally to one line and long ones wrap at
+       75% of the row, which is what the design called for. */
+    .msg-row > div { max-width: 75%; }
     .msg-row .bubble {
         display: inline-block;
         padding: 10px 16px;
         font-size: 15px;
         line-height: 1.5;
-        max-width: 75%;
+        max-width: 100%;
         overflow-wrap: break-word;
         /* Codex review finding: plain st.markdown() used to respect a
            blank line in payload["text"] as a real paragraph break; a raw
@@ -659,18 +669,33 @@ def _relative_time(sent_at: float) -> str:
     return f"{days} day{'s' if days != 1 else ''} ago"
 
 
+# The plain-number answer (the app's most common reply) emphasises its figure
+# with markdown bold: `f"Matched on {...} — **{total}** across ..."`. The old
+# st.chat_message path passed that through st.markdown, which rendered it
+# bold; a raw HTML bubble does not, so the asterisks displayed literally on
+# the live site until this was added. Only **bold** is converted — it is the
+# only markdown any answer template actually produces (verified by scanning
+# every f-string that becomes payload["text"]; the one other bold in the file,
+# render_callouts' box.markdown, is unaffected because it still goes through
+# st.markdown directly, not through this bubble).
+_BOLD_MARKDOWN = re.compile(r"\*\*(.+?)\*\*", re.DOTALL)
+
+
+def _bubble_body(content: str) -> str:
+    # ORDER IS LOAD-BEARING: escape() first, THEN insert <strong>. Escaping
+    # after substitution would neuter the very tags this adds; substituting
+    # into unescaped text would let dataset values inject markup. Checked the
+    # current dataset directly — no category/entity/supplier value contains
+    # "*", "<" or ">" — so this cannot mangle a real name today.
+    return _BOLD_MARKDOWN.sub(r"<strong>\1</strong>", escape(content))
+
+
 def render_message_bubble(container, role: str, content: str, sent_at: float) -> None:
     # Only the text goes in the bubble — charts/tables render separately via
     # render_payload_extras() so they always get full width (see the CSS
     # comment above for why). unsafe_allow_html is required for the bubble
-    # div/timestamp markup; `content` is HTML-escaped first since it can
-    # contain data-driven values (supplier/category names from the dataset,
-    # e.g. "Smith & Sons") that must not be interpreted as markup. No current
-    # generated answer text uses markdown formatting (checked: none of
-    # spend_query.py/chart_query.py/overview_query.py's templates contain
-    # markdown syntax) — if that changes later, verify it still renders
-    # correctly once nested inside this raw HTML block; that interaction
-    # hasn't been tested.
+    # div/timestamp markup; content is escaped and narrowly un-escaped for
+    # bold by _bubble_body above.
     # Codex review finding: st.chat_message() gave each message a role-labelled
     # container for assistive tech; a plain div doesn't. Restoring that via
     # role="article" + an aria-label, matching the exact wording Streamlit's
@@ -680,7 +705,7 @@ def render_message_bubble(container, role: str, content: str, sent_at: float) ->
         f"""
         <div class="msg-row {role}" role="article" aria-label="Chat message from {role}">
             <div>
-                <div class="bubble">{escape(content)}</div>
+                <div class="bubble">{_bubble_body(content)}</div>
                 <div class="msg-timestamp">{_relative_time(sent_at)}</div>
             </div>
         </div>
