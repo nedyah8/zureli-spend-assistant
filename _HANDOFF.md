@@ -1215,3 +1215,108 @@ L1 categories and all 6 L2 sub-categories containing "and".
 Checked with `git show HEAD:nl_parser.py` swapped in over the fix: 13 of the
 29 fail against pre-fix code. The other 16 are guard tests that must pass
 both before and after.
+
+---
+
+## Round 6 — chat bubble redesign (12 Aug 2026)
+
+Requested after Jayesh's "it's fast, doesn't like spelling errors" feedback
+and the plan to demo an AI-connected version soon: replace the default
+Streamlit chat layout (`st.chat_message`, left-aligned both sides, avatar
+icons) with iMessage-style bubbles — right-aligned Zureli teal (`#17343C`,
+the same value already used as `BRAND` and the config.toml `primaryColor`,
+not a separately invented blue) for the user, left-aligned grey
+(`BUBBLE_GREY = "#F5F5F6"`, reused from config.toml's
+`secondaryBackgroundColor`) for the assistant. Designed with Hayden via the
+`superpowers:brainstorming` visual-companion browser tool before any code
+was touched — three mockup rounds (bubble style A/B/C, chart-in-bubble
+trade-off, working hover/select prototype) settled the design before
+implementation started.
+
+### Design decision: text always in the bubble, charts/tables always break out
+Chosen over "everything in the bubble" (Option C's literal form) after
+mocking up a 12-month two-supplier line chart inside a bubble: a chart with
+a legend and month labels either forces the bubble edge-to-edge (stops
+reading as a message) or the labels overlap. Charts/tables/KPI rows now
+always render full-width via a separate call below the bubble, never nested
+inside it.
+
+### What shipped
+- `render_payload` split into `render_message_bubble` (text + hover
+  timestamp, HTML-escaped) and `render_payload_extras` (everything else,
+  unchanged logic, just no longer starts with the text line).
+- `AVATARS` and every `st.chat_message()` call removed — replaced with a
+  plain `<div>` per message, styled via one global CSS block (extending the
+  page's existing single `st.markdown(<style>)` injection rather than adding
+  a second one).
+- Per-message relative timestamp (`_relative_time`), stored at append time
+  (`time.time()`), revealed on hover via CSS opacity transition — visible
+  proof only on the live message; a `.get("timestamp", time.time())` guard
+  covers any in-flight session predating this field.
+- Scoped out, per Hayden's decision after seeing the working mockup:
+  highlight-a-message-and-reply. Streamlit has no built-in text-selection
+  event; the mockup faked it with page-local JavaScript, which doesn't carry
+  over to a real Streamlit component. Would need a custom interactive
+  component built from scratch — a separate, later-scoped piece of work, not
+  bundled into this pass.
+
+### Real bug found and fixed during build (not just during review)
+The bubble CSS was interpolated with Python's `%` string formatting; the CSS
+itself contains a literal `max-width: 75%;`, which Python read as a broken
+format specifier (`%;`) and crashed every test that renders a message —
+70 failures on the first full test run. Fixed by switching to plain
+`str.replace()` token substitution (`__BRAND__` etc.), which doesn't care
+about `%` or the CSS block's own `{ }` braces (which would have broken an
+f-string/`.format()` approach the same way). Re-ran the full suite after the
+fix: 994/994 pass.
+
+Separately, the mockup's own chart-tooltip demo (in the visual-companion
+browser tool, not app.py) had a real positioning bug caught during design
+review, before any app code was touched: the tooltip's offset was measured
+against the wrong parent element, placing it off-screen below the fold.
+Fixed by referencing the chart's own container instead of the outer mockup
+wrapper, then re-verified live in the browser (not just re-read) that the
+tooltip appeared in the right place with the right number.
+
+### Codex review — 3 findings, 2 fixed, 1 rejected with reasoning
+- **Fixed**: `escape()` on the bubble text doesn't stop a browser from
+  collapsing a literal newline the way `st.markdown()`'s real markdown
+  parser used to (a blank line was a paragraph break; in a raw HTML div it's
+  just whitespace). No current answer template contains a newline — checked
+  directly — but added `white-space: pre-wrap` to the bubble CSS since the
+  fix is free and closes a real, if currently dormant, gap.
+- **Fixed**: removing `st.chat_message()` also removed its accessibility
+  semantics. Restored via `role="article" aria-label="Chat message from
+  {role}"` on each message row, matching the exact `aria-label` wording
+  Streamlit's own component used (confirmed against this file's own Task 13
+  Step 5 comment, which had already documented that selector from live DOM
+  inspection).
+- **Rejected**: `role` is interpolated directly into the HTML attribute:
+  Codex flagged this as a theoretical injection risk if role were ever
+  externally supplied. It never is — `role` is always the literal string
+  `"user"` or `"assistant"`, hardcoded at the two `messages.append()` call
+  sites in this same file, not read from any user input or external source.
+  Adding validation here would be guarding against a scenario that cannot
+  happen, which this project's own conventions (Hayden's global rules,
+  Section A) explicitly avoid.
+
+### Verification
+Three layers: 994/994 automated tests pass (confirms no regression to
+existing behaviour); a real local run in an actual browser covering both
+structurally distinct payload shapes (chart+caption, and KPI-row+callout
+cards), the empty state, and the hover-timestamp interaction, with the
+`role`/`aria-label`/`white-space` fixes confirmed present in the live DOM via
+direct inspection, not just in source; a cross-family Codex review of the
+actual diff, triaged as above. Not done this round: new pinned automated
+tests for `_relative_time` or the escaping behaviour specifically — the
+existing 994-test suite plus this round's real-browser and Codex passes were
+judged sufficient for a visual/rendering change with no logic-path changes
+elsewhere; flagging this as a deliberate scope choice rather than an
+oversight.
+
+### RESIDUAL — flagged, not built this round
+Highlight-a-message-to-reply (see above) — scoped as a follow-up once this
+redesign is live, at Hayden's explicit decision.
+
+Not yet committed or pushed — this repo auto-deploys on any push touching
+`app.py`, so pushing needs Hayden's go-ahead, not just a green test suite.

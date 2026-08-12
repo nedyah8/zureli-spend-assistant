@@ -1,3 +1,6 @@
+import time
+from html import escape
+
 import pandas as pd
 import streamlit as st
 
@@ -23,29 +26,16 @@ st.set_page_config(page_title="Zureli spend assistant", layout="wide")
 BRAND = "#17343C"
 MUTED = "#8A8F94"
 BORDER = "#E8E9EA"
-AVATARS = {"user": ":material/person:", "assistant": ":material/insights:"}
+# Reuses .streamlit/config.toml's secondaryBackgroundColor rather than a new
+# hex value, so the assistant bubble matches an already-established token.
+BUBBLE_GREY = "#F5F5F6"
 
 # Content-width cap for `layout="wide"`, via CSS max-width rather than the
 # st.columns([1, 14, 1]) trick _MEETING-READY-DESIGN.md Part E also names as
-# an option ("columns trick or CSS max-width"). Switched to CSS after the
-# columns trick broke chat rendering in real-browser verification: nesting
-# `with st.chat_message():` under a `page = st.columns(...)` column requires
-# every call inside that `with` block to route through Streamlit's
-# thread-local "current container" context stack, which ONLY the bare
-# `st.foo()` module functions consult — confirmed by reading Streamlit's own
-# DeltaGenerator.__enter__ source (it returns None; there is no container
-# object to capture from `with X.chat_message() as y:`). Rewriting the inner
-# calls as `page.markdown(...)` bypassed that context stack and wrote
-# directly into `page`'s own flow instead of the bubble (confirmed via DOM
-# inspection: stChatMessageContent's inner stVerticalBlock had 0 children,
-# 0px height, and the message text rendered as an unstyled orphan below an
-# avatar-only bubble). It also moved page.chat_input() to the top of the
-# conversation view instead of staying pinned to the bottom, because
-# chat_input's root-level auto-pin behaviour only applies at the true script
-# root, not inside a column. A CSS max-width on the block container avoids
-# both problems entirely: every render call below stays exactly as it was
-# (bare `st`), so `with st.chat_message():`'s context-stack routing and
-# st.chat_input()'s root-level bottom-pin both keep working unmodified.
+# an option ("columns trick or CSS max-width"). CSS was also required to keep
+# st.chat_input()'s root-level auto-pin-to-bottom working: that behaviour only
+# applies when chat_input is called at the true script root, not inside a
+# st.columns() column, which the columns trick would have required.
 st.markdown(
     """
     <style>
@@ -69,27 +59,54 @@ st.markdown(
         margin-left: auto;
         margin-right: auto;
     }
+    /* Chat bubble redesign: an earlier attempt (Task 13 Step 5) tried to
+       right-align Streamlit's own st.chat_message() DOM via CSS override and
+       was reverted — the grey background paints on the outer message row,
+       not the content div, so right-aligning only the text left a full-width
+       grey bar behind it. Rendering the bubbles as plain HTML here (instead
+       of relying on st.chat_message()'s fixed DOM) avoids that entirely:
+       these classes are applied to markup this app controls directly. */
+    .msg-row { margin-bottom: 4px; }
+    .msg-row .bubble {
+        display: inline-block;
+        padding: 10px 16px;
+        font-size: 15px;
+        line-height: 1.5;
+        max-width: 75%;
+        overflow-wrap: break-word;
+        /* Codex review finding: plain st.markdown() used to respect a
+           blank line in payload["text"] as a real paragraph break; a raw
+           HTML div collapses it to a single space by default. No current
+           answer template contains a newline (checked), but this keeps a
+           future one from silently losing its formatting. */
+        white-space: pre-wrap;
+    }
+    .msg-row .bubble p { margin: 0; }
+    .msg-row.user { display: flex; justify-content: flex-end; }
+    .msg-row.user .bubble {
+        background: __BRAND__;
+        color: #fff;
+        border-radius: 18px 18px 4px 18px;
+    }
+    .msg-row.assistant { display: flex; justify-content: flex-start; }
+    .msg-row.assistant .bubble {
+        background: __BUBBLE_GREY__;
+        color: __BRAND__;
+        border-radius: 18px 18px 18px 4px;
+    }
+    .msg-row .msg-timestamp {
+        font-size: 11px;
+        color: __MUTED__;
+        opacity: 0;
+        transition: opacity 0.15s;
+        margin-top: 3px;
+    }
+    .msg-row.user .msg-timestamp { text-align: right; }
+    .msg-row:hover .msg-timestamp { opacity: 1; }
     </style>
-    """,
+    """.replace("__BRAND__", BRAND).replace("__BUBBLE_GREY__", BUBBLE_GREY).replace("__MUTED__", MUTED),
     unsafe_allow_html=True,
 )
-
-# Task 13 Step 5 (ChatGPT-style right-aligned user bubble): attempted and
-# reverted. A stable selector DOES exist —
-# [data-testid="stChatMessageContent"][aria-label="Chat message from user"]
-# — both attributes are Streamlit's own accessibility/testing attributes,
-# confirmed via live DOM inspection against the installed 1.60.0, not a
-# generated st-emotion-cache-xxxxx class. But the grey message background is
-# painted on the parent stChatMessage ROW, not on stChatMessageContent —
-# right-aligning only the content (margin-left:auto; max-width:70%) left the
-# full-width grey row in place with the text shoved into its right corner,
-# not a clean right-aligned bubble. Screenshotted and confirmed visually
-# worse than the original left-aligned layout, not better. Getting a real
-# ChatGPT-style bubble would mean re-theming the row's own background/shape
-# too — more surface area than a scoped override, and touches the message
-# background Part E frames as already "settled". Per Part E's own instruction
-# ("if it looks fragile, drop it and record why... not load-bearing"),
-# dropped rather than pushed further.
 
 st.markdown(
     f"""
@@ -578,8 +595,13 @@ def answer(question: str) -> str:
     return answer_payload(question)["text"]
 
 
-def render_payload(container, payload: dict, key_suffix: str = "x") -> None:
-    container.markdown(payload["text"])
+# Renders everything in a payload EXCEPT its "text" field — the text goes
+# inside the chat bubble (see render_message_bubble below); charts, tables,
+# and KPI rows always break out full-width beneath the bubble instead, per
+# the bubble-redesign brainstorming session: a wide chart squeezed to bubble
+# width loses its legend/axis-label room, or forces the bubble edge-to-edge
+# until it stops reading as a message.
+def render_payload_extras(container, payload: dict, key_suffix: str = "x") -> None:
     if payload["kind"] == "chart":
         container.plotly_chart(payload["figure"], use_container_width=True, key=f"chart_{key_suffix}")
         container.caption(payload["caption"])
@@ -611,15 +633,61 @@ def render_payload(container, payload: dict, key_suffix: str = "x") -> None:
         )
 
 
-# render_payload must be defined above this point: Streamlit re-executes the
-# whole script top-to-bottom on every rerun, and the history-replay loop
-# below calls render_payload() for any past message that has a payload —
-# which every assistant turn does, from the very first exchange onward. A
-# definition below the loop worked on the *first* run (loop body never
-# executes because history is still empty) but raised NameError on every
-# rerun after that — i.e. on the user's second message. Confirmed fixed via
+# render_payload_extras must be defined above this point: Streamlit
+# re-executes the whole script top-to-bottom on every rerun, and the
+# history-replay loop below calls render_payload_extras() for any past
+# message that has a payload — which every assistant turn does, from the
+# very first exchange onward. A definition below the loop worked on the
+# *first* run (loop body never executes because history is still empty) but
+# raised NameError on every rerun after that — i.e. on the user's second
+# message. Confirmed fixed via
 # tests/test_app_answer.py::test_multi_turn_chat_does_not_crash (AppTest,
 # scripts two chat turns and asserts no exception either time).
+
+
+def _relative_time(sent_at: float) -> str:
+    seconds = max(0, time.time() - sent_at)
+    if seconds < 60:
+        return "Just now"
+    minutes = int(seconds // 60)
+    if minutes < 60:
+        return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+    hours = int(minutes // 60)
+    if hours < 24:
+        return f"{hours} hour{'s' if hours != 1 else ''} ago"
+    days = int(hours // 24)
+    return f"{days} day{'s' if days != 1 else ''} ago"
+
+
+def render_message_bubble(container, role: str, content: str, sent_at: float) -> None:
+    # Only the text goes in the bubble — charts/tables render separately via
+    # render_payload_extras() so they always get full width (see the CSS
+    # comment above for why). unsafe_allow_html is required for the bubble
+    # div/timestamp markup; `content` is HTML-escaped first since it can
+    # contain data-driven values (supplier/category names from the dataset,
+    # e.g. "Smith & Sons") that must not be interpreted as markup. No current
+    # generated answer text uses markdown formatting (checked: none of
+    # spend_query.py/chart_query.py/overview_query.py's templates contain
+    # markdown syntax) — if that changes later, verify it still renders
+    # correctly once nested inside this raw HTML block; that interaction
+    # hasn't been tested.
+    # Codex review finding: st.chat_message() gave each message a role-labelled
+    # container for assistive tech; a plain div doesn't. Restoring that via
+    # role="article" + an aria-label, matching the exact wording Streamlit's
+    # own chat_message used ("Chat message from user"/"...assistant" — see the
+    # CSS comment above referencing the old aria-label selector).
+    container.markdown(
+        f"""
+        <div class="msg-row {role}" role="article" aria-label="Chat message from {role}">
+            <div>
+                <div class="bubble">{escape(content)}</div>
+                <div class="msg-timestamp">{_relative_time(sent_at)}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 PLACEHOLDER = "What was our IT and telecom spend for Alpine Operations in 2024?"
 
@@ -723,19 +791,25 @@ else:
     typed = st.chat_input(PLACEHOLDER)
     prompt = pending or typed
     for i, message in enumerate(st.session_state.messages):
-        with st.chat_message(message["role"], avatar=AVATARS[message["role"]]):
-            if message.get("payload"):
-                render_payload(st, message["payload"], key_suffix=str(i))
-            else:
-                st.markdown(message["content"])
+        # Fallback to time.time() for any message dict without a "timestamp"
+        # key (e.g. a session already in flight when this field was added)
+        # rather than a KeyError — the timestamp only affects the hover
+        # label, so a "just now" for old messages this one rerun is harmless.
+        render_message_bubble(
+            st, message["role"], message["content"], message.get("timestamp", time.time())
+        )
+        if message.get("payload"):
+            render_payload_extras(st, message["payload"], key_suffix=str(i))
         if i == last_index and message["role"] == "assistant" and message.get("payload", {}).get("show_chips") and not prompt:
             render_chips(st, key_suffix=str(i))
 
 if prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt, "payload": None})
+    st.session_state.messages.append(
+        {"role": "user", "content": prompt, "payload": None, "timestamp": time.time()}
+    )
     payload = answer_payload(prompt)
     st.session_state.messages.append(
-        {"role": "assistant", "content": payload["text"], "payload": payload}
+        {"role": "assistant", "content": payload["text"], "payload": payload, "timestamp": time.time()}
     )
     # Rerun rather than render the new exchange inline here: on the very
     # first message, this branch was reached via the empty-state layout

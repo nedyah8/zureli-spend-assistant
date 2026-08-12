@@ -70,12 +70,12 @@ def test_number_question_returns_text_payload():
 
 def test_multi_turn_chat_does_not_crash_on_rerun():
     # Reviewer-found bug (Task 6 fix round 1): app.py's history-replay loop
-    # calls render_payload() for any past message with a payload, and both
+    # calls render_payload_extras() for any past message with a payload, and both
     # append sites always set a real payload — but render_payload used to be
     # defined *below* that loop in the file. Streamlit reruns the whole
     # script top-to-bottom on every interaction, so the first exchange
     # worked (the loop body never runs — history is still empty) but the
-    # very next rerun hit render_payload() before its def had executed,
+    # very next rerun hit render_payload_extras() before its def had executed,
     # raising NameError. A plain module import/reload (like _reload_app()
     # above) can never catch this class of bug: session_state.messages is
     # always empty right after import, so the replay loop's body never
@@ -352,7 +352,7 @@ def test_raw_data_preview_caps_at_50_rows_and_notes_truncation():
 
 
 def test_two_raw_data_payloads_in_history_get_distinct_download_button_keys():
-    # Task 12 review finding (fix round 1): the whole reason render_payload()
+    # Task 12 review finding (fix round 1): the whole reason render_payload_extras()
     # gained a key_suffix parameter is that st.download_button requires a
     # stable, unique widget key — reuse the same key across two widgets in
     # the same run and Streamlit raises a duplicate-widget-ID error. A single
@@ -385,7 +385,7 @@ def test_two_raw_data_payloads_in_history_get_distinct_download_button_keys():
 
 def test_two_chart_payloads_in_history_do_not_raise_duplicate_element_id():
     # Caught live by real manual testing (not by any automated pass in this
-    # project's build): render_payload()'s plotly_chart calls never got the
+    # project's build): render_payload_extras()'s plotly_chart calls never got the
     # same key_suffix treatment the download_button fix (Task 12) applied.
     # Streamlit assigns each st.plotly_chart(...) call an auto-generated
     # element ID from its type + parameters; two calls with the same figure
