@@ -1012,3 +1012,80 @@ def test_every_real_value_in_the_dataset_clears_the_stopword_denylist():
             if words & _TOP_SUPPLIERS_GAP_STOPWORDS:
                 collisions.append((dimension, value, words & _TOP_SUPPLIERS_GAP_STOPWORDS))
     assert collisions == [], collisions
+
+
+# --- unrecognized_terms: the "Italy IT spend" fix (12 Aug 2026) ---
+#
+# Jayesh's own user-testing screenshot: "Italy IT spend" silently dropped
+# "Italy" (not a country in this dataset) and answered the same as a bare
+# "IT spend" question, with nothing telling him a word had been ignored.
+# unrecognized_terms() names words that look like a filter attempt but match
+# nothing in the data, so app.py can disclose them instead of answering
+# around them in silence. Deliberately narrow: it only has a signal to work
+# from when the word is capitalised — see its docstring for why an
+# all-lowercase equivalent was not attempted.
+
+from nl_parser import unrecognized_terms  # noqa: E402
+
+
+def test_flags_jayeshs_exact_repro():
+    assert unrecognized_terms("Italy IT spend", KV) == ["Italy"]
+
+
+def test_flags_an_unknown_place_even_in_first_position():
+    """The bug this guards: the first draft of this function skipped
+    whatever word opened the sentence, on the assumption that leading
+    capitalisation is always just grammar. It is not, here — this is the
+    exact shape of Jayesh's real question, and a first-word-blind version
+    let it through unflagged.
+    """
+    assert unrecognized_terms("Italy spend", KV) != []
+    assert "Italy" in unrecognized_terms("Italy spend", KV)
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What was our IT spend for Alpine Operations in 2024?",
+        "France IT spend",
+        "Who are our top suppliers?",
+        "Give me an overview",
+        "Show me a bar chart of category spend",
+        "What was our spend with Demo Group Headquarters?",
+        "compare category spend",
+        "Break this down by country",
+    ],
+)
+def test_does_not_flag_real_questions_that_have_nothing_unrecognized(question):
+    assert unrecognized_terms(question, KV) == [], (
+        f"{question!r} -> {unrecognized_terms(question, KV)}"
+    )
+
+
+def test_every_real_entity_and_country_value_never_self_flags():
+    """Sweep every real entity/country word against itself, asked as a bare
+    leading question — the same shape as Jayesh's repro but with values that
+    DO exist. None of these may ever be flagged; this is the false-positive
+    guard for the whole feature.
+    """
+    false_positives = []
+    for dimension in ("entity", "country"):
+        for value in KV[dimension]:
+            question = f"{value.replace('Demo ', '')} spend"
+            flagged = unrecognized_terms(question, KV)
+            if flagged:
+                false_positives.append((question, flagged))
+    assert false_positives == [], false_positives
+
+
+def test_the_pronoun_i_is_never_flagged():
+    assert unrecognized_terms("What did I spend on IT?", KV) == []
+
+
+def test_a_month_name_is_never_flagged():
+    assert unrecognized_terms("What was spend since March?", KV) == []
+
+
+def test_flags_multiple_unrecognized_words_without_duplicates():
+    flagged = unrecognized_terms("Italy Elbonia spend Elbonia", KV)
+    assert flagged == ["Italy", "Elbonia"]

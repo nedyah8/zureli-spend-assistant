@@ -743,3 +743,83 @@ def parse_question(question: str, known: dict[str, list],
         "category_level": category_level,
         **base,
     }
+
+
+# Words that are legitimately capitalised mid-sentence in ordinary English but
+# are never a filter attempt in THIS app's question shapes. Kept short and
+# explicit on purpose — a long reactive list here would repeat the exact
+# failure mode _TOP_SUPPLIERS_GAP_STOPWORDS replaced with a closed word class;
+# capitalisation-mid-sentence is a much narrower net than that gap ever was,
+# so a short named exception list is the right size for it, not a smell.
+_CAPITALISED_NON_FILTER_WORDS = frozenset({
+    "i",
+    "jan", "january", "feb", "february", "mar", "march", "apr", "april",
+    "may", "jun", "june", "jul", "july", "aug", "august", "sep", "sept",
+    "september", "oct", "october", "nov", "november", "dec", "december",
+    "mon", "monday", "tue", "tuesday", "wed", "wednesday", "thu", "thursday",
+    "fri", "friday", "sat", "saturday", "sun", "sunday",
+})
+
+# Sentence-initial capitalisation is ambiguous, NOT a safe signal to skip —
+# self-review caught this the first time round. The first draft dropped
+# whatever word opened the sentence outright, on the assumption that leading
+# capitalisation is just grammar. That is true for "What was our..." but
+# false for "Italy IT spend" or "France spend" — real questions that lead
+# with the exact word this function exists to catch. Jayesh's own repro was
+# "Italy IT spend": three words, the offending one first. A blanket
+# first-word skip would have let it straight through.
+#
+# The fix: only skip the first word when it is actually one of the small set
+# of question-openers this app's real phrasing uses. Anything else in first
+# position is checked exactly like every other word.
+_QUESTION_OPENERS = frozenset({
+    "what", "who", "which", "where", "when", "how", "why", "is", "are",
+    "does", "do", "did", "can", "could", "would", "show", "give", "tell",
+    "compare", "break", "list",
+})
+
+_TITLE_CASE_WORD = re.compile(r"\b[A-Z][a-z]+\b")
+
+
+def unrecognized_terms(question: str, known: dict) -> list[str]:
+    """Words that look like a place/company/category name the user typed but
+    that match nothing in this dataset — the fix for the "Italy IT spend"
+    class of bug, where an unmatched word was silently dropped and the
+    question answered as if it had never been asked.
+
+    Deliberately conservative: only flags a Title-case word that is not in
+    the short exception list above (including question-openers, but ONLY
+    when the word is actually in opener position — see above), and that does
+    not appear as a substring of ANY known value in the dataset — checked
+    against the flattened vocabulary regardless of which dimension it
+    belongs to, so "Alpine" is never flagged just because this particular
+    question didn't end up filtering on the entity that contains it.
+
+    Named limitation, not fixed here: a genuinely unknown MULTI-word proper
+    noun ("Costa Rica") gets flagged one word at a time, since this has no
+    concept of a name spanning two Title-case words. Acceptable: it still
+    tells the user something was ignored, which is the actual fix; it just
+    won't quote the phrase back exactly.
+    """
+    vocabulary = " ".join(
+        str(v).lower()
+        for key, values in known.items()
+        if key != "l2_parent"  # a dict, not a list — its words are already
+                                # covered by the l1/l2 lists it maps between
+        for v in values
+    )
+
+    words = _TITLE_CASE_WORD.findall(question)
+
+    flagged = []
+    for i, word in enumerate(words):
+        lw = word.lower()
+        if i == 0 and lw in _QUESTION_OPENERS:
+            continue
+        if lw in _CAPITALISED_NON_FILTER_WORDS:
+            continue
+        if lw in vocabulary:
+            continue
+        if word not in flagged:
+            flagged.append(word)
+    return flagged
