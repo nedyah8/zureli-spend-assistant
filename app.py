@@ -18,7 +18,7 @@ from chart_render import build_concentration_figure
 from chart_query import category_comparison, entity_category_intensity
 from chart_render import build_intensity_heatmap
 from chart_query import raw_filtered_rows
-from nl_parser import parse_question
+from nl_parser import parse_question, unrecognized_terms
 from overview_query import overview
 from spend_query import filter_df, known_values, load_data, query_spend
 
@@ -120,6 +120,35 @@ st.markdown(
         color: __BRAND__;
         border-radius: 18px 18px 18px 4px;
     }
+    /* Reply feature: the meta row (timestamp + reply button, built with
+       st.columns() in render_message_meta) is the immediate next Streamlit
+       element after render_message_bubble()'s call — guaranteed by
+       render_message_meta's own docstring, which explains why that ordering
+       must never be broken.
+       Adjacency has to be checked one level higher than .msg-row itself:
+       every st.markdown() call gets wrapped in its own
+       [data-testid="stElementContainer"], with .msg-row several plain divs
+       deep inside it (stMarkdownContainer > ... > .msg-row); every
+       st.columns() call, in the installed 1.60.0, gets wrapped in
+       [data-testid="stLayoutWrapper"], NOT stElementContainer — confirmed by
+       walking the live DOM, not assumed. Two real misses before this landed,
+       both silent (no error, the rule just never applied, so the timestamp
+       stayed visible at all times): the first version checked adjacency at
+       the .msg-row level directly, ignoring the stElementContainer wrapping;
+       the second corrected that but assumed the columns() wrapper was ALSO
+       stElementContainer, when it is actually stLayoutWrapper. Both were
+       caught by looking at the real running app — it showed "Just now"
+       twice, permanently, on a message nobody was hovering — not by
+       reasoning about the CSS a third time before checking it. */
+    [data-testid="stElementContainer"]:has(.msg-row)
+        + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] {
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+    [data-testid="stElementContainer"]:has(.msg-row):hover
+        + [data-testid="stLayoutWrapper"] [data-testid="stHorizontalBlock"] {
+        opacity: 1;
+    }
     .msg-row .msg-timestamp {
         font-size: 11px;
         color: __MUTED__;
@@ -164,6 +193,14 @@ if "messages" not in st.session_state:
 # company. Session-scoped, so two people using the app never share context.
 if "last_parse" not in st.session_state:
     st.session_state.last_parse = None
+
+# Set by clicking a past message's reply button; consumed once by the next
+# question (see the reply_context handling below) then cleared. Reuses the
+# exact same follow-up-merge machinery as last_parse — the only difference is
+# WHICH parse a follow-up resolves against: the most recent turn by default,
+# or a specific past one the user explicitly picked.
+if "reply_context" not in st.session_state:
+    st.session_state.reply_context = None
 
 LABELS = {
     "entity": "entity",
@@ -617,6 +654,26 @@ def answer_payload(question: str) -> dict:
     return {"kind": "text", "text": text, "figure": None, "caption": None, "show_chips": False}
 
 
+# Kept entirely OUTSIDE answer_payload() rather than folded into its 15
+# separate return points: that function's branch logic has already been
+# hardened through five separate Codex review rounds (see _HANDOFF.md), and
+# touching every return statement to append a note is a much larger, riskier
+# diff than wrapping the one real call site below. answer_payload()'s
+# existing return contract, and every test asserting on it directly, stays
+# exactly as it was.
+def with_unrecognized_disclosure(payload: dict, question: str) -> dict:
+    flagged = unrecognized_terms(question, kv)
+    if not flagged or not payload.get("text"):
+        return payload
+    quoted = ", ".join(f"'{w}'" for w in flagged)
+    if len(flagged) == 1:
+        note = f" (I didn't recognise {quoted} in this data, so it isn't reflected in this answer.)"
+    else:
+        note = f" (I didn't recognise {quoted} in this data, so they aren't reflected in this answer.)"
+    payload["text"] += note
+    return payload
+
+
 def answer(question: str) -> str:
     return answer_payload(question)["text"]
 
@@ -706,12 +763,21 @@ def _bubble_body(content: str) -> str:
     return _BOLD_MARKDOWN.sub(r"<strong>\1</strong>", escape(content))
 
 
-def render_message_bubble(container, role: str, content: str, sent_at: float) -> None:
+def render_message_bubble(container, role: str, content: str) -> None:
     # Only the text goes in the bubble — charts/tables render separately via
     # render_payload_extras() so they always get full width (see the CSS
     # comment above for why). unsafe_allow_html is required for the bubble
-    # div/timestamp markup; content is escaped and narrowly un-escaped for
-    # bold by _bubble_body above.
+    # markup; content is escaped and narrowly un-escaped for bold by
+    # _bubble_body above.
+    #
+    # The timestamp used to live inside this same markdown call, hover-faded
+    # by pure CSS since it was static text in the same block. It moved out to
+    # render_message_meta() below when the reply button was added: a real
+    # clickable Streamlit widget can't live inside a markdown block, and
+    # getting it to share a hover-fade with the timestamp meant both needed
+    # to move into their own dedicated row. See render_message_meta's
+    # docstring for the DOM-adjacency reasoning this depends on.
+    #
     # Codex review finding: st.chat_message() gave each message a role-labelled
     # container for assistive tech; a plain div doesn't. Restoring that via
     # role="article" + an aria-label, matching the exact wording Streamlit's
@@ -722,12 +788,58 @@ def render_message_bubble(container, role: str, content: str, sent_at: float) ->
         <div class="msg-row {role}" role="article" aria-label="Chat message from {role}">
             <div>
                 <div class="bubble">{_bubble_body(content)}</div>
-                <div class="msg-timestamp">{_relative_time(sent_at)}</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_message_meta(
+    container, role: str, content: str, sent_at: float, msg_index: int, reply_parsed: dict | None,
+) -> None:
+    """The timestamp, and — for an assistant message with something to reply
+    to — a small reply button on the same row. `content` is the message's own
+    text, carried only so a click can stash it alongside the parse for the
+    "Replying to: ..." chip; `reply_parsed` is None for every message with
+    nothing worth resolving a follow-up against (see where messages are
+    appended). MUST be called immediately after render_message_bubble() and
+    before anything else (payload extras included), for every message, with
+    no exceptions.
+
+    That ordering is load-bearing, not a style preference. The hover-fade CSS
+    below targets `.msg-row + [data-testid="stHorizontalBlock"]` — the
+    st.columns() block that is the IMMEDIATE next sibling of a `.msg-row`
+    div. Several payload kinds (overview's KPI row, supplier_drilldown's two
+    side-by-side charts) ALSO render their own st.columns() block right after
+    the bubble. Traced through before writing this: if this meta row were
+    skipped or reordered for any payload kind, THAT block would become the
+    immediate sibling instead, and the same CSS rule would hide it by default
+    — real numbers disappearing, not a cosmetic glitch. Calling this
+    unconditionally, before render_payload_extras(), for every message keeps
+    this row always the true first sibling, so nothing else can ever match
+    that selector by accident.
+    """
+    left = role == "assistant"
+    cols = container.columns([1, 3]) if left else container.columns([3, 1])
+    main = cols[0] if left else cols[1]
+
+    with main:
+        if left and reply_parsed is not None:
+            ts_col, btn_col = st.columns([3, 1])
+            ts_col.markdown(
+                f'<div class="msg-timestamp">{_relative_time(sent_at)}</div>',
+                unsafe_allow_html=True,
+            )
+            if btn_col.button("↩", key=f"reply_{msg_index}", help="Reply to this message"):
+                st.session_state.reply_context = {"parsed": reply_parsed, "text": content}
+                st.rerun()
+        else:
+            align = "text-align:right;" if not left else ""
+            main.markdown(
+                f'<div class="msg-timestamp" style="{align}">{_relative_time(sent_at)}</div>',
+                unsafe_allow_html=True,
+            )
 
 
 PLACEHOLDER = "What was our IT and telecom spend for Alpine Operations in 2024?"
@@ -835,6 +947,18 @@ else:
     # empty-state case until this call was moved ahead of the loop and
     # gated on `not prompt` below.
     last_index = len(st.session_state.messages) - 1
+
+    if st.session_state.reply_context is not None:
+        # Dismissible, short — the point is to confirm what a click just did,
+        # not to re-display the whole past message.
+        quote = st.session_state.reply_context["text"]
+        quote = quote if len(quote) <= 80 else quote[:77] + "..."
+        chip_cols = st.columns([10, 1])
+        chip_cols[0].caption(f"↩ Replying to: “{quote}”")
+        if chip_cols[1].button("✕", key="clear_reply_context", help="Cancel reply"):
+            st.session_state.reply_context = None
+            st.rerun()
+
     typed = st.chat_input(PLACEHOLDER)
     prompt = pending or typed
     for i, message in enumerate(st.session_state.messages):
@@ -842,8 +966,10 @@ else:
         # key (e.g. a session already in flight when this field was added)
         # rather than a KeyError — the timestamp only affects the hover
         # label, so a "just now" for old messages this one rerun is harmless.
-        render_message_bubble(
-            st, message["role"], message["content"], message.get("timestamp", time.time())
+        render_message_bubble(st, message["role"], message["content"])
+        render_message_meta(
+            st, message["role"], message["content"],
+            message.get("timestamp", time.time()), i, message.get("parsed"),
         )
         if message.get("payload"):
             render_payload_extras(st, message["payload"], key_suffix=str(i))
@@ -854,9 +980,45 @@ if prompt:
     st.session_state.messages.append(
         {"role": "user", "content": prompt, "payload": None, "timestamp": time.time()}
     )
-    payload = answer_payload(prompt)
+    # One-shot: replying to a past message overrides what the follow-up
+    # merge resolves against for exactly this turn, then reverts to normal
+    # most-recent-turn behaviour. Must read reply_context and fold it into
+    # last_parse BEFORE parsed_for_reply/answer_payload run, since both read
+    # last_parse at call time — computing this after either of them would
+    # use the wrong previous turn.
+    #
+    # Codex review finding: the first version left last_parse holding the
+    # replied-to parse INDEFINITELY whenever this turn's own question had no
+    # filters of its own — answer_payload() only advances last_parse when
+    # filters is non-empty, so a reply followed by a no-filter question
+    # ("what does this mean?") silently kept resolving every LATER follow-up
+    # against the old replied-to message too, not just this one turn.
+    # last_parse was being used as both the normal state slot and the
+    # override's scratch space, with nothing to undo the scratch write when
+    # it turned out not to be needed. Fixed by capturing what last_parse was
+    # before the override and restoring exactly that — not just clearing to
+    # None — when this turn didn't produce a new filtered parse to replace
+    # it with.
+    previous_last_parse = st.session_state.last_parse
+    if st.session_state.reply_context is not None:
+        st.session_state.last_parse = st.session_state.reply_context["parsed"]
+        st.session_state.reply_context = None
+    parsed_for_reply = parse_question(prompt, kv, previous=st.session_state.last_parse)
+    payload = with_unrecognized_disclosure(answer_payload(prompt), prompt)
+    if not parsed_for_reply["filters"]:
+        # answer_payload() did not advance last_parse this turn (it only
+        # does so when filters is non-empty), so any one-shot override above
+        # never got legitimately superseded — undo it rather than leave it
+        # in place for every future turn.
+        st.session_state.last_parse = previous_last_parse
     st.session_state.messages.append(
-        {"role": "assistant", "content": payload["text"], "payload": payload, "timestamp": time.time()}
+        {
+            "role": "assistant", "content": payload["text"], "payload": payload,
+            "timestamp": time.time(),
+            # Only assistant messages that actually resolved a filter are
+            # worth replying to — see render_message_meta's docstring.
+            "parsed": parsed_for_reply if parsed_for_reply["filters"] else None,
+        }
     )
     # Rerun rather than render the new exchange inline here: on the very
     # first message, this branch was reached via the empty-state layout

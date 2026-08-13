@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import importlib
 
 import pandas as pd
+import pytest
 from streamlit.testing.v1 import AppTest
 
 APP_PATH = str(Path(__file__).resolve().parents[1] / "app.py")
@@ -608,3 +609,229 @@ def test_bubble_width_cap_is_on_the_wrapper_not_the_bubble():
     bubble_block = css.split(".msg-row .bubble {")[1].split("}")[0]
     assert "max-width: 100%;" in bubble_block
     assert "max-width: 75%;" not in bubble_block
+
+
+# --- with_unrecognized_disclosure: the app.py wiring for the "Italy IT
+# spend" fix. nl_parser.unrecognized_terms() itself is tested exhaustively in
+# test_alias_coverage.py; these confirm it actually reaches the visible
+# answer text, at the one real call site, without touching answer_payload()'s
+# own tested return contract.
+
+
+def test_disclosure_appended_for_jayeshs_exact_repro():
+    app = _reload_app()
+    payload = app.with_unrecognized_disclosure(
+        app.answer_payload("Italy IT spend"), "Italy IT spend"
+    )
+    assert "didn't recognise 'Italy'" in payload["text"]
+    # The real figure must still be there — this discloses, it does not
+    # replace, the answer that was already computed.
+    assert "2,630,963.38" in payload["text"]
+
+
+def test_no_disclosure_appended_when_nothing_unrecognized():
+    app = _reload_app()
+    original = app.answer_payload("France IT spend")
+    disclosed = app.with_unrecognized_disclosure(dict(original), "France IT spend")
+    assert disclosed["text"] == original["text"]
+    assert "didn't recognise" not in disclosed["text"]
+
+
+def test_disclosure_reaches_the_live_message_history():
+    # End-to-end through the real Streamlit script, not just the two
+    # functions in isolation — proves the wiring at the actual call site,
+    # not just that both pieces work when called directly.
+    at = AppTest.from_file(APP_PATH)
+    at.run()
+    at.chat_input[0].set_value("Italy IT spend").run()
+    assert "didn't recognise 'Italy'" in at.session_state.messages[-1]["content"]
+
+
+def test_disclosure_names_multiple_unrecognized_words_together():
+    app = _reload_app()
+    payload = app.with_unrecognized_disclosure(
+        {"text": "Some answer.", "kind": "text"}, "Italy Elbonia spend"
+    )
+    assert "'Italy'" in payload["text"]
+    assert "'Elbonia'" in payload["text"]
+    assert "they aren't reflected" in payload["text"]
+
+
+# --- Reply-to-message (12 Aug 2026) ---
+#
+# Landed as its own scoped piece after the first attempt at this was paused
+# mid-design: it needed real restructuring (the timestamp moved out of the
+# bubble's own markdown block into a separate st.columns() row, since a real
+# clickable button can't live inside static HTML), which put it in genuine
+# collision range with every payload kind that ALSO renders its own
+# st.columns() block right after the bubble (overview's KPI row,
+# supplier_drilldown's two side-by-side charts) — a naive hover-CSS rule
+# would have hidden those by default. See render_message_meta's docstring
+# for the full reasoning and app.py's CSS comment for the two real,
+# initially-silent misses building the hover-fade rule itself (checking
+# adjacency at the wrong DOM depth, then against the wrong wrapper testid —
+# both found by looking at the real running app, not by re-reading the CSS).
+#
+# These tests exercise the actual mechanism end-to-end via AppTest (button
+# click -> reply_context set -> next question resolves against the REPLIED
+# message, not the most recent one -> context consumed once) rather than
+# only unit-testing the pieces in isolation.
+
+
+def test_assistant_message_with_filters_gets_a_parsed_snapshot():
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.chat_input[0].set_value(
+        "What was our IT and telecom spend for Alpine Operations in 2024?"
+    ).run()
+    assert at.session_state.messages[-1]["parsed"] is not None
+    assert at.session_state.messages[-1]["parsed"]["filters"]
+
+
+def test_assistant_message_with_no_filters_gets_no_parsed_snapshot():
+    # Nothing to reply TO here — an unscoped overview has no filters a
+    # follow-up could sensibly resolve against. render_message_meta only
+    # shows the reply button when this is not None; see its docstring.
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.chat_input[0].set_value("Give me an overview").run()
+    assert at.session_state.messages[-1]["parsed"] is None
+
+
+def test_no_reply_button_when_theres_nothing_to_reply_to():
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.chat_input[0].set_value("Give me an overview").run()
+    assert len(at.button) == 0
+
+
+def test_clicking_reply_stashes_the_messages_parse_and_text():
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.chat_input[0].set_value(
+        "What was our IT and telecom spend for Alpine Operations in 2024?"
+    ).run()
+    assert at.session_state.reply_context is None
+    at.button[0].click().run()
+    ctx = at.session_state.reply_context
+    assert ctx is not None
+    assert ctx["parsed"]["filters"]["entity"] == "Demo Alpine Operations"
+    assert "Alpine Operations" in ctx["text"]
+
+
+def test_replying_overrides_the_most_recent_turn_not_just_repeats_it():
+    # The actual point of the feature: without clicking reply, a follow-up
+    # always resolves against whatever was answered last. This proves reply
+    # overrides that default — asks about Alpine/2024, then a DIFFERENT
+    # question (France, no relation to Alpine), then clicks reply on the
+    # ORIGINAL Alpine message and asks a follow-up that only makes sense
+    # resolved against Alpine, not against the intervening France turn.
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.chat_input[0].set_value(
+        "What was our IT and telecom spend for Alpine Operations in 2024?"
+    ).run()
+    at.chat_input[0].set_value("France IT spend").run()
+    assert at.session_state.last_parse["filters"].get("entity") != "Demo Alpine Operations"
+
+    at.button(key="reply_1").click().run()
+    at.chat_input[0].set_value("what about 2025?").run()
+    result_text = at.session_state.messages[-1]["content"]
+    assert "Alpine Operations" in result_text
+    assert "year = 2025" in result_text
+    assert "France" not in result_text
+
+
+def test_reply_context_is_consumed_once_not_sticky():
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.chat_input[0].set_value(
+        "What was our IT and telecom spend for Alpine Operations in 2024?"
+    ).run()
+    at.button(key="reply_1").click().run()
+    assert at.session_state.reply_context is not None
+
+    at.chat_input[0].set_value("what about 2025?").run()
+    assert at.session_state.reply_context is None
+
+    # A second follow-up with no new reply click must resolve against the
+    # turn that was JUST answered (2025), not silently keep reusing the
+    # already-consumed Alpine/2024 reply target.
+    at.chat_input[0].set_value("and 2024?").run()
+    result_text = at.session_state.messages[-1]["content"]
+    assert "year = 2024" in result_text
+    assert "Alpine Operations" in result_text
+
+
+def test_reply_override_does_not_leak_past_a_no_filter_turn():
+    # Codex review finding: the first version of the one-shot override wrote
+    # the replied-to parse into last_parse and relied on answer_payload() to
+    # overwrite it with the NEW turn's parse — but answer_payload() only
+    # advances last_parse when the new question has filters of its own. A
+    # question like "what does this mean?" has none, so last_parse was left
+    # sitting on the replied-to value indefinitely: not just this one turn,
+    # every later follow-up too, until some future question happened to
+    # produce filters. Reproduced here as three real turns: reply to Alpine,
+    # ask something with no filters, then ask a follow-up that must resolve
+    # against the CURRENT conversation (France, the most recent real answer)
+    # rather than the stale Alpine reply target.
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.chat_input[0].set_value(
+        "What was our IT and telecom spend for Alpine Operations in 2024?"
+    ).run()
+    at.chat_input[0].set_value("France IT spend").run()
+    at.button(key="reply_1").click().run()  # reply to the Alpine turn
+
+    at.chat_input[0].set_value("what does this mean?").run()
+    assert at.session_state.reply_context is None  # consumed regardless
+
+    at.chat_input[0].set_value("what about 2025?").run()
+    result_text = at.session_state.messages[-1]["content"]
+    assert "France" in result_text
+    assert "Alpine Operations" not in result_text
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Give me an overview",
+        "tell me about Demo Supplier 025",
+        "show me fragmentation",
+        "show me the raw data",
+    ],
+)
+def test_reply_meta_row_never_hides_the_payloads_own_columns(question):
+    # The actual regression this whole feature was paused to avoid: overview
+    # (KPI row), supplier_drilldown (two side-by-side charts), fragmentation
+    # (KPI row + chart + table), and raw_data (table + download button) each
+    # render their own st.columns() or widget block immediately after the
+    # bubble.
+    #
+    # This can only partially be checked here: AppTest has no CSS/layout
+    # engine (the actual hover-opacity collision this guards against was
+    # found and fixed by inspecting the real running app in a real browser,
+    # not by a unit test — see the CSS comment in app.py), and it has no
+    # built-in inspector for st.plotly_chart's custom-component output at
+    # all (checked directly: 'plotly_chart' is not in dir(AppTest) on the
+    # installed 1.60.0). What AppTest CAN prove, and what this asserts: the
+    # script runs to completion with no exception for every payload kind
+    # (an exception here would mean render_message_meta broke something
+    # structurally), and every element AppTest DOES model for that payload
+    # kind is actually present, using the real accessor names for each widget
+    # type — download_button is its own accessor, not part of at.button.
+    at = AppTest.from_file(APP_PATH, default_timeout=30)
+    at.run()
+    at.chat_input[0].set_value(question).run()
+    assert not at.exception, [str(e) for e in at.exception]
+    kind = at.session_state.messages[-1]["payload"]["kind"]
+    if kind == "overview":
+        assert len(at.metric) > 0
+    elif kind == "supplier_drilldown":
+        assert len(at.columns) > 0
+    elif kind == "fragmentation":
+        assert len(at.metric) > 0
+        assert len(at.dataframe) >= 1
+    elif kind == "raw_data":
+        assert len(at.dataframe) >= 1
+        assert any(b.label == "Download filtered CSV" for b in at.download_button)

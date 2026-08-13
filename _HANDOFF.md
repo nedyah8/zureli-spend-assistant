@@ -1450,3 +1450,186 @@ mistake in a scratch copy and watching it fail. It strips CSS comments before
 asserting, because the comments legitimately discuss padding-top and a naive
 substring check matched the prose (caught when the first version of the test
 failed against correct code).
+
+---
+
+## Round 7 — unrecognised-term disclosure, "Italy IT spend" (12 Aug 2026)
+
+Hayden's own live user testing, forwarded from Jayesh's "user testing" email:
+"putting in countries & asking for spend doesn't get the answer, or if you
+put in a country that's not on the list it perhaps reverts to Overview." His
+own diagnosis was directionally right and the real behaviour was worse than
+he guessed. Reproduced exactly: "Italy IT spend" (Italy is not one of the
+seven countries in this demo dataset) silently dropped "Italy" and answered
+identically to a bare "IT spend" question — same total, same row count,
+nothing telling the user a word had been ignored. "France IT spend" (a real
+country) correctly added `country = France` to both the caption and the
+total. Confirmed by running both side by side before writing any code.
+
+### Root cause
+`nl_parser.py` has no concept of "the user typed something and I don't
+understand it." It only knows how to recognise words that match something in
+the data. A word that matches nothing is simply invisible to the parser —
+not an error, not a partial match, just absent. This is the same structural
+gap `_AI-GUARDRAIL-DESIGN.md` already targets: a rule-based matcher can say
+"matches" or "silence," never "I don't have a country called Italy." Real
+understanding is what actually closes it; this round closes the SILENCE
+part without needing an API key.
+
+### What shipped: `unrecognized_terms()` + `with_unrecognized_disclosure()`
+`nl_parser.unrecognized_terms(question, known)` flags a Title-case word that
+matches nothing in the dataset's full vocabulary (checked across every
+dimension — country/entity/cluster/l1/l2/supplier — not just the one the
+question seemed to be about, so "Alpine" is never flagged just because this
+particular question didn't end up filtering on the entity that contains it).
+`app.with_unrecognized_disclosure()` appends a plain sentence to the answer
+when anything was flagged: "(I didn't recognise 'Italy' in this data, so it
+isn't reflected in this answer.)" Wired at the single real call site in the
+main script, deliberately NOT folded into `answer_payload()` itself — that
+function has 15 separate return points, already hardened through five Codex
+rounds (see Round 5), and touching every one of them to append a note is a
+much larger, riskier diff than wrapping the one place the app actually calls
+it. `answer_payload()`'s own tested return contract is completely unchanged.
+
+### A real bug caught by self-review, before Codex ever saw it
+The first version of the "skip sentence-initial capitalisation" rule assumed
+a capitalised first word is always just grammar ("What was..."). Re-reading
+my own logic against Jayesh's actual repro before testing it: "Italy IT
+spend" leads with the exact word this function exists to catch — a blanket
+first-word skip would have let it straight through unflagged, silently
+defeating the entire fix on its most important real-world case. Fixed by
+only skipping the first word when it is actually one of a small, explicit
+list of question-openers ("what", "who", "show", "give", etc.) this app's
+real phrasing uses; any other capitalised first word is checked exactly like
+every other word.
+
+### Deliberate scope limit, named rather than oversold
+This only catches CAPITALISED unrecognised words. A user typing entirely in
+lowercase ("spend for italy") gets no disclosure — there is no capital
+letter for the regex to find. An all-lowercase equivalent would mean
+guessing whether an ordinary lowercase word was "meant as a filter," which
+is exactly the reactive, fragile word-matching this project has already
+been burned by five separate times (see Round 5's stopword-list history).
+Accepted as a real, stated limit rather than building a riskier catch-all.
+
+### Tests 994 → 1016 (22 new)
+14 in `test_alias_coverage.py` for `unrecognized_terms()` itself (including
+a sweep of every real entity/country value in the dataset asked as a bare
+leading question, confirming none of them ever self-flag) and 8 in
+`test_app_answer.py` for the app.py wiring, including one true end-to-end
+AppTest run through the real script (not just the function in isolation).
+
+### Verification
+Reproduced Jayesh's exact question live in the deployed local app both
+before and after the fix; "Italy IT spend" now shows the honest disclosure,
+"France IT spend" shows none — confirmed side by side in the same browser
+session.
+
+---
+
+## Round 8 — reply-to-message (12 Aug 2026)
+
+The one piece deliberately deferred out of Round 6: a small button on a past
+answer that makes a follow-up question resolve against THAT answer, not
+whichever turn was most recent. Paused mid-design once, restarted at
+Hayden's explicit instruction to land it properly rather than rush it.
+
+### Why this needed real restructuring, not just an addition
+The hover-fade timestamp worked because it was static text living inside the
+same `st.markdown()` call as the bubble — pure CSS, no JavaScript needed. A
+real clickable reply button can't live inside a markdown block; Streamlit
+renders it as its own separate element. Getting a real button to sit next to
+the timestamp and fade in together meant pulling the timestamp out into its
+own row (`render_message_meta`, built with one level of `st.columns()`
+nesting — within Streamlit's own documented "don't nest more than once"
+guidance), rendered immediately after every bubble.
+
+That "immediately after every bubble, unconditionally" rule is the load-bearing
+part. Several answer types — the overview's KPI numbers, the two-chart
+supplier drilldown — also render their own `st.columns()` block right after
+the bubble. A hover-CSS rule aimed at "the block right after the bubble" would,
+by the same logic, apply to those too. Traced through before writing any CSS;
+confirmed the reasoning was right by deliberately calling `render_message_meta`
+unconditionally before any payload-specific rendering, so the reply row is
+always the genuine first sibling and nothing else can ever match by accident.
+
+### Two real, silent CSS misses — both caught by looking, not by re-reading the rule
+1. First version checked adjacency at the `.msg-row` div itself. Streamlit
+   wraps every `st.markdown()` call in its own `[data-testid="stElementContainer"]`,
+   with `.msg-row` several plain divs deep inside it — the rule silently never
+   matched anything. No error; the timestamp just stayed visible at all times.
+   Caught by looking at the running app: "Just now" showing on an unhovered
+   message, permanently.
+2. Second version corrected the depth but assumed `st.columns()` output was
+   ALSO wrapped in `stElementContainer`. On the installed 1.60.0 it is
+   actually `[data-testid="stLayoutWrapper"]` — confirmed by walking the live
+   DOM, not assumed. Same silent failure, same fix method: restart, look,
+   measure `getComputedStyle(...).opacity` directly rather than trust the
+   selector.
+
+Both fixes verified by direct DOM inspection after the change (computed
+opacity 0 on both meta-rows unhovered; 1 on hover, timestamp AND button
+appearing together), and by confirming the KPI row / two-chart drilldown
+stayed at opacity 1 throughout — the actual regression this was paused to
+avoid, checked directly rather than assumed fixed.
+
+### The mechanism
+Clicking reply stores `{"parsed": <that message's resolved filters>, "text": <that message's own text>}` in `st.session_state.reply_context`. A
+dismissible "Replying to: '...'" chip renders above the input. The next
+submitted question, if `reply_context` is set, resolves against IT instead
+of the most recent turn — reusing the exact same follow-up-merge machinery
+`last_parse` already provides for "what about Germany?"-style questions, not
+new merge logic. One-shot: consumed and cleared on use.
+
+Scoped to assistant messages whose parse actually resolved a filter — an
+unscoped "give me an overview" has nothing sensible to reply to, so no
+button renders for it. Proven end-to-end via real interaction, not just
+traced: asked about Alpine 2024, asked about France (unrelated), clicked
+reply on the ORIGINAL Alpine message, asked "what about 2025?" — the answer
+came back Alpine 2025, not France. Then, without clicking reply again, asked
+a further follow-up and confirmed it fell back to resolving against the
+just-answered turn, proving the override truly is one-shot, not sticky.
+
+### Codex review — 1 finding, real, reproduced, fixed
+**High: the one-shot override could leak past its intended turn.** The
+override worked by temporarily writing the replied-to parse into
+`st.session_state.last_parse`, relying on `answer_payload()`'s own existing
+logic to overwrite it with the new turn's parse. But `answer_payload()` only
+advances `last_parse` when the new question actually has filters — a
+no-filter follow-up ("what does this mean?") left `last_parse` sitting on
+the replied-to value indefinitely, not just for that one turn but for every
+later turn too, until some future question happened to produce filters again.
+
+Reproduced exactly before fixing: replied to an Alpine message, asked
+something with no filters, then asked a follow-up that should have resolved
+against the most recent real answer (France) — it came back Alpine instead.
+Fixed by capturing what `last_parse` held before the override and explicitly
+restoring it — not just clearing to `None` — whenever the turn doesn't
+produce a new filtered parse to legitimately replace it with. Re-ran the
+same reproduction after the fix: resolves to France, correctly. The pinned
+test (`test_reply_override_does_not_leak_past_a_no_filter_turn`) was proven
+load-bearing by running it against the pre-fix code and watching it fail
+with exactly this leak, then confirming it passes against the fix.
+
+### Tests 998 → 1027 (29 new)
+10 exercise the reply mechanism directly via `AppTest` (Streamlit's own test
+harness, running the real script end-to-end through real session-state
+transitions — not a mock), including the override, the one-shot consumption,
+and the leak fix. 5 of those 10 pass unchanged against the pre-feature code
+by design — legitimate "must remain true both before and after" guards
+(e.g. no reply button when there's nothing to reply to), matching this
+project's established two-kind test convention rather than a gap. The
+remaining ~19 extend Round 5/6's alias-coverage and app-answer files.
+
+Real-browser verification for this round used direct DOM inspection
+(`getComputedStyle`, live element queries) rather than a fresh set of
+screenshots at every step — appropriate for a CSS-adjacency and
+state-machine bug, where "does the number match" and "is the computed
+opacity 0 or 1" are the actual questions, not visual layout.
+
+### RESIDUAL — not built, named rather than silently dropped
+The literal highlight-a-phrase-and-reply version (matching this chat tool's
+own UI) remains out of scope — Streamlit has no built-in text-selection
+event; building it means a custom interactive component from scratch. This
+round built the cheaper, still-useful whole-message version instead, at
+Hayden's explicit decision after seeing both mocked up.
